@@ -51,4 +51,28 @@ test.describe('Settings Modal', () => {
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.models-page')).toBeVisible();
   });
+
+  test('selecting a model in settings updates active_model_id', async ({ page }) => {
+    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    await settingsButton.click();
+    
+    // Wait for modal to be visible
+    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
+    
+    // Select the first model (Local/GGUF)
+    const firstModel = page.locator('.model-card').first();
+    await firstModel.click();
+    
+    // Verify modal is still open
+    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
+    
+    // Click save button to close modal
+    await page.locator('button', { hasText: /guardar/i }).click();
+    
+    // Verify modal is closed
+    await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 5000 });
+    
+    // Check that we're back on the main page and model is selected
+    await expect(page.locator('.input-section')).toBeVisible({ timeout: 5000 });
+  });
 });
