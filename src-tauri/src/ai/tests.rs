@@ -1,0 +1,134 @@
+use crate::ai::AIEngine;
+
+#[test]
+fn test_parse_response_with_numbered_steps() {
+    let content = "1. Primero, identificamos los terminos semejantes
+2. Luego, sumamos los coeficientes de x
+3. Finalmente, despejamos x
+
+Respuesta final: x = 3";
+    
+    let problem = "2x + 3 = 9";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.steps.is_empty(), "Deberia haber al menos un paso");
+    assert_eq!(solution.problem, "2x + 3 = 9");
+    assert!(solution.final_answer.contains("x = 3"));
+}
+
+#[test]
+fn test_parse_response_with_paso_format() {
+    let content = "Paso 1: Identificamos la ecuacion
+Paso 2: Restamos 3 de ambos lados
+Paso 3: Dividimos entre 2
+
+Respuesta final: x = 3";
+    
+    let problem = "2x + 6 = 12";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.steps.is_empty(), "Deberia haber al menos un paso");
+}
+
+#[test]
+fn test_parse_response_with_empty_content() {
+    let content = "";
+    let problem = "2 + 2";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.steps.is_empty(), "Deberia haber al menos un paso fallback");
+    assert_eq!(solution.steps[0].explanation, "");
+}
+
+#[test]
+fn test_parse_response_with_single_line() {
+    let content = "La respuesta es 4";
+    let problem = "2 + 2";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.steps.is_empty(), "Debe crear un paso para contenido sin formato");
+}
+
+#[test]
+fn test_parse_response_finds_final_answer() {
+    let content = "Paso 1: Sumar los numeros
+Paso 2: El resultado es 5
+
+Resultado final: 5";
+    
+    let problem = "2 + 3";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(solution.final_answer.contains("5"), 
+        "Deberia encontrar el resultado final: {}", solution.final_answer);
+}
+
+#[test]
+fn test_parse_response_with_multiple_steps() {
+    let content = "1. Sumar 2 + 3 = 5
+2. Multiplicar 5 * 2 = 10
+3. Restar 10 - 3 = 7
+
+Respuesta final: 7";
+    
+    let problem = "(2 + 3) * 2 - 3";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(solution.steps.len() >= 2, 
+        "Deberia haber al menos 2 pasos, tiene {}", solution.steps.len());
+}
+
+#[test]
+fn test_parse_response_step_numbers_are_sequential() {
+    let content = "1. Primer paso
+2. Segundo paso
+3. Tercer paso";
+    
+    let problem = "test";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    if solution.steps.len() >= 3 {
+        assert_eq!(solution.steps[0].step, 1);
+        assert_eq!(solution.steps[1].step, 2);
+        assert_eq!(solution.steps[2].step, 3);
+    }
+}
+
+#[test]
+fn test_parse_response_with_newlines_in_step() {
+    let content = "1. Primer paso con multiple lineas
+   linea 2 del paso
+2. Segundo paso
+
+Respuesta final: 42";
+    
+    let problem = "test";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.steps.is_empty());
+    assert!(solution.final_answer.contains("42"));
+}
+
+#[test]
+fn test_parse_response_with_no_final_answer_marker() {
+    let content = "Paso 1: Hacer algo
+Paso 2: Hacer otra cosa";
+    
+    let problem = "test";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert!(!solution.final_answer.is_empty());
+    assert!(solution.final_answer.contains("explicacion paso a paso") || 
+            solution.final_answer.contains("Hacer"));
+}
+
+#[test]
+fn test_parse_response_preserves_problem_text() {
+    let content = "1. Resolver
+2. Listo";
+    
+    let problem = "x + 5 = 12, encontrar x";
+    let solution = AIEngine::parse_response(content, problem);
+    
+    assert_eq!(solution.problem, "x + 5 = 12, encontrar x");
+}
