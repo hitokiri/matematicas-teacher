@@ -57,8 +57,8 @@ struct AnthropicMessageInput {
     content: serde_json::Value,
 }
 
-/// llama-server propio para el modelo activo: (ruta del GGUF, proceso)
-static LOCAL_SERVER: Mutex<Option<(PathBuf, tokio::process::Child)>> = Mutex::new(None);
+/// llama-server propio (respaldo) para el modelo activo: (ruta del GGUF, puerto, proceso)
+static LOCAL_SERVER: Mutex<Option<(PathBuf, u16, tokio::process::Child)>> = Mutex::new(None);
 
 pub struct AIEngine {
     provider: AIProvider,
@@ -262,37 +262,28 @@ REGLAS IMPORTANTES:
     }
 
     async fn solve_locally(problem: &MathProblem, model_path: Option<&Path>, active_id: Option<&str>) -> Result<Solution> {
-        let client = reqwest::Client::new();
-
-        // 1) Modelo activo descargado en la app: se sirve con llama-server propio.
-        // 2) Si no hay llama-server instalado, se usa el servidor en localhost:8080.
-        let own_server = match model_path {
-            Some(path) => Self::ensure_own_server(path).await?,
-            None => None,
+        // Solo modelos propios de la app (como Handy): no se conecta a servidores externos.
+        let Some(path) = model_path else {
+            return Err(anyhow::anyhow!(match active_id {
+                Some(_) => "El modelo activo no esta descargado. Descargalo en Configuracion.",
+                None => "No hay un modelo local activo. Descarga y selecciona uno en Configuracion.",
+            }));
         };
-        let base = own_server.clone().unwrap_or_else(|| "http://localhost:8080".to_string());
 
-        // En modo router (varios modelos) llama-server exige el campo "model": se usa el activo
-        // si el servidor lo tiene; si no, el ya cargado o el primero disponible.
-        let model = if own_server.is_some() {
-            None
-        } else {
-            match client.get(format!("{}/v1/models", base)).send().await {
-                Ok(r) => r.json::<serde_json::Value>().await.ok().and_then(|j| {
-                    let list = j["data"].as_array()?;
-                    let active = list.iter().find(|m| m["id"].as_str() == active_id);
-                    let loaded = list.iter().find(|m| m["status"]["value"] == "loaded");
-                    active.or(loaded).or_else(|| list.first())?["id"].as_str().map(String::from)
-                }),
-                Err(_) => None,
-            }
+        // 1) Inferencia dentro de la app (sin puertos).
+        // 2) Si falla y hay llama-server instalado, se lanza uno propio en un puerto libre.
+        let embedded_error = match Self::solve_embedded(problem, path).await {
+            Ok(solution) => return Ok(solution),
+            Err(e) => e,
+        };
+        let Some(base) = Self::ensure_own_server(path).await? else {
+            return Err(embedded_error);
         };
 
         // llama-server aplica la plantilla de chat del modelo en /v1/chat/completions
-        let resp = client
+        let resp = reqwest::Client::new()
             .post(format!("{}/v1/chat/completions", base))
             .json(&serde_json::json!({
-                "model": model,
                 "messages": [
                     { "role": "system", "content": Self::build_system_prompt() },
                     { "role": "user", "content": Self::user_content(problem) },
@@ -301,20 +292,8 @@ REGLAS IMPORTANTES:
                 "temperature": 0.3,
             }))
             .send()
-            .await;
-
-        let resp = match resp {
-            Ok(r) => r,
-            Err(_) => {
-                return Err(anyhow::anyhow!(
-                    "No se pudo conectar al modelo local en localhost:8080.\n\n\
-                     Para usar IA local:\n\
-                     1. Instala llama.cpp: https://github.com/ggerganov/llama.cpp\n\
-                     2. Ejecuta: llama-server -m modelo.gguf -c 4096\n\n\
-                     O usa OpenAI/Anthropic en Configuracion."
-                ))
-            }
-        };
+            .await
+            .map_err(|e| anyhow::anyhow!("No se pudo conectar con llama-server: {}", e))?;
 
         let body = Self::read_json(resp, "El modelo local").await?;
         let content = body["choices"][0]["message"]["content"].as_str().unwrap_or("").trim();
@@ -322,6 +301,26 @@ REGLAS IMPORTANTES:
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
         Ok(Self::with_transcription(Self::parse_response(content, &Self::display_text(problem)), content, problem))
+    }
+
+    /// Resuelve con llama.cpp integrado en la app (en un hilo aparte: es bloqueante)
+    async fn solve_embedded(problem: &MathProblem, path: &Path) -> Result<Solution> {
+        if problem.image.is_some() {
+            return Err(anyhow::anyhow!(
+                "El modelo local integrado no puede leer dibujos. Escribe el problema \
+                 o usa OpenAI/Anthropic en Configuracion."
+            ));
+        }
+        let path = path.to_path_buf();
+        let user = Self::user_prompt(problem);
+        let content = tokio::task::spawn_blocking(move || {
+            crate::ai::local::generate(&path, &Self::build_system_prompt(), &user)
+        })
+        .await??;
+        if content.is_empty() {
+            return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
+        }
+        Ok(Self::parse_response(&content, &Self::display_text(problem)))
     }
 
     /// Localiza el binario de llama-server (LLAMA_SERVER_BIN o PATH)
@@ -342,24 +341,30 @@ REGLAS IMPORTANTES:
     /// Arranca (o reutiliza) un llama-server con el GGUF dado en un puerto propio.
     /// Devuelve la URL base, o None si llama-server no esta instalado.
     async fn ensure_own_server(model_path: &Path) -> Result<Option<String>> {
-        const PORT: u16 = 8081;
         let Some(bin) = Self::find_llama_server() else { return Ok(None) };
-        Self::start_or_reuse_server(&bin, model_path, PORT)?;
-        let base = format!("http://127.0.0.1:{}", PORT);
+        let port = Self::start_or_reuse_server(&bin, model_path)?;
+        let base = format!("http://127.0.0.1:{}", port);
         Self::wait_for_server(&base).await?;
         Ok(Some(base))
     }
 
-    /// Parte sincrona (el guard del Mutex no puede cruzar un await)
-    fn start_or_reuse_server(bin: &Path, model_path: &Path, port: u16) -> Result<()> {
+    /// Puerto libre asignado por el sistema, para no chocar con otro llama-server de la PC
+    fn free_port() -> Result<u16> {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+        Ok(listener.local_addr()?.port())
+    }
+
+    /// Parte sincrona (el guard del Mutex no puede cruzar un await). Devuelve el puerto.
+    fn start_or_reuse_server(bin: &Path, model_path: &Path) -> Result<u16> {
         let mut guard = LOCAL_SERVER.lock().unwrap();
-        if let Some((path, child)) = guard.as_mut() {
+        if let Some((path, port, child)) = guard.as_mut() {
             let alive = matches!(child.try_wait(), Ok(None));
             if alive && path == model_path {
-                return Ok(());
+                return Ok(*port);
             }
             let _ = child.start_kill(); // otro modelo activo o proceso caido
         }
+        let port = Self::free_port()?;
         let child = tokio::process::Command::new(bin)
             .arg("-m").arg(model_path)
             .args(["--host", "127.0.0.1", "--port", &port.to_string(), "-c", "4096"])
@@ -368,8 +373,8 @@ REGLAS IMPORTANTES:
             .kill_on_drop(true)
             .spawn()
             .map_err(|e| anyhow::anyhow!("No se pudo iniciar llama-server: {}", e))?;
-        *guard = Some((model_path.to_path_buf(), child));
-        Ok(())
+        *guard = Some((model_path.to_path_buf(), port, child));
+        Ok(port)
     }
 
     /// Espera a que llama-server termine de cargar el modelo (hasta 3 minutos)

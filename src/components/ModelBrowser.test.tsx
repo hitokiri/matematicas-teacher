@@ -87,8 +87,30 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText(/Downloaded Models/)).toBeInTheDocument()
+    expect(screen.getByText(/Active Model/)).toBeInTheDocument()
     expect(screen.getByText('Llama 3.1 8B')).toBeInTheDocument()
+  })
+
+  it('moves the active model to the top of the list', () => {
+    const models = createMockModels()
+    // model-4 descargado pero inactivo; model-1 activo aunque viene primero en otro orden
+    const inactive = { ...models[0], id: 'model-4', name: 'Gemma 2B', is_active: false }
+    render(
+      <ModelBrowser
+        models={[inactive, models[1], models[2], models[0]]}
+        onListModels={vi.fn()}
+        onDownload={vi.fn()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+
+    const names = screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)
+    expect(names[0]).toBe('Llama 3.1 8B')
+    expect(screen.getByText(/Downloaded Models/)).toBeInTheDocument()
   })
 
   it('displays available models section', () => {

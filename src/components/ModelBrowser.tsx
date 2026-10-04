@@ -97,7 +97,9 @@ export default function ModelBrowser({
     m.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const downloadedModels = filteredModels.filter(m => m.is_downloaded);
+  // El modelo activo va siempre arriba, en su propia seccion
+  const activeModels = filteredModels.filter(m => m.is_active);
+  const downloadedModels = filteredModels.filter(m => m.is_downloaded && !m.is_active);
   const availableModels = filteredModels.filter(m => !m.is_downloaded && !m.is_downloading);
   const downloadingModelsList = filteredModels.filter(m => m.is_downloading);
 
@@ -337,6 +339,7 @@ export default function ModelBrowser({
         </div>
       </div>
 
+      {renderSection('Active Model', activeModels, '✅')}
       {renderSection('Downloading', downloadingModelsList, '⏳')}
       {renderSection('Downloaded Models', downloadedModels, '📦')}
       {renderSection('Available to Download', availableModels, '⬇️')}

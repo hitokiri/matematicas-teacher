@@ -354,3 +354,17 @@ npm run test:watch        # Watch mode
 ---
 
 *Última actualización: 2024-10-03 - Testing implementado: 21 Rust tests, 19 E2E tests, Vitest mocks corregidos*
+
+---
+
+## 🧠 IA LOCAL INTEGRADA EN LA APP (2026-10-04)
+
+Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin servidor ni puertos.
+- `src-tauri/src/ai/local.rs`: carga el GGUF activo en memoria y genera la respuesta.
+- Se precarga al seleccionar el modelo y al arrancar (si el proveedor es local); se libera al borrarlo.
+- Ya no se conecta a `localhost:8080`. Respaldo: si la carga integrada falla y hay `llama-server`
+  instalado, se lanza uno propio en un puerto libre asignado por el sistema.
+- El modelo integrado no lee dibujos (los modelos del catalogo son solo texto).
+- GPU opcional: `cargo build --features cuda` o `--features vulkan`.
+- Configuracion: el modelo activo aparece arriba del todo en su propia seccion "Active Model".
+- Prueba real: `LOCAL_GGUF=/ruta/modelo.gguf cargo test embedded -- --ignored`

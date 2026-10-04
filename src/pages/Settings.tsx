@@ -70,7 +70,8 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
   const handleSelect = async (modelId: string) => {
     try {
       await invoke('select_model', { modelId });
-      setLocalSettings(prev => ({ ...prev, active_model_id: modelId }));
+      // Elegir un modelo local implica usar el proveedor local
+      setLocalSettings(prev => ({ ...prev, provider: 'local', active_model_id: modelId }));
       await loadModels();
     } catch (err) {
       console.error('Error selecting model:', err);

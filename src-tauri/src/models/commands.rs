@@ -56,6 +56,10 @@ pub fn select_model(app: tauri::AppHandle, model_id: String) -> Result<(), Strin
     let state = app.state::<crate::AppState>();
     let mut models = state.models.lock().map_err(|e| e.to_string())?;
     models.select_model(&model_id).map_err(|e| e.to_string())?;
+    // Como Handy: el modelo activo se carga en memoria en segundo plano
+    if let Some(path) = models.get_active_model_path() {
+        crate::ai::local::preload(path);
+    }
     
     // Update settings with active model
     let mut settings = state.settings.lock().map_err(|e| e.to_string())?;
@@ -76,6 +80,9 @@ pub fn select_model(app: tauri::AppHandle, model_id: String) -> Result<(), Strin
 pub fn delete_model(app: tauri::AppHandle, model_id: String) -> Result<(), String> {
     let state = app.state::<crate::AppState>();
     let mut models = state.models.lock().map_err(|e| e.to_string())?;
+    if models.get_active_model().map(|m| m.id.as_str()) == Some(model_id.as_str()) {
+        crate::ai::local::unload(); // soltar el archivo antes de borrarlo
+    }
     models.delete_model(&model_id).map_err(|e| e.to_string())?;
 
     let mut settings = state.settings.lock().map_err(|e| e.to_string())?;

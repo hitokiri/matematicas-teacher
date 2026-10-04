@@ -72,7 +72,15 @@ fn main() {
                         settings.active_model_id = active_model_id.clone();
                     }
                     
-                    state.models.lock().unwrap().restore_active_model(active_model_id);
+                    {
+                        let mut models = state.models.lock().unwrap();
+                        models.restore_active_model(active_model_id);
+                        if matches!(state.settings.lock().unwrap().provider, AIProvider::Local) {
+                            if let Some(path) = models.get_active_model_path() {
+                                ai::local::preload(path);
+                            }
+                        }
+                    }
 
                     {
                         let mut ai = state.ai.lock().unwrap();

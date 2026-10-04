@@ -162,3 +162,13 @@ fn test_with_transcription_uses_problema_line_for_drawings() {
     let sol = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
     assert_eq!(sol.problem, "3 x 10");
 }
+
+/// Prueba real del modelo integrado: LOCAL_GGUF=/ruta/modelo.gguf cargo test -- --ignored
+#[test]
+#[ignore]
+fn test_embedded_model_generates_solution() {
+    let path = std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF"));
+    let content = crate::ai::local::generate(&path, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7")
+        .expect("el modelo integrado debe responder");
+    assert!(content.contains('2'), "respuesta inesperada: {}", content);
+}
