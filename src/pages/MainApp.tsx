@@ -56,6 +56,7 @@ function MainApp({ settings }: MainAppProps) {
 
   function handleCanvasDraw(image: string) {
     setProblemImage(image)
+    setError('')
   }
 
   return (
@@ -66,13 +67,13 @@ function MainApp({ settings }: MainAppProps) {
         <div className="tab-bar">
           <button 
             className={`tab ${inputMode === 'text' ? 'active' : ''}`}
-            onClick={() => setInputMode('text')}
+            onClick={() => { setError(''); setInputMode('text') }}
           >
             ✏️ Texto
           </button>
           <button 
             className={`tab ${inputMode === 'draw' ? 'active' : ''}`}
-            onClick={() => { setProblemImage(''); setInputMode('draw') }}
+            onClick={() => { setProblemImage(''); setError(''); setInputMode('draw') }}
           >
             🎨 Dibujar
           </button>
@@ -83,7 +84,7 @@ function MainApp({ settings }: MainAppProps) {
             className="problem-input"
             placeholder="Ejemplo: 2 + 2 = ?&#10;o&#10;x + 5 = 12&#10;o&#10;1/2 + 1/4 = ?"
             value={problemText}
-            onChange={(e) => setProblemText(e.target.value)}
+            onChange={(e) => { setProblemText(e.target.value); setError('') }}
           />
         ) : (
           <DrawingCanvas onDraw={handleCanvasDraw} />

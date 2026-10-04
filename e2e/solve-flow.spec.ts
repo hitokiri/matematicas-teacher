@@ -84,4 +84,21 @@ test.describe('Flujo de resolver problemas', () => {
     await page.locator('.tab', { hasText: /dibujar/i }).click();
     await expect(solveButton(page)).toBeDisabled();
   });
+
+  test('el error del dibujo desaparece al volver a texto y resolver funciona', async ({ page }) => {
+    await page.locator('.tab', { hasText: /dibujar/i }).click();
+    await drawStroke(page);
+    await solveButton(page).click();
+    await expect(page.locator('.error-message')).toContainText(/no puede leer dibujos/i);
+
+    await page.locator('.tab', { hasText: /texto/i }).click();
+    await expect(page.locator('.error-message')).toHaveCount(0);
+
+    await page.locator('.problem-input').fill('2x5');
+    await solveButton(page).click();
+    await expect(page.locator('.solution-section')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.error-message')).toHaveCount(0);
+    const args = await page.evaluate(() => (window as any).__lastSolveArgs);
+    expect(args.problemImage).toBeNull();
+  });
 });

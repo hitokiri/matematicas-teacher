@@ -428,11 +428,13 @@ impl ModelManager {
     }
 
     /// Obtiene el modelo activo actual
+    #[allow(dead_code)]
     pub fn get_active_model(&self) -> Option<&ModelInfo> {
         self.available_models.iter().find(|m| m.is_active)
     }
 
     /// Obtiene la ruta del modelo activo
+    #[allow(dead_code)]
     pub fn get_active_model_path(&self) -> Option<PathBuf> {
         self.get_active_model().map(|m| self.get_model_path(m))
     }
