@@ -142,8 +142,7 @@ impl ModelManager {
     pub fn refresh_download_status(&mut self) {
         let model_data: Vec<(String, bool)> = self.available_models.iter()
             .map(|m| {
-                let path = self.get_model_path(m);
-                (m.id.clone(), path.exists())
+                (m.id.clone(), self.find_model_file(m).is_some())
             })
             .collect();
         
@@ -160,7 +159,27 @@ impl ModelManager {
         }
     }
 
-    /// Obtiene la ruta del modelo en disco
+    /// Busca un modelo ya descargado: primero en el directorio de la app y luego en la
+    /// cache estandar de Hugging Face (`models--<id>/snapshots/*/<archivo>`).
+    fn find_model_file(&self, model: &ModelInfo) -> Option<PathBuf> {
+        let own = self.get_model_path(model);
+        if own.is_file() {
+            return Some(own);
+        }
+        let hub = match std::env::var("HF_HOME") {
+            Ok(hf_home) => PathBuf::from(hf_home).join("hub"),
+            Err(_) => PathBuf::from(std::env::var("HOME").ok()?).join(".cache/huggingface/hub"),
+        };
+        let snapshots = hub
+            .join(format!("models--{}", model.id.replace('/', "--")))
+            .join("snapshots");
+        std::fs::read_dir(snapshots).ok()?
+            .flatten()
+            .map(|e| e.path().join(&model.filename))
+            .find(|p| p.is_file())
+    }
+
+    /// Obtiene la ruta donde la app guarda el modelo
     fn get_model_path(&self, model: &ModelInfo) -> PathBuf {
         self.models_dir.join(&model.filename)
     }
@@ -193,7 +212,7 @@ impl ModelManager {
             .find(|m| m.id == model_id)
             .ok_or_else(|| anyhow::anyhow!("Modelo no encontrado: {}", model_id))?;
 
-        if self.get_model_path(model).exists() {
+        if self.find_model_file(model).is_some() {
             return Err(anyhow::anyhow!("El modelo ya esta descargado: {}", model_id));
         }
         if let Some(h) = self.download_handles.lock().unwrap().get(model_id) {
@@ -402,7 +421,9 @@ impl ModelManager {
             (self.get_model_path(model), self.get_partial_path(model))
         };
 
-        for path in [&model_path, &partial_path] {
+        let found = self.available_models.iter().find(|m| m.id == model_id)
+            .and_then(|m| self.find_model_file(m));
+        for path in [Some(&model_path), Some(&partial_path), found.as_ref()].into_iter().flatten() {
             if path.is_dir() {
                 std::fs::remove_dir_all(path)?;
             } else if path.exists() {
@@ -434,8 +455,7 @@ impl ModelManager {
     }
 
     /// Obtiene la ruta del modelo activo
-    #[allow(dead_code)]
     pub fn get_active_model_path(&self) -> Option<PathBuf> {
-        self.get_active_model().map(|m| self.get_model_path(m))
+        self.get_active_model().and_then(|m| self.find_model_file(m))
     }
 }

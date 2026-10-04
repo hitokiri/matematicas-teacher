@@ -128,3 +128,25 @@ fn test_model_recommended_for_categories() {
     assert!(llama.recommended_for.contains(&"matematicas".to_string()));
     assert!(llama.recommended_for.contains(&"logica".to_string()));
 }
+
+#[test]
+fn test_downloaded_model_in_models_dir_is_listed_and_selectable() {
+    let dir = std::env::temp_dir().join(format!("mt-models-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut manager = ModelManager::new();
+    manager.set_models_dir(dir.clone()).unwrap();
+
+    let first = manager.list_models().remove(0);
+
+    std::fs::write(dir.join(&first.filename), b"gguf").unwrap();
+    let listed = manager.list_models();
+    let model = listed.iter().find(|m| m.id == first.id).unwrap();
+    assert!(model.is_downloaded, "un GGUF en el directorio de la app debe verse como descargado");
+
+    manager.select_model(&first.id).unwrap();
+    assert_eq!(manager.get_active_model_path(), Some(dir.join(&first.filename)));
+
+    manager.delete_model(&first.id).unwrap();
+    assert!(!dir.join(&first.filename).exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

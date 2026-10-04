@@ -12,8 +12,15 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
         settings.clone()
     };
     
+    // Ruta del GGUF del modelo activo (si esta descargado)
+    let local_model_path = {
+        let mut models = state.models.lock().map_err(|e| e.to_string())?;
+        models.refresh_download_status();
+        models.get_active_model_path()
+    };
+
     let problem = MathProblem { text: problem_text, image: problem_image.filter(|i| !i.is_empty()) };
-    let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings)
+    let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings, local_model_path)
         .await
         .map_err(|e| e.to_string())?;
     
