@@ -132,3 +132,24 @@ fn test_parse_response_preserves_problem_text() {
     
     assert_eq!(solution.problem, "x + 5 = 12, encontrar x");
 }
+
+#[test]
+fn test_parse_response_markdown_steps_and_final_answer() {
+    let content = "# Calculo de 34 x 444
+
+**Paso 1:** Descomponer 444 = 400 + 40 + 4
+
+**Paso 2:** Multiplicar 34 por cada parte:
+- 34 x 400 = 13600
+
+**Paso 3:** Sumar: 13600 + 1360 + 136 = 15096
+
+**Respuesta final:** 34 x 444 = 15096";
+
+    let solution = AIEngine::parse_response(content, "34x444");
+
+    assert_eq!(solution.steps.len(), 3);
+    assert!(solution.steps[0].explanation.starts_with("Paso 1:"));
+    assert!(solution.steps[1].explanation.contains("13600"));
+    assert!(solution.final_answer.contains("15096"));
+}

@@ -238,43 +238,53 @@ REGLAS IMPORTANTES:
                  o usa OpenAI/Anthropic en Configuracion para resolver dibujos."
             ));
         }
-        let system_prompt = Self::build_system_prompt();
-        let user_prompt = format!("Por favor, explica paso a paso como resolver este problema:\n\n{}", problem.text);
-        let full_prompt = format!("{}\n\n{}", system_prompt, user_prompt);
-        
         let client = reqwest::Client::new();
-        
-        match client
-            .post("http://localhost:8080/completion")
+
+        // En modo router (varios modelos) llama-server exige el campo "model":
+        // se usa el que ya esta cargado o, si no hay, el primero disponible.
+        let model = match client.get("http://localhost:8080/v1/models").send().await {
+            Ok(r) => r.json::<serde_json::Value>().await.ok().and_then(|j| {
+                let list = j["data"].as_array()?;
+                let loaded = list.iter().find(|m| m["status"]["value"] == "loaded");
+                loaded.or_else(|| list.first())?["id"].as_str().map(String::from)
+            }),
+            Err(_) => None,
+        };
+
+        // llama-server aplica la plantilla de chat del modelo en /v1/chat/completions
+        let resp = client
+            .post("http://localhost:8080/v1/chat/completions")
             .json(&serde_json::json!({
-                "prompt": full_prompt,
-                "n_predict": 2048,
+                "model": model,
+                "messages": [
+                    { "role": "system", "content": Self::build_system_prompt() },
+                    { "role": "user", "content": Self::user_prompt(problem) },
+                ],
+                "max_tokens": 4096,
                 "temperature": 0.3,
-                "stop": ["\n\n", "User:"]
             }))
             .send()
-            .await
-        {
-            Ok(resp) => {
-                let json: serde_json::Value = resp.json().await?;
-                let content = json["content"].as_str().unwrap_or("").to_string();
-                
-                if content.is_empty() {
-                    Err(anyhow::anyhow!("El modelo local no genero respuesta."))
-                } else {
-                    Ok(Self::parse_response(&content, &problem.text))
-                }
-            }
+            .await;
+
+        let resp = match resp {
+            Ok(r) => r,
             Err(_) => {
-                Err(anyhow::anyhow!(
+                return Err(anyhow::anyhow!(
                     "No se pudo conectar al modelo local en localhost:8080.\n\n\
                      Para usar IA local:\n\
                      1. Instala llama.cpp: https://github.com/ggerganov/llama.cpp\n\
-                     2. Ejecuta: llama-server -m modelo.gguf -c 2048\n\n\
+                     2. Ejecuta: llama-server -m modelo.gguf -c 4096\n\n\
                      O usa OpenAI/Anthropic en Configuracion."
                 ))
             }
+        };
+
+        let body = Self::read_json(resp, "El modelo local").await?;
+        let content = body["choices"][0]["message"]["content"].as_str().unwrap_or("").trim();
+        if content.is_empty() {
+            return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
+        Ok(Self::parse_response(content, &problem.text))
     }
 
     pub(crate) fn parse_response(content: &str, problem_text: &str) -> Solution {
@@ -286,10 +296,24 @@ REGLAS IMPORTANTES:
 
         for line in lines {
             let trimmed = line.trim();
-            
-            if (trimmed.len() > 2 && trimmed.chars().next().unwrap().is_numeric() 
-                && trimmed.chars().nth(1) == Some('.'))
-                || (trimmed.len() > 2 && trimmed.starts_with("Paso ") && trimmed.contains(':'))
+            // Tolerar markdown: "**Paso 1:** ...", "### 1. ..."
+            let clean = trimmed.trim_start_matches(|c: char| c == '*' || c == '#' || c == ' ');
+            let lower = clean.to_lowercase();
+
+            if lower.starts_with("respuesta final") || lower.starts_with("resultado final") {
+                // La respuesta final no es un paso: cerrar el paso actual
+                if in_step && !current_step.is_empty() {
+                    steps.push(SolutionStep {
+                        step: step_num,
+                        explanation: current_step.trim().to_string(),
+                    });
+                    step_num += 1;
+                    current_step = String::new();
+                    in_step = false;
+                }
+            } else if (clean.len() > 2 && clean.chars().next().unwrap().is_numeric()
+                && clean.chars().nth(1) == Some('.'))
+                || (clean.len() > 2 && clean.starts_with("Paso ") && clean.contains(':'))
             {
                 if in_step && !current_step.is_empty() {
                     steps.push(SolutionStep {
@@ -298,7 +322,7 @@ REGLAS IMPORTANTES:
                     });
                     step_num += 1;
                 }
-                current_step = trimmed.to_string();
+                current_step = clean.replace("**", "");
                 in_step = true;
             } else if trimmed.is_empty() {
                 if in_step && !current_step.is_empty() {
