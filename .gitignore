@@ -1,0 +1,12 @@
+node_modules/
+dist/
+src-tauri/target/
+*.log
+.env
+.DS_Store
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
+test-results/
+playwright-report/
+.claude/
