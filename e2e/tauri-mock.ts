@@ -114,9 +114,6 @@ const mockInvoke = (cmd, args) => {
     case 'solve_problem': {
       window.__lastSolveArgs = args;
       const text = args.problemText || '';
-      if (args.problemImage && state.settings.provider === 'local') {
-        return Promise.reject('El modelo local no puede leer dibujos. Usa OpenAI/Anthropic.');
-      }
       if (text.trim() === 'fallo') return Promise.reject('No se pudo conectar al modelo local');
       return Promise.resolve({
         problem: text || 'Problema dibujado',

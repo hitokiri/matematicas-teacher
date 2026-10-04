@@ -132,6 +132,31 @@ REGLAS IMPORTANTES:
         }
     }
 
+    /// Contenido del mensaje de usuario en formato OpenAI (texto, o texto + imagen)
+    fn user_content(problem: &MathProblem) -> serde_json::Value {
+        match &problem.image {
+            Some(image) => serde_json::json!([
+                { "type": "text", "text": Self::user_prompt(problem) },
+                { "type": "image_url", "image_url": { "url": image } },
+            ]),
+            None => serde_json::json!(Self::user_prompt(problem)),
+        }
+    }
+
+    /// Si el modelo transcribio el dibujo ("Problema: ..."), usarlo como enunciado
+    pub(crate) fn with_transcription(mut solution: Solution, content: &str, problem: &MathProblem) -> Solution {
+        if problem.image.is_some() {
+            let transcribed = content.lines().find_map(|l| {
+                let clean = l.trim().trim_start_matches(|c: char| c == '*' || c == '#' || c == ' ');
+                clean.strip_prefix("Problema:").map(|t| t.trim().trim_matches('*').trim().to_string())
+            });
+            if let Some(t) = transcribed.filter(|t| !t.is_empty()) {
+                solution.problem = t;
+            }
+        }
+        solution
+    }
+
     /// Texto que se muestra como enunciado en la solucion
     fn display_text(problem: &MathProblem) -> String {
         if problem.text.trim().is_empty() && problem.image.is_some() {
@@ -195,7 +220,7 @@ REGLAS IMPORTANTES:
             .map(|c| c.message.content.clone())
             .ok_or_else(|| anyhow::anyhow!("OpenAI no devolvio respuesta"))?;
 
-        Ok(Self::parse_response(&content, &Self::display_text(problem)))
+        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
     }
 
     async fn solve_with_anthropic(problem: &MathProblem, api_key: &str) -> Result<Solution> {
@@ -233,16 +258,10 @@ REGLAS IMPORTANTES:
             .map(|c| c.text.clone())
             .ok_or_else(|| anyhow::anyhow!("Anthropic no devolvio respuesta"))?;
 
-        Ok(Self::parse_response(&content, &Self::display_text(problem)))
+        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
     }
 
     async fn solve_locally(problem: &MathProblem, model_path: Option<&Path>, active_id: Option<&str>) -> Result<Solution> {
-        if problem.image.is_some() {
-            return Err(anyhow::anyhow!(
-                "El modelo local no puede leer dibujos. Escribe el problema en la pestaña Texto \
-                 o usa OpenAI/Anthropic en Configuracion para resolver dibujos."
-            ));
-        }
         let client = reqwest::Client::new();
 
         // 1) Modelo activo descargado en la app: se sirve con llama-server propio.
@@ -276,7 +295,7 @@ REGLAS IMPORTANTES:
                 "model": model,
                 "messages": [
                     { "role": "system", "content": Self::build_system_prompt() },
-                    { "role": "user", "content": Self::user_prompt(problem) },
+                    { "role": "user", "content": Self::user_content(problem) },
                 ],
                 "max_tokens": 4096,
                 "temperature": 0.3,
@@ -302,7 +321,7 @@ REGLAS IMPORTANTES:
         if content.is_empty() {
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
-        Ok(Self::parse_response(content, &problem.text))
+        Ok(Self::with_transcription(Self::parse_response(content, &Self::display_text(problem)), content, problem))
     }
 
     /// Localiza el binario de llama-server (LLAMA_SERVER_BIN o PATH)

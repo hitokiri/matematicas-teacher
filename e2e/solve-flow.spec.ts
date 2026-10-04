@@ -39,12 +39,13 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(solveButton(page)).toBeEnabled();
   });
 
-  test('dibujo con proveedor local muestra el error explicativo', async ({ page }) => {
+  test('dibujo con proveedor local resuelve y envia la imagen', async ({ page }) => {
     await page.locator('.tab', { hasText: /dibujar/i }).click();
     await drawStroke(page);
     await solveButton(page).click();
 
-    await expect(page.locator('.error-message')).toContainText(/no puede leer dibujos/i);
+    await expect(page.locator('.solution-section')).toContainText('18', { timeout: 5000 });
+    await expect(page.locator('.error-message')).toHaveCount(0);
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
     expect(args.problemImage).toMatch(/^data:image\/png;base64,/);
     expect(args.problemText).toBe('');
@@ -85,14 +86,14 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(solveButton(page)).toBeDisabled();
   });
 
-  test('el error del dibujo desaparece al volver a texto y resolver funciona', async ({ page }) => {
-    await page.locator('.tab', { hasText: /dibujar/i }).click();
-    await drawStroke(page);
+  test('el error desaparece al cambiar de pestaña y resolver funciona', async ({ page }) => {
+    await page.locator('.problem-input').fill('fallo');
     await solveButton(page).click();
-    await expect(page.locator('.error-message')).toContainText(/no puede leer dibujos/i);
+    await expect(page.locator('.error-message')).toBeVisible();
 
-    await page.locator('.tab', { hasText: /texto/i }).click();
+    await page.locator('.tab', { hasText: /dibujar/i }).click();
     await expect(page.locator('.error-message')).toHaveCount(0);
+    await page.locator('.tab', { hasText: /texto/i }).click();
 
     await page.locator('.problem-input').fill('2x5');
     await solveButton(page).click();

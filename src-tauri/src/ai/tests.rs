@@ -153,3 +153,12 @@ fn test_parse_response_markdown_steps_and_final_answer() {
     assert!(solution.steps[1].explanation.contains("13600"));
     assert!(solution.final_answer.contains("15096"));
 }
+
+#[test]
+fn test_with_transcription_uses_problema_line_for_drawings() {
+    use crate::types::MathProblem;
+    let problem = MathProblem { text: String::new(), image: Some("data:image/png;base64,AAAA".to_string()) };
+    let content = "**Problema:** 3 x 10\n\nPaso 1: Multiplicamos\n\nRespuesta final: 30";
+    let sol = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
+    assert_eq!(sol.problem, "3 x 10");
+}
