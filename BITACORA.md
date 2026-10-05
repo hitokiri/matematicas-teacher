@@ -402,3 +402,13 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Expresiones numericas (`src/lib/board/expression.ts`): orden de operaciones, parentesis, potencias y raices
   (√ ∛ ∜, "raiz cubica de ...") resueltas por la app. Raices no exactas por tanteo: enteros, decimas y
   centesimas (∛7: 1³=1, 2³=8, 1.9³=6.859, 1.91³=6.968, 1.92³=7.078 -> ≈ 1.91). Sin modelo.
+
+### Dibujos: leer, mostrar y corregir (2026-10-04)
+- Comando `read_problem`: el modelo solo transcribe el dibujo (JSON `{"problema"}`, notacion sin LaTeX).
+  La app muestra "Lei esto en tu dibujo" editable; si es cuenta o expresion la resuelve la app, si no
+  se le pide la explicacion al modelo con el texto. Un 7 mal leido como x se corrige a mano.
+- Expresiones: LaTeX (\sqrt, \sqrt[n], \frac, \times aunque llegue como tabulador), raices de indice 2-10
+  ("raiz quinta de", ⁵√). "/" es fraccion (lo explica el modelo); "÷", ":" y "entre" son division.
+- Lienzo: coordenadas escaladas al tamano real, el dibujo se conserva al redimensionar, pointer events
+  (raton, tactil y lapiz) con captura, sin hueco vacio debajo.
+- Probado: Qwen3-VL 4B lee "√(3 × 7 × 6 + 12)" y "raiz quinta de (30)"; Qwen3.5 2B a veces usa LaTeX.

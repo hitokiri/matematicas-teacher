@@ -104,6 +104,11 @@ const mockInvoke = (cmd, args) => {
       return Promise.resolve(undefined);
     }
 
+    case 'read_problem':
+      window.__lastReadArgs = args;
+      // Lectura simulada: una "x" que en realidad era un 7 (se corrige a mano en la prueba)
+      return Promise.resolve(window.__readResult ?? '√(3 × x × 6 + 12)');
+
     case 'solve_problem': {
       window.__lastSolveArgs = args;
       const text = args.problemText || '';

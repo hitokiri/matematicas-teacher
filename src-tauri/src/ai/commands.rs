@@ -38,6 +38,21 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
     serde_json::to_value(&solution).map_err(|e| e.to_string())
 }
 
+/// Lee un dibujo y devuelve el problema en texto (sin resolverlo)
+#[tauri::command]
+pub async fn read_problem(app: tauri::AppHandle, problem_image: String) -> Result<String, String> {
+    let state = app.state::<crate::AppState>();
+    let active_id = state.settings.lock().map_err(|e| e.to_string())?.active_model_id.clone();
+    let local_model = {
+        let mut models = state.models.lock().map_err(|e| e.to_string())?;
+        models.refresh_download_status();
+        models.get_active_local_model()
+    };
+    crate::ai::engine::AIEngine::read_drawing(&problem_image, local_model.as_ref(), active_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Hardware que usa el modelo local ("GPU: ..." o "CPU")
 #[tauri::command]
 pub async fn get_compute_device() -> Result<String, String> {

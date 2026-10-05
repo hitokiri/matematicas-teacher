@@ -67,33 +67,45 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(solveButton(page)).toBeEnabled();
   });
 
-  test('dibujo con proveedor local resuelve y envia la imagen', async ({ page }) => {
+  test('dibujo: el modelo solo lo lee y la app lo resuelve si es una cuenta', async ({ page }) => {
+    await page.evaluate(() => { (window as any).__readResult = '⁵√32' });
     await page.locator('.tab', { hasText: /dibujar/i }).click();
     await drawStroke(page);
     await solveButton(page).click();
 
-    await expect(page.locator('.solution-section')).toContainText('18', { timeout: 5000 });
-    await expect(page.locator('.error-message')).toHaveCount(0);
-    const args = await page.evaluate(() => (window as any).__lastSolveArgs);
-    expect(args.problemImage).toMatch(/^data:image\/png;base64,/);
-    expect(args.problemText).toBe('');
+    await expect(page.locator('.read-input')).toHaveValue('⁵√32', { timeout: 5000 });
+    await expect(page.locator('.chalkboard')).toBeVisible();
+    const read = await page.evaluate(() => (window as any).__lastReadArgs);
+    expect(read.problemImage).toMatch(/^data:image\/png;base64,/);
+    // La app hizo la raiz: no hizo falta pedirle la explicacion al modelo
+    expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
+
+    await page.getByRole('button', { name: /pausa/i }).click();
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalk-answer')).toContainText('2');
   });
 
-  test('dibujo con modelo local activo resuelve y envia la imagen', async ({ page }) => {
-    // El mock lee su estado al cargar: recargar para tomar el modelo activo
-    await page.evaluate(() => localStorage.setItem('__e2e_state__', JSON.stringify({
-      settings: { active_model_id: 'm-small' },
-      models: [{ id: 'm-small', name: 'Qwen 2.5 1.5B Instruct', description: 'Modelo ligero', filename: 'small.gguf', size_mb: 1024, recommended_for: ['rapido'], tags: ['1.5B'], downloaded: true }],
-    })));
-    await page.reload();
-    await page.waitForSelector('.input-section', { timeout: 15000 });
-
+  test('dibujo mal leido: se corrige lo que leyo y se vuelve a resolver', async ({ page }) => {
     await page.locator('.tab', { hasText: /dibujar/i }).click();
     await drawStroke(page);
     await solveButton(page).click();
 
-    await expect(page.locator('.solution-section')).toContainText('18', { timeout: 5000 });
-    await expect(page.locator('.error-message')).toHaveCount(0);
+    // El modelo leyo una x donde habia un 7: no es una cuenta, asi que lo explica el modelo
+    await expect(page.locator('.read-input')).toHaveValue('√(3 × x × 6 + 12)', { timeout: 5000 });
+    await expect(page.locator('.chalkboard')).toBeVisible();
+    const solved = await page.evaluate(() => (window as any).__lastSolveArgs);
+    expect(solved.problemText).toBe('√(3 × x × 6 + 12)');
+    expect(solved.problemImage).toBeNull();
+
+    // Corregir la x por 7 y resolver: ahora lo hace la app con todo el procedimiento
+    await page.locator('.read-input').fill('√(3 × 7 × 6 + 12)');
+    await page.getByRole('button', { name: /resolver esto/i }).click();
+    await expect(page.locator('.chalkboard')).toContainText('√(3 × 7 × 6 + 12)');
+    await page.getByRole('button', { name: /pausa/i }).click();
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalkboard')).toContainText('≈ 11.75');
   });
 
   test('un fallo del backend se muestra como error y no como solucion', async ({ page }) => {

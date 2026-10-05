@@ -50,30 +50,29 @@ function MainApp({ settings }: MainAppProps) {
   const [error, setError] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'draw'>('text')
   const [problemImage, setProblemImage] = useState('')
+  // Lo que el modelo leyo en el dibujo (editable por si leyo mal un numero)
+  const [readText, setReadText] = useState<string | null>(null)
+  const [loadingMessage, setLoadingMessage] = useState('')
 
   const hasInput = inputMode === 'draw' ? !!problemImage : !!problemText.trim()
 
-  async function solveProblem() {
-    if (!hasInput) return
-    
+  /** Resuelve un problema en texto: la app si es una cuenta o expresion, si no el modelo */
+  async function solveText(text: string) {
     setError('')
     setSolution(null)
     setBoard(null)
 
     // Las cuentas y expresiones numericas las resuelve la app en la pizarra, al instante
-    const own = inputMode === 'text' ? boardFor(problemText) : null
+    const own = boardFor(text)
     if (own) {
       showBoard(own)
       return
     }
 
     setLoading(true)
+    setLoadingMessage('La maestra está pensando la explicación...')
     try {
-      const result = await invoke<Solution>('solve_problem', {
-        problemText: inputMode === 'text' ? problemText.trim() : '',
-        problemImage: inputMode === 'draw' ? problemImage : null,
-      })
-      // Si el modelo leyo una cuenta en el dibujo, la pizarra la hace con el algoritmo exacto
+      const result = await invoke<Solution>('solve_problem', { problemText: text.trim(), problemImage: null })
       const read = boardFor(result.problem)
       showBoard(read ?? solutionScript(result))
       if (!read) setSolution(result)
@@ -82,6 +81,30 @@ function MainApp({ settings }: MainAppProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function solveProblem() {
+    if (!hasInput) return
+    if (inputMode === 'text') return solveText(problemText)
+
+    // Dibujo: primero el modelo solo lo lee; se muestra lo que leyo para poder corregirlo
+    setError('')
+    setSolution(null)
+    setBoard(null)
+    setReadText(null)
+    setLoading(true)
+    setLoadingMessage('👀 Leyendo tu dibujo...')
+    let text: string
+    try {
+      text = await invoke<string>('read_problem', { problemImage })
+    } catch (e: any) {
+      setError(typeof e === 'string' ? e : e?.message || 'No pude leer el dibujo')
+      setLoading(false)
+      return
+    }
+    setLoading(false)
+    setReadText(text)
+    await solveText(text)
   }
 
   function handleCanvasDraw(image: string) {
@@ -103,7 +126,7 @@ function MainApp({ settings }: MainAppProps) {
           </button>
           <button 
             className={`tab ${inputMode === 'draw' ? 'active' : ''}`}
-            onClick={() => { setProblemImage(''); setError(''); setInputMode('draw') }}
+            onClick={() => { setProblemImage(''); setReadText(null); setError(''); setInputMode('draw') }}
           >
             🎨 Dibujar
           </button>
@@ -136,6 +159,25 @@ function MainApp({ settings }: MainAppProps) {
           </div>
         )}
 
+        {inputMode === 'draw' && readText !== null && !loading && (
+          <div className="read-box">
+            <label htmlFor="read-text">👀 Leí esto en tu dibujo:</label>
+            <div className="read-row">
+              <input
+                id="read-text"
+                className="read-input"
+                value={readText}
+                onChange={(e) => setReadText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void solveText(readText) }}
+              />
+              <button className="btn btn-secondary" onClick={() => solveText(readText)} disabled={!readText.trim()}>
+                🔁 Resolver esto
+              </button>
+            </div>
+            <small>¿Leí mal algún número? Corrígelo aquí (por ejemplo una x que era un 7) y vuelve a resolver.</small>
+          </div>
+        )}
+
         {!settings.active_model_id && (
           <div className="warning-message">
             Las cuentas como <strong>10 x 20</strong> funcionan sin modelo. Para dibujos y otros problemas, ve a <strong>Configuracion</strong> y selecciona un modelo.
@@ -146,7 +188,7 @@ function MainApp({ settings }: MainAppProps) {
       {loading && (
         <div className="loading">
           <div className="spinner"></div>
-          <p>La AI esta pensando en la solucion...</p>
+          <p>{loadingMessage}</p>
         </div>
       )}
 

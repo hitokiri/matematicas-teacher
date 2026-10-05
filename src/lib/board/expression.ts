@@ -18,8 +18,15 @@ type Token =
   | { t: 'sup'; n: number }
 
 const SYM = { '+': '+', '-': '−', '*': '×', '/': '÷' } as const
+const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 const ROOT_SYM: Record<number, string> = { 2: '√', 3: '∛', 4: '∜' }
-const ROOT_NAME: Record<number, string> = { 2: 'raíz cuadrada', 3: 'raíz cúbica', 4: 'raíz cuarta' }
+const ORDINALS = ['', '', 'cuadrada', 'cúbica', 'cuarta', 'quinta', 'sexta', 'séptima', 'octava', 'novena', 'décima']
+/** Simbolo de la raiz: √ ∛ ∜, o el indice en superindice (⁵√) */
+const rootSym = (n: number) => ROOT_SYM[n] ?? `${[...String(n)].map(d => SUPERSCRIPT[Number(d)]).join('')}√`
+const rootName = (n: number) => `raíz ${ORDINALS[n] ?? `de índice ${n}`}`
+const ORDINAL_INDEX: Record<string, number> = {
+  cuadrada: 2, cubica: 3, cuarta: 4, quinta: 5, sexta: 6, septima: 7, octava: 8, novena: 9, decima: 10,
+}
 const SUP: Record<number, string> = { 2: '²', 3: '³' }
 
 /** Numero para mostrar: hasta 3 decimales, con punto */
@@ -28,28 +35,57 @@ export function fmt(v: number): string {
   return Object.is(r, -0) ? '0' : String(r)
 }
 
+/** LaTeX que a veces escriben los modelos -> notacion de la app */
+export function fromLatex(input: string): string {
+  let s = input
+    // "\times" dentro de un JSON llega como tabulador + "imes" (y "\frac" como salto de pagina + "rac")
+    .replace(/\t(?=imes)/g, '\\t')
+    .replace(/\f(?=rac)/g, '\\f')
+    .replace(/\r(?=ight)/g, '\\r')
+    .replace(/\\left|\\right/g, '')
+    .replace(/\\(times|cdot)/g, '×')
+    .replace(/\\div/g, '÷')
+  // \frac{a}{b} -> ((a)/(b)); \sqrt[n]{a} -> √[n](a); \sqrt{a} -> √(a). De adentro hacia afuera.
+  for (let guard = 0; guard < 10 && /\\(frac|sqrt)/.test(s); guard++) {
+    s = s
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '(($1)/($2))')
+      .replace(/\\sqrt\s*\[(\d+)\]\s*\{([^{}]*)\}/g, '√[$1]($2)')
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)')
+  }
+  return s
+    .replace(/\^\{([^{}]*)\}/g, '^($1)')
+    .replace(/[{}]/g, '')
+    .replace(/\\/g, '')
+    .replace(/\(\(([^()]*)\)\)/g, '($1)')
+}
+
 /** Normaliza el texto: palabras -> simbolos. "raiz cubica de 3x4+7" -> "∛(3x4+7)" */
 function normalize(input: string): string | null {
-  let s = input.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  let s = fromLatex(input).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
   s = s.replace(/^(cuanto es|cuanto da|resuelve|calcula)\s*/, '')
   s = s.replace(/\s*(=\s*)?\??\s*$/, '')
-  // "raiz ... de" aplica a todo lo que sigue
+  // "raiz ... de" aplica a todo lo que sigue: "raiz quinta de 30", "raiz 5 de 30", "raiz de 9"
   let opened = 0
-  s = s.replace(/raiz\s+(cuadrada|cubica|cuarta)?\s*de\s*/g, (_, kind) => {
-    opened++
-    return (kind === 'cubica' ? '∛' : kind === 'cuarta' ? '∜' : '√') + '('
-  })
+  s = s.replace(/raiz\s+(?:(cuadrada|cubica|cuarta|quinta|sexta|septima|octava|novena|decima)|(?:de\s+indice\s+)?(\d+))?\s*de\s*/g,
+    (_, word?: string, digits?: string) => {
+      opened++
+      const n = word ? ORDINAL_INDEX[word] : digits ? Number(digits) : 2
+      return `√[${n}](`
+    })
   s += ')'.repeat(opened)
+  // Indice en superindice: "⁵√30" -> "√[5]30"
+  s = s.replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*√/g, (_, sup: string) =>
+    `√[${[...sup].map(c => SUPERSCRIPT.indexOf(c)).join('')}]`)
   s = s
     .replace(/\s+al\s+cuadrado/g, '²')
     .replace(/\s+al\s+cubo/g, '³')
     .replace(/\s+(por)\s+/g, '*')
     .replace(/\s+(mas)\s+/g, '+')
     .replace(/\s+(menos)\s+/g, '-')
-    .replace(/\s+(entre|dividido entre|dividido por)\s+/g, '/')
+    .replace(/\s+(entre|dividido entre|dividido por)\s+/g, '÷')
     .replace(/(\d),(\d)/g, '$1.$2')
     .replace(/[−–—]/g, '-')
-    .replace(/[÷:]/g, '/')
+    .replace(/:/g, '÷')
     .replace(/[×·]/g, '*')
     .replace(/\s+/g, '')
   return s
@@ -70,14 +106,28 @@ function tokenize(s: string): Token[] | null {
       i += num[0].length
       continue
     }
-    if ('+-*/^'.includes(c)) out.push({ t: 'op', v: c as '+' })
+    if ('+-*^'.includes(c)) out.push({ t: 'op', v: c as '+' })
+    else if (c === '÷') out.push({ t: 'op', v: '/' })
+    // "/" es una fraccion (1/2 + 1/4): eso no se resuelve con decimales, lo explica el modelo
+    else if (c === '/') return null
     // "x" solo es multiplicacion entre valores (en "2x + 3" es una incognita: eso lo explica el modelo)
     else if (c === 'x') {
       if (!prevIsValue() || !/[\d(√∛∜]/.test(s[i + 1] ?? '')) return null
       out.push({ t: 'op', v: '*' })
     } else if (c === '(') out.push({ t: 'lp' })
     else if (c === ')') out.push({ t: 'rp' })
-    else if (c === '√') out.push({ t: 'root', n: 2 })
+    else if (c === '√') {
+      // √[n] = raiz de indice n
+      const idx = s.slice(i).match(/^√\[(\d+)\]/)
+      if (idx) {
+        const n = Number(idx[1])
+        if (n < 2 || n > 10) return null
+        out.push({ t: 'root', n })
+        i += idx[0].length
+        continue
+      }
+      out.push({ t: 'root', n: 2 })
+    }
     else if (c === '∛') out.push({ t: 'root', n: 3 })
     else if (c === '∜') out.push({ t: 'root', n: 4 })
     else if (c === '²') out.push({ t: 'sup', n: 2 })
@@ -172,7 +222,7 @@ function print(node: Node, mark?: Node): Array<{ text: string; tone?: Tone }> {
     case 'root': {
       const arg = print(node.arg, mark)
       const wrap = node.arg.k === 'num' || node.arg.k === 'paren'
-      return hl([{ text: ROOT_SYM[node.n] ?? `${node.n}√` }, ...(wrap ? arg : [{ text: '(' }, ...arg, { text: ')' }])])
+      return hl([{ text: rootSym(node.n) }, ...(wrap ? arg : [{ text: '(' }, ...arg, { text: ')' }])])
     }
   }
 }
@@ -215,8 +265,8 @@ const product = (b: string, n: number) => Array(n).fill(b).join(' × ')
 
 /** Busca la raiz n-esima por tanteo: enteros, decimas y centesimas */
 function rootByTrial(x: number, n: number): { value: number; exact: boolean; substeps: Array<{ lines: string[]; say: string }> } {
-  const sym = ROOT_SYM[n] ?? `${n}√`
-  const name = ROOT_NAME[n] ?? `raíz ${n}`
+  const sym = rootSym(n)
+  const name = rootName(n)
   const substeps: Array<{ lines: string[]; say: string }> = []
   const negative = x < 0 && n % 2 === 1
   const a = Math.abs(x)
@@ -331,12 +381,12 @@ function reduceOnce(node: Node, ctx: { first: Record<string, boolean> }): { node
       if (node.arg.k !== 'num') return null
       const x = node.arg.v
       if (x < 0 && node.n % 2 === 0) {
-        return { node, red: { node, say: `No hay ningún número que multiplicado por sí mismo dé un número negativo, así que ${ROOT_SYM[node.n]}${fmt(x)} no tiene solución con los números que conocemos.`, substeps: [], error: 'No tiene solución' } }
+        return { node, red: { node, say: `No hay ningún número que multiplicado por sí mismo dé un número negativo, así que ${rootSym(node.n)}${fmt(x)} no tiene solución con los números que conocemos.`, substeps: [], error: 'No tiene solución' } }
       }
       const res = rootByTrial(x, node.n)
       const approx = !res.exact || !!node.arg.approx
       return done(res.value, approx,
-        `Entonces ${ROOT_SYM[node.n]}${fmt(x)} ${approx ? '≈' : '='} ${fmt(res.value)}.`,
+        `Entonces ${rootSym(node.n)}${fmt(x)} ${approx ? '≈' : '='} ${fmt(res.value)}.`,
         { substeps: res.substeps })
     }
   }

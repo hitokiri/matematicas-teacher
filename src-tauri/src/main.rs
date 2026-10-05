@@ -71,6 +71,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             // AI
             ai::commands::solve_problem,
+            ai::commands::read_problem,
             // Models
             models::commands::list_models,
             models::commands::download_model,

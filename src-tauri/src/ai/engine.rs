@@ -8,6 +8,17 @@ use crate::types::{AppSettings, MathProblem, Solution, SolutionStep};
 /// llama-server propio (respaldo) para el modelo activo: (archivos del modelo, puerto, proceso)
 static LOCAL_SERVER: Mutex<Option<(LocalModel, u16, tokio::process::Child)>> = Mutex::new(None);
 
+/// Instrucciones para transcribir un dibujo, con la notacion que la app sabe resolver
+const READ_PROMPT: &str = r#"Lees problemas de matematicas escritos a mano por ninos. NO los resuelvas: solo copialos.
+Responde SOLO con JSON: {"problema": "..."}
+
+Escribe el problema exactamente como esta, en texto plano y SIN LaTeX:
+- Operaciones: + − × ÷ y parentesis ( ).
+- Potencias: ² ³ o ^ (por ejemplo 2^5).
+- Raiz cuadrada: √(...). Raiz cubica: ∛(...). Si la raiz tiene otro numero pequeno arriba a la izquierda (su indice), escribe "raiz quinta de (...)", "raiz sexta de (...)", etc.
+- Fracciones: a/b.
+Cuidado con los numeros escritos a mano: un 7 puede parecer una x, un 1 una l, un 0 una o, un 5 una s. Escribe la letra x solo si de verdad es una incognita; el signo de multiplicar es ×."#;
+
 /// Solo modelos locales: la inferencia corre dentro de la app
 pub struct AIEngine {
     active_model_id: Option<String>,
@@ -274,6 +285,50 @@ REGLAS:
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
         Ok(Self::to_solution(&content, problem))
+    }
+
+    /// Solo lee el dibujo y devuelve el problema en texto plano (sin resolverlo). Asi la app puede
+    /// mostrar lo que leyo, dejar corregirlo y resolver las cuentas por su cuenta.
+    pub async fn read_drawing(image_url: &str, local_model: Option<&LocalModel>, active_id: Option<&str>) -> Result<String> {
+        let Some(files) = local_model else {
+            return Err(anyhow::anyhow!(match active_id {
+                Some(_) => "El modelo activo no esta descargado. Descargalo en Configuracion.",
+                None => "Para leer dibujos selecciona un modelo en Configuracion.",
+            }));
+        };
+        use base64::Engine;
+        let (_, data) = Self::split_data_url(image_url)?;
+        let image = base64::engine::general_purpose::STANDARD.decode(data)
+            .map_err(|_| anyhow::anyhow!("Imagen invalida"))?;
+        let files = files.clone();
+        let generation = tokio::task::spawn_blocking(move || {
+            crate::ai::local::generate(&files, READ_PROMPT, "Copia el problema de la imagen.", Some(&image), Self::read_grammar())
+        })
+        .await??;
+        #[derive(serde::Deserialize)]
+        struct Lectura { problema: String }
+        let text = generation.text;
+        let read = text.find('{').zip(text.rfind('}'))
+            .and_then(|(a, b)| serde_json::from_str::<Lectura>(&text[a..=b]).ok())
+            .map(|l| l.problema)
+            .unwrap_or(text);
+        let read = read.trim().to_string();
+        if read.is_empty() {
+            return Err(anyhow::anyhow!("No pude leer el dibujo. Intenta escribirlo un poco mas grande."));
+        }
+        Ok(read)
+    }
+
+    fn read_grammar() -> Option<&'static str> {
+        static GRAMMAR: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+        GRAMMAR.get_or_init(|| {
+            let schema = serde_json::json!({
+                "type": "object",
+                "properties": { "problema": { "type": "string" } },
+                "required": ["problema"]
+            });
+            llama_cpp_2::json_schema_to_grammar(&schema.to_string()).ok()
+        }).as_deref()
     }
 
     /// Localiza el binario de llama-server (LLAMA_SERVER_BIN o PATH)

@@ -166,6 +166,11 @@ fn ensure_loaded(guard: &mut Option<Loaded>, files: &LocalModel) -> Result<()> {
         return Ok(());
     }
     *guard = None; // liberar el modelo anterior antes de cargar el nuevo
+    for f in std::iter::once(&files.model).chain(files.mmproj.as_ref()) {
+        if !f.is_file() {
+            return Err(anyhow::anyhow!("Falta el archivo del modelo: {}. Vuelve a descargarlo en Configuracion.", f.display()));
+        }
+    }
     let backend = backend()?;
     let (params, device) = model_params(files);
     let model = LlamaModel::load_from_file(backend, &files.model, &*params)

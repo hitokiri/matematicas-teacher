@@ -274,3 +274,19 @@ fn test_embedded_model_structured_explanation() {
     }
     println!("=> {}", s.final_answer);
 }
+
+/// Lectura real de un dibujo: LOCAL_GGUF=... LOCAL_MMPROJ=... LOCAL_IMAGE=... cargo test read_drawing -- --ignored --nocapture
+#[tokio::test]
+#[ignore]
+async fn test_read_drawing_transcribes_only() {
+    use base64::Engine;
+    let files = crate::ai::local::LocalModel {
+        model: std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF")),
+        mmproj: Some(std::path::PathBuf::from(std::env::var("LOCAL_MMPROJ").expect("LOCAL_MMPROJ"))),
+    };
+    let png = std::fs::read(std::env::var("LOCAL_IMAGE").expect("LOCAL_IMAGE")).unwrap();
+    let url = format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png));
+    let read = AIEngine::read_drawing(&url, Some(&files), None).await.expect("debe leer el dibujo");
+    println!("LEIDO: {}", read);
+    assert!(!read.is_empty());
+}

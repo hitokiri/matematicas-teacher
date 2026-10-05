@@ -38,6 +38,8 @@ describe('parseArithmetic', () => {
     expect(parseArithmetic('2x + 3 = 7')).toBeNull()
     expect(parseArithmetic('x + 5 = 12')).toBeNull()
     expect(parseArithmetic('1/2 + 1/4')).toBeNull()
+    expect(parseArithmetic('3/4')).toBeNull() // fraccion, no division en casita
+    expect(parseArithmetic('156/12')).toEqual({ op: '/', a: '156', b: '12' })
     expect(parseArithmetic('√13')).toBeNull()
     expect(parseArithmetic('3.5 * 2')).toBeNull()
   })

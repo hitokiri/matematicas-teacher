@@ -32,6 +32,8 @@ export function parseArithmetic(input: string): Arithmetic | null {
   if (!m) return null
   const [, a, op, b] = m
   if (!valid(a) || !valid(b)) return null
+  // "1/2" o "3/4" son fracciones, no una division en casita
+  if (op === '/' && /\//.test(input) && BigInt(a) < BigInt(b)) return null
   return { op: op as '-' | '*' | '/', a: clean(a), b: clean(b) }
 }
 
