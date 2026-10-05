@@ -203,7 +203,13 @@ pub fn unload() {
 
 /// Genera la respuesta del asistente para (system, user) y opcionalmente una imagen
 /// (bytes PNG/JPEG). Bloqueante.
-pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8]>) -> Result<Generation> {
+pub fn generate(
+    files: &LocalModel,
+    system: &str,
+    user: &str,
+    image: Option<&[u8]>,
+    grammar: Option<&str>,
+) -> Result<Generation> {
     let mut guard = LOADED.lock().unwrap_or_else(|e| e.into_inner());
     ensure_loaded(&mut guard, files)?;
     let loaded = guard.as_ref().expect("modelo cargado");
@@ -269,6 +275,12 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
         }
     };
 
+    // Con gramatica (p. ej. JSON de un esquema) el modelo solo puede generar texto valido
+    let mut grammar = match grammar {
+        Some(g) => Some(LlamaSampler::grammar(model, g, "root")
+            .map_err(|e| anyhow::anyhow!("Gramatica invalida: {}", e))?),
+        None => None,
+    };
     let mut sampler = LlamaSampler::chain_simple([
         LlamaSampler::top_k(40),
         LlamaSampler::top_p(0.95, 1),
@@ -281,7 +293,10 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
     let mut generated = 0usize;
     let budget = MAX_NEW_TOKENS.min((N_CTX as i32 - pos).max(0) as usize);
     for _ in 0..budget {
-        let tok = sampler.sample(&ctx, -1);
+        let mut tok = sampler.sample(&ctx, -1);
+        if let Some(g) = grammar.as_mut() {
+            tok = constrain(g, &sampler, &ctx, tok);
+        }
         if vocab.is_eog(tok) {
             break;
         }
@@ -295,6 +310,25 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
     let secs = started.elapsed().as_secs_f64();
     let tokens_per_second = if secs > 0.0 { generated as f64 / secs } else { 0.0 };
     Ok(Generation { text: strip_thinking(&String::from_utf8_lossy(&out)), tokens_per_second })
+}
+
+/// Como llama-server: se muestrea sin gramatica y solo si el token no la cumple se aplica
+/// la gramatica a todo el vocabulario (~250 mil tokens en Qwen3.5), que es lo costoso.
+fn constrain(grammar: &mut LlamaSampler, sampler: &LlamaSampler, ctx: &llama_cpp_2::context::LlamaContext, tok: llama_cpp_2::token::LlamaToken) -> llama_cpp_2::token::LlamaToken {
+    use llama_cpp_2::token::data::LlamaTokenData;
+    use llama_cpp_2::token::data_array::LlamaTokenDataArray;
+    let mut single = LlamaTokenDataArray::new(vec![LlamaTokenData::new(tok, 1.0, 0.0)], false);
+    single.apply_sampler(grammar);
+    let tok = if single.data[0].logit().is_finite() {
+        tok
+    } else {
+        let mut all = ctx.token_data_array();
+        all.apply_sampler(grammar);
+        all.apply_sampler(sampler);
+        all.selected_token().unwrap_or(tok)
+    };
+    grammar.accept(tok);
+    tok
 }
 
 /// Velocidad de la ultima respuesta (tokens/s), para mostrarla en la lista de modelos

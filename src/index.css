@@ -852,6 +852,7 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 8px;
+  white-space: pre-line;
 }
 
 .step-calculation {
@@ -999,4 +1000,137 @@ body {
 [data-theme="dark"] .final-answer {
   background: linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
   border-color: rgba(236, 72, 153, 0.4);
+}
+
+/* ===== Pizarra ===== */
+.chalkboard-section {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.4s ease;
+}
+
+.chalkboard-frame {
+  background: #7a4f2a;
+  padding: 14px;
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 3px #5c3a1d, 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.chalkboard {
+  display: block;
+  width: 100%;
+  max-height: 62vh;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(255, 255, 255, 0.04), transparent 55%),
+    #234a36;
+  border-radius: 8px;
+}
+
+.chalk-text {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  fill: #f4f1e8;
+  stroke: #f4f1e8;
+  stroke-width: 0.6;
+  letter-spacing: 1px;
+}
+
+.chalk-text.tone-op { fill: #a7e3ff; stroke: #a7e3ff; }
+.chalk-text.tone-carry { fill: #ffe066; stroke: #ffe066; }
+.chalk-text.tone-result { fill: #ff9ecf; stroke: #ff9ecf; }
+.chalk-text.tone-muted { fill: #c9d6cc; stroke: #c9d6cc; opacity: 0.85; }
+.chalk-text.tone-line-text { fill: #f4f1e8; }
+
+.chalk-line {
+  stroke: #f4f1e8;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.chalk-strike { stroke: #ff8a80; stroke-width: 3.5; }
+
+/* Trazos nuevos: se "escriben" con tiza (primero el contorno, luego el relleno) */
+.chalk-new .chalk-text {
+  fill-opacity: 0;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  animation:
+    chalk-draw 0.7s ease var(--d, 0s) forwards,
+    chalk-fill 0.35s ease calc(var(--d, 0s) + 0.45s) forwards;
+}
+
+.chalk-new .chalk-line {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: chalk-draw 0.8s ease var(--d, 0s) forwards;
+}
+
+@keyframes chalk-draw { to { stroke-dashoffset: 0; } }
+@keyframes chalk-fill { to { fill-opacity: 1; } }
+
+.chalk-focus {
+  fill: rgba(255, 224, 102, 0.12);
+  stroke: #ffe066;
+  stroke-width: 2.5;
+  stroke-dasharray: 8 6;
+  animation: chalk-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes chalk-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.chalk-narration {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 18px;
+  min-height: 84px;
+}
+
+.chalk-teacher { font-size: 2.6rem; line-height: 1; }
+
+.chalk-narration p {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.chalk-step-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chalk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.chalk-answer { animation: chalk-pop 0.5s ease; }
+.chalk-answer-emoji { font-size: 2rem; margin-bottom: 6px; }
+
+@keyframes chalk-pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  70% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.text-explanation summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin: 12px 0;
 }

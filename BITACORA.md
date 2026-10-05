@@ -387,3 +387,15 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Modelos que no caben en la GPU: MoE con expertos en CPU (como --cpu-moe); densos con capas repartidas.
 - Prompt con la plantilla Jinja del GGUF (minijinja) y `enable_thinking=false` (Qwen3.5 piensa por defecto).
 - Medido: Qwen3.5 2B ~375 tokens/s en la RTX 5070 Ti, texto y dibujo.
+
+### Pizarra animada (2026-10-04)
+- `src/components/Chalkboard.tsx`: pizarra SVG con letra de tiza (@fontsource/patrick-hand), trazos que se
+  "escriben", resaltado del paso actual, maestra que narra, controles (otra vez / anterior / reproducir /
+  siguiente) y lectura en voz alta si el sistema la soporta.
+- `src/lib/board/`: guiones paso a paso. Las cuentas escritas (+, −, ×, ÷ con enteros) las resuelve la app
+  con el algoritmo de la escuela (llevadas, prestamos, filas parciales, casita), sin modelo y siempre correctas.
+  Si el modelo lee una cuenta en un dibujo, tambien se usa el algoritmo exacto.
+- Otros problemas: el modelo responde JSON forzado por gramatica (titulo, explicacion, operacion por paso)
+  y cada operacion se escribe en un renglon de la pizarra. La explicacion en texto queda en un desplegable.
+- Gramatica rapida: se muestrea sin gramatica y solo si el token no la cumple se filtra todo el vocabulario
+  (como llama-server): Qwen3.5 2B ~320 tokens/s con JSON vs ~44 aplicandola siempre.

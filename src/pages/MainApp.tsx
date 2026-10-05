@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
+import Chalkboard from '../components/Chalkboard'
+import { parseArithmetic } from '../lib/board/parse'
+import { buildArithmetic } from '../lib/board/arithmetic'
+import { solutionScript } from '../lib/board/fromSolution'
+import type { BoardScript } from '../lib/board/types'
 
 interface AppSettings {
   active_model_id: string | null
@@ -12,7 +17,8 @@ interface Solution {
   steps: Array<{
     step: number
     explanation: string
-    calculation: string
+    title?: string | null
+    calculation?: string | null
   }>
   final_answer: string
 }
@@ -24,6 +30,13 @@ interface MainAppProps {
 function MainApp({ settings }: MainAppProps) {
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
+  const [board, setBoard] = useState<BoardScript | null>(null)
+  // Cada problema nuevo monta una pizarra nueva (empieza en el paso 1)
+  const [boardKey, setBoardKey] = useState(0)
+  const showBoard = (script: BoardScript) => {
+    setBoardKey(k => k + 1)
+    setBoard(script)
+  }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'draw'>('text')
@@ -34,16 +47,27 @@ function MainApp({ settings }: MainAppProps) {
   async function solveProblem() {
     if (!hasInput) return
     
-    setLoading(true)
     setError('')
     setSolution(null)
+    setBoard(null)
 
+    // Las cuentas escritas se resuelven en la pizarra con el algoritmo de la escuela, al instante
+    const arithmetic = inputMode === 'text' ? parseArithmetic(problemText) : null
+    if (arithmetic) {
+      showBoard(buildArithmetic(arithmetic))
+      return
+    }
+
+    setLoading(true)
     try {
       const result = await invoke<Solution>('solve_problem', {
         problemText: inputMode === 'text' ? problemText.trim() : '',
         problemImage: inputMode === 'draw' ? problemImage : null,
       })
-      setSolution(result)
+      // Si el modelo leyo una cuenta en el dibujo, la pizarra la hace con el algoritmo exacto
+      const read = parseArithmetic(result.problem)
+      showBoard(read ? buildArithmetic(read) : solutionScript(result))
+      if (!read) setSolution(result)
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e?.message || 'Error al resolver el problema')
     } finally {
@@ -105,7 +129,7 @@ function MainApp({ settings }: MainAppProps) {
 
         {!settings.active_model_id && (
           <div className="warning-message">
-            No tienes un modelo configurado. Ve a <strong>Configuracion</strong> para descargar y seleccionar uno.
+            Las cuentas como <strong>10 x 20</strong> funcionan sin modelo. Para dibujos y otros problemas, ve a <strong>Configuracion</strong> y selecciona un modelo.
           </div>
         )}
       </div>
@@ -117,8 +141,13 @@ function MainApp({ settings }: MainAppProps) {
         </div>
       )}
 
+      {board && !loading && <Chalkboard key={boardKey} script={board} />}
+
       {solution && !loading && (
-        <SolutionDisplay solution={solution} />
+        <details className="text-explanation">
+          <summary>📄 Ver la explicación en texto</summary>
+          <SolutionDisplay solution={solution} />
+        </details>
       )}
     </>
   )

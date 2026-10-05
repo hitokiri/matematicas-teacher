@@ -172,7 +172,7 @@ fn test_embedded_model_generates_solution() {
         mmproj: std::env::var("LOCAL_MMPROJ").ok().map(std::path::PathBuf::from),
     };
     println!("dispositivo: {}", crate::ai::local::compute_device());
-    let content = crate::ai::local::generate(&files, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7", None)
+    let content = crate::ai::local::generate(&files, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7", None, None)
         .expect("el modelo integrado debe responder");
     println!("{:.1} tokens/s\n{}", content.tokens_per_second, content.text);
     let content = content.text;
@@ -193,6 +193,7 @@ fn test_embedded_vision_model_reads_drawing() {
         "Eres un profesor de matematicas.",
         "La imagen contiene un problema de matematicas. Transcribelo en una linea que empiece con \"Problema:\" y resuelvelo.",
         Some(&image),
+        None,
     ).expect("el modelo de vision debe responder");
     println!("dispositivo: {} ({:.1} tokens/s)\n{}", crate::ai::local::compute_device(), content.tokens_per_second, content.text);
     let content = content.text;
@@ -223,4 +224,53 @@ fn test_transcription_on_following_lines() {
     let content = "Problema:  \nResuelve la ecuación:  \n3x + 4 = 19\n\n---\n\nx = 5";
     let solution = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
     assert_eq!(solution.problem, "Resuelve la ecuación: 3x + 4 = 19");
+}
+
+#[test]
+fn test_parse_structured_solution() {
+    let problem = crate::types::MathProblem { text: "2x + 3 = 7".into(), image: None };
+    let content = r#"{"problema": "2x + 3 = 7", "pasos": [
+        {"titulo": "Quitamos el 3", "explicacion": "Restamos 3 a los dos lados.", "operacion": "2x = 7 - 3 = 4"},
+        {"titulo": "Dividimos entre 2", "explicacion": "Así x queda sola.", "operacion": ""}
+    ], "respuesta_final": "x = 2"}"#;
+    let s = AIEngine::parse_structured(content, &problem).expect("JSON valido");
+    assert_eq!(s.problem, "2x + 3 = 7");
+    assert_eq!(s.steps.len(), 2);
+    assert_eq!(s.steps[0].title.as_deref(), Some("Quitamos el 3"));
+    assert_eq!(s.steps[0].calculation.as_deref(), Some("2x = 7 - 3 = 4"));
+    assert_eq!(s.steps[1].calculation, None, "operacion vacia no se escribe en la pizarra");
+    assert_eq!(s.final_answer, "x = 2");
+}
+
+#[test]
+fn test_parse_structured_rejects_free_text() {
+    let problem = crate::types::MathProblem { text: "2+2".into(), image: None };
+    assert!(AIEngine::parse_structured("Paso 1: sumamos\nRespuesta final: 4", &problem).is_none());
+}
+
+#[test]
+fn test_solution_schema_converts_to_grammar() {
+    let grammar = llama_cpp_2::json_schema_to_grammar(&AIEngine::solution_schema().to_string())
+        .expect("el esquema debe convertirse en gramatica GBNF");
+    assert!(grammar.contains("root"));
+}
+
+/// Explicacion estructurada real: LOCAL_GGUF=... cargo test structured -- --ignored --nocapture
+#[test]
+#[ignore]
+fn test_embedded_model_structured_explanation() {
+    let files = crate::ai::local::LocalModel {
+        model: std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF")),
+        mmproj: None,
+    };
+    let grammar = llama_cpp_2::json_schema_to_grammar(&AIEngine::solution_schema().to_string()).unwrap();
+    let problem = crate::types::MathProblem { text: std::env::var("PROBLEMA").unwrap_or("2x + 3 = 7".into()), image: None };
+    let g = crate::ai::local::generate(&files, &AIEngine::system_prompt_for_tests(),
+        &format!("Explica paso a paso como resolver este problema:\n\n{}", problem.text), None, Some(&grammar)).unwrap();
+    println!("{:.1} tokens/s\n{}", g.tokens_per_second, g.text);
+    let s = AIEngine::parse_structured(&g.text, &problem).expect("la gramatica garantiza JSON valido");
+    for st in &s.steps {
+        println!("[{}] {} | {:?}", st.step, st.title.clone().unwrap_or_default(), st.calculation);
+    }
+    println!("=> {}", s.final_answer);
 }

@@ -1,7 +1,8 @@
 interface SolutionStep {
   step: number
   explanation: string
-  calculation: string
+  title?: string | null
+  calculation?: string | null
 }
 
 interface Solution {
@@ -26,7 +27,7 @@ function SolutionDisplay({ solution }: SolutionDisplayProps) {
       <div className="solution-steps">
         {solution.steps.map((step, index) => (
           <div key={step.step} className="step" style={{ animationDelay: `${index * 0.1}s` }}>
-            <div className="step-number">Paso {step.step}</div>
+            <div className="step-number">Paso {step.step}{step.title ? ` · ${step.title}` : ''}</div>
             <div className="step-explanation">{step.explanation}</div>
             {step.calculation && (
               <div className="step-calculation">{step.calculation}</div>

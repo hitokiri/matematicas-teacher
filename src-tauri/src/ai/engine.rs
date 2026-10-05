@@ -33,32 +33,109 @@ impl AIEngine {
     }
 
     fn build_system_prompt() -> String {
-        r#"Eres un profesor de matematicas paciente y claro. Tu trabajo es explicar paso a paso como resolver problemas de matematicas basicos.
+        r#"Eres una maestra de primaria paciente y carinosa. Explicas a ninos de 7 a 12 anos como resolver problemas de matematicas, paso a paso.
 
-TIPOS DE PROBLEMAS:
-- Aritmetica: suma, resta, multiplicacion, division
-- Ecuaciones simples: x + 5 = 12, 3x = 15, 2x + 3 = 7
-- Fracciones: sumar, restar, multiplicar, dividir fracciones
+Responde SOLO con un objeto JSON con este formato:
+{"problema": "...", "pasos": [{"titulo": "...", "explicacion": "...", "operacion": "..."}], "respuesta_final": "..."}
 
-REGLAS IMPORTANTES:
-1. SIEMPRE responde en español
-2. Explica cada paso de forma clara y detallada, como si le enseñaras a un estudiante
-3. Usa un tono amigable y paciente
-4. Al final, da la respuesta final claramente con "Respuesta final:"
-5. Para fracciones, simplifica siempre cuando sea posible
-6. Usa formato claro con saltos de linea entre cada paso
-7. NO des solo la respuesta - explica el PROCESO completo
-8. Escribe las operaciones en texto plano (por ejemplo 3x + 4 = 19, 15 / 3 = 5); NO uses LaTeX ni simbolos $"#.to_string()
+REGLAS:
+1. Todo en espanol, con frases cortas y palabras sencillas, como le hablarias a un nino.
+2. Cada paso hace UNA sola cosa. Usa entre 2 y 6 pasos.
+3. "titulo": maximo 6 palabras (por ejemplo "Quitamos el 3 de los dos lados").
+4. "explicacion": 1 o 2 frases que digan que hacemos y por que.
+5. "operacion": la cuenta de ese paso en texto plano, por ejemplo "2x = 7 - 3 = 4" o "3 × 3 = 9". Sin LaTeX ni simbolos $. Vacia ("") si el paso no tiene cuenta.
+6. "problema": el enunciado tal cual (si viene en una imagen, transcribelo).
+7. "respuesta_final": solo el resultado, por ejemplo "x = 5" o "18".
+8. Para fracciones, simplifica siempre que se pueda. Revisa tus cuentas antes de responder."#.to_string()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn system_prompt_for_tests() -> String {
+        Self::build_system_prompt()
+    }
+
+    /// Esquema JSON de la respuesta; llama.cpp lo convierte en gramatica y el modelo no puede salirse
+    pub(crate) fn solution_schema() -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "problema": { "type": "string" },
+                "pasos": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "titulo": { "type": "string" },
+                            "explicacion": { "type": "string" },
+                            "operacion": { "type": "string" }
+                        },
+                        "required": ["titulo", "explicacion", "operacion"]
+                    }
+                },
+                "respuesta_final": { "type": "string" }
+            },
+            "required": ["problema", "pasos", "respuesta_final"]
+        })
+    }
+
+    /// Gramatica GBNF del esquema (se calcula una vez)
+    fn solution_grammar() -> Option<&'static str> {
+        static GRAMMAR: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+        GRAMMAR.get_or_init(|| {
+            llama_cpp_2::json_schema_to_grammar(&Self::solution_schema().to_string())
+                .map_err(|e| eprintln!("No se pudo crear la gramatica JSON: {}", e))
+                .ok()
+        }).as_deref()
+    }
+
+    /// Convierte la respuesta JSON del modelo en una solucion
+    pub(crate) fn parse_structured(content: &str, problem: &MathProblem) -> Option<Solution> {
+        #[derive(serde::Deserialize)]
+        struct Paso { titulo: String, explicacion: String, #[serde(default)] operacion: String }
+        #[derive(serde::Deserialize)]
+        struct Respuesta { problema: String, pasos: Vec<Paso>, respuesta_final: String }
+
+        // Tolerar texto alrededor del objeto (p. ej. un bloque ```json)
+        let json = &content[content.find('{')?..=content.rfind('}')?];
+        let r: Respuesta = serde_json::from_str(json).ok()?;
+        if r.pasos.is_empty() {
+            return None;
+        }
+        let problema = if problem.image.is_some() && !r.problema.trim().is_empty() {
+            r.problema.trim().to_string()
+        } else {
+            Self::display_text(problem)
+        };
+        let some = |s: String| Some(s.trim().to_string()).filter(|s| !s.is_empty());
+        Some(Solution {
+            problem: problema,
+            steps: r.pasos.into_iter().enumerate().map(|(i, p)| SolutionStep {
+                step: i + 1,
+                explanation: p.explicacion.trim().to_string(),
+                title: some(p.titulo),
+                calculation: some(p.operacion),
+            }).collect(),
+            final_answer: r.respuesta_final.trim().to_string(),
+        })
+    }
+
+    /// Respuesta del modelo -> solucion: JSON estructurado o, si no, texto libre
+    fn to_solution(content: &str, problem: &MathProblem) -> Solution {
+        Self::parse_structured(content, problem).unwrap_or_else(|| {
+            Self::with_transcription(Self::parse_response(content, &Self::display_text(problem)), content, problem)
+        })
     }
 
     /// Texto del usuario; si hay dibujo, se le pide al modelo que lea la imagen
     fn user_prompt(problem: &MathProblem) -> String {
         if problem.image.is_some() {
-            "La imagen contiene un problema de matematicas escrito a mano. Primero transcribelo \
-             en una linea que empiece con \"Problema:\" y luego explica paso a paso como resolverlo."
+            "La imagen tiene un problema de matematicas escrito a mano. Transcribelo en \"problema\" \
+             y explica paso a paso como resolverlo."
                 .to_string()
         } else {
-            format!("Por favor, explica paso a paso como resolver este problema:\n\n{}", problem.text)
+            format!("Explica paso a paso como resolver este problema:\n\n{}", problem.text)
         }
     }
 
@@ -158,6 +235,7 @@ REGLAS IMPORTANTES:
                 ],
                 "max_tokens": 4096,
                 "temperature": 0.3,
+                "response_format": { "type": "json_object", "schema": Self::solution_schema() },
             }))
             .send()
             .await
@@ -168,7 +246,7 @@ REGLAS IMPORTANTES:
         if content.is_empty() {
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
-        Ok(Self::with_transcription(Self::parse_response(content, &Self::display_text(problem)), content, problem))
+        Ok(Self::to_solution(content, problem))
     }
 
     /// Resuelve con llama.cpp integrado en la app (en un hilo aparte: es bloqueante)
@@ -186,7 +264,7 @@ REGLAS IMPORTANTES:
         let files = files.clone();
         let user = Self::user_prompt(problem);
         let generation = tokio::task::spawn_blocking(move || {
-            crate::ai::local::generate(&files, &Self::build_system_prompt(), &user, image.as_deref())
+            crate::ai::local::generate(&files, &Self::build_system_prompt(), &user, image.as_deref(), Self::solution_grammar())
         })
         .await??;
         crate::ai::local::record_speed(generation.tokens_per_second);
@@ -194,7 +272,7 @@ REGLAS IMPORTANTES:
         if content.is_empty() {
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
-        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
+        Ok(Self::to_solution(&content, problem))
     }
 
     /// Localiza el binario de llama-server (LLAMA_SERVER_BIN o PATH)
@@ -288,6 +366,8 @@ REGLAS IMPORTANTES:
                     steps.push(SolutionStep {
                         step: step_num,
                         explanation: current_step.trim().to_string(),
+                        title: None,
+                        calculation: None,
                     });
                     step_num += 1;
                     current_step = String::new();
@@ -301,6 +381,8 @@ REGLAS IMPORTANTES:
                     steps.push(SolutionStep {
                         step: step_num,
                         explanation: current_step.trim().to_string(),
+                        title: None,
+                        calculation: None,
                     });
                     step_num += 1;
                 }
@@ -311,6 +393,8 @@ REGLAS IMPORTANTES:
                     steps.push(SolutionStep {
                         step: step_num,
                         explanation: current_step.trim().to_string(),
+                        title: None,
+                        calculation: None,
                     });
                     step_num += 1;
                     current_step = String::new();
@@ -326,6 +410,8 @@ REGLAS IMPORTANTES:
             steps.push(SolutionStep {
                 step: step_num,
                 explanation: current_step.trim().to_string(),
+                title: None,
+                calculation: None,
             });
         }
 
@@ -333,6 +419,8 @@ REGLAS IMPORTANTES:
             steps.push(SolutionStep {
                 step: 1,
                 explanation: content.to_string(),
+                title: None,
+                calculation: None,
             });
         }
 

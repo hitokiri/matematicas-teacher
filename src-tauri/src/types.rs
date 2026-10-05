@@ -12,6 +12,12 @@ pub struct MathProblem {
 pub struct SolutionStep {
     pub step: usize,
     pub explanation: String,
+    /// Titulo corto del paso (respuesta estructurada del modelo)
+    #[serde(default)]
+    pub title: Option<String>,
+    /// Operacion del paso en texto plano (p. ej. "3 × 3 = 9"), se escribe en la pizarra
+    #[serde(default)]
+    pub calculation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

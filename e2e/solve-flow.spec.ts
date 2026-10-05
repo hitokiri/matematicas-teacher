@@ -17,18 +17,46 @@ test.describe('Flujo de resolver problemas', () => {
     await page.waitForSelector('.input-section', { timeout: 15000 });
   });
 
-  test('texto: escribir, resolver y ver pasos y respuesta final', async ({ page }) => {
-    await page.locator('.problem-input').fill('3 x 6');
+  test('cuenta escrita: la pizarra la resuelve paso a paso sin usar el modelo', async ({ page }) => {
+    await page.locator('.problem-input').fill('10 x 20');
     await solveButton(page).click();
 
-    await expect(page.locator('.solution-section')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.solution-problem')).toContainText('3 x 6');
-    await expect(page.locator('.solution-steps')).toContainText('Multiplicamos');
-    await expect(page.locator('.solution-section')).toContainText('18');
+    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-narration')).toContainText('Escribimos 10 arriba y 20 abajo');
+    await page.getByRole('button', { name: /pausa/i }).click();
+
+    // Avanzar a mano hasta el final
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalk-answer')).toContainText('200');
+    await expect(page.locator('.chalk-narration')).toContainText('10 × 20 = 200');
+
+    // Volver un paso atras
+    await page.getByRole('button', { name: /anterior/i }).click();
+    await expect(page.locator('.chalk-answer')).toHaveCount(0);
 
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
-    expect(args.problemText).toBe('3 x 6');
-    expect(args.problemImage).toBeNull();
+    expect(args).toBeUndefined();
+  });
+
+  test('otro problema: el modelo explica y la pizarra escribe cada paso', async ({ page }) => {
+    await page.locator('.problem-input').fill('x + 2 = 5');
+    await solveButton(page).click();
+
+    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalkboard')).toContainText('x + 2 = 5');
+    await page.getByRole('button', { name: /pausa/i }).click();
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalkboard')).toContainText('3 x 6 = 18');
+    await expect(page.locator('.chalk-answer')).toContainText('18');
+
+    // La explicacion en texto sigue disponible
+    await page.getByText(/ver la explicación en texto/i).click();
+    await expect(page.locator('.solution-steps')).toContainText('Multiplicamos');
+
+    const args = await page.evaluate(() => (window as any).__lastSolveArgs);
+    expect(args.problemText).toBe('x + 2 = 5');
   });
 
   test('dibujo: el boton Resolver se habilita al dibujar y envia la imagen', async ({ page }) => {
@@ -95,9 +123,9 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(page.locator('.error-message')).toHaveCount(0);
     await page.locator('.tab', { hasText: /texto/i }).click();
 
-    await page.locator('.problem-input').fill('2x5');
+    await page.locator('.problem-input').fill('x + 2 = 5');
     await solveButton(page).click();
-    await expect(page.locator('.solution-section')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.error-message')).toHaveCount(0);
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
     expect(args.problemImage).toBeNull();
