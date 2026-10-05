@@ -15,7 +15,9 @@ use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::{list_llama_ggml_backend_devices, LlamaBackendDeviceType};
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 const N_CTX: u32 = 8192;
 const N_BATCH: u32 = 2048;
@@ -45,6 +47,12 @@ static BACKEND: OnceLock<LlamaBackend> = OnceLock::new();
 static LOADED: Mutex<Option<Loaded>> = Mutex::new(None);
 
 fn backend() -> Result<&'static LlamaBackend> {
+    if let Some(b) = BACKEND.get() {
+        return Ok(b);
+    }
+    // Solo un hilo inicializa (la precarga y la deteccion de hardware arrancan a la vez)
+    static INIT: Mutex<()> = Mutex::new(());
+    let _init = INIT.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(b) = BACKEND.get() {
         return Ok(b);
     }
@@ -83,23 +91,68 @@ pub fn compute_device() -> String {
     }
 }
 
-/// Elige GPU si hay una con VRAM suficiente para el modelo completo; si no, CPU
-fn model_params(files: &LocalModel) -> (LlamaModelParams, String) {
+/// Memoria para modelos en MB: (VRAM total de la mejor GPU, RAM total)
+pub fn hardware_mb() -> (Option<f64>, f64) {
+    let gpu = backend().ok().and_then(|_| {
+        list_llama_ggml_backend_devices().into_iter()
+            .filter(|d| matches!(d.device_type, LlamaBackendDeviceType::Gpu))
+            .map(|d| d.memory_total as f64 / 1048576.0)
+            .max_by(f64::total_cmp)
+    });
+    // /proc/meminfo: "MemTotal:  32768000 kB"
+    let ram = std::fs::read_to_string("/proc/meminfo").ok()
+        .and_then(|m| m.lines().find(|l| l.starts_with("MemTotal:"))
+            .and_then(|l| l.split_whitespace().nth(1)?.parse::<f64>().ok()))
+        .map(|kb| kb / 1024.0)
+        .unwrap_or(8192.0);
+    (gpu, ram)
+}
+
+/// Capas del modelo y si es mixture-of-experts, leidos de la cabecera del GGUF
+fn gguf_layers(path: &Path) -> Option<(u32, bool)> {
+    let gguf = llama_cpp_2::gguf::GgufContext::from_file(path)?;
+    let arch = gguf.val_str(gguf.find_key("general.architecture"))?.to_string();
+    let key = |k: &str| Some(gguf.find_key(&format!("{}.{}", arch, k))).filter(|i| *i >= 0);
+    let layers = gguf.val_u32(key("block_count")?);
+    let moe = key("expert_count").map(|i| gguf.val_u32(i) > 0).unwrap_or(false);
+    Some((layers, moe))
+}
+
+/// Elige donde corre el modelo:
+/// - cabe entero en la GPU: todas las capas en la GPU
+/// - mixture-of-experts que no cabe: capas en la GPU y expertos en la CPU (como --cpu-moe)
+/// - denso que no cabe: tantas capas en la GPU como quepan, el resto en CPU
+/// - sin GPU: CPU
+fn model_params(files: &LocalModel) -> (Pin<Box<LlamaModelParams>>, String) {
     let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
-    let needed = size(&files.model) + files.mmproj.as_deref().map(size).unwrap_or(0) + VRAM_MARGIN;
-    match best_gpu() {
-        Some((index, name, free)) if free >= needed => {
-            let params = LlamaModelParams::default()
-                .with_n_gpu_layers(u32::MAX)
-                .with_devices(&[index])
-                .unwrap_or_else(|_| LlamaModelParams::default().with_n_gpu_layers(u32::MAX));
-            (params, format!("GPU: {}", name))
+    let model_size = size(&files.model);
+    let extra = files.mmproj.as_deref().map(size).unwrap_or(0) + VRAM_MARGIN;
+    let on_gpu = |index: usize, layers: u32| {
+        LlamaModelParams::default()
+            .with_n_gpu_layers(layers)
+            .with_devices(&[index])
+            .unwrap_or_else(|_| LlamaModelParams::default().with_n_gpu_layers(layers))
+    };
+    let cpu = || Box::pin(LlamaModelParams::default().with_n_gpu_layers(0));
+
+    let Some((index, name, free)) = best_gpu() else { return (cpu(), "CPU".to_string()) };
+    if free >= model_size + extra {
+        return (Box::pin(on_gpu(index, u32::MAX)), format!("GPU: {}", name));
+    }
+    match gguf_layers(&files.model) {
+        Some((_, true)) => {
+            let mut params = Box::pin(on_gpu(index, u32::MAX));
+            params.as_mut().add_cpu_moe_override();
+            (params, format!("GPU + CPU: {} (expertos en CPU)", name))
         }
-        Some((_, name, _)) => (
-            LlamaModelParams::default().with_n_gpu_layers(0),
-            format!("CPU (el modelo no cabe en la memoria de {})", name),
-        ),
-        None => (LlamaModelParams::default().with_n_gpu_layers(0), "CPU".to_string()),
+        Some((layers, false)) if free > extra && model_size > 0 => {
+            let fit = ((free - extra) as f64 / model_size as f64 * layers as f64) as u32;
+            if fit == 0 {
+                return (cpu(), format!("CPU (el modelo no cabe en {})", name));
+            }
+            (Box::pin(on_gpu(index, fit)), format!("GPU + CPU: {} ({} de {} capas en GPU)", name, fit, layers))
+        }
+        _ => (cpu(), format!("CPU (el modelo no cabe en {})", name)),
     }
 }
 
@@ -115,7 +168,7 @@ fn ensure_loaded(guard: &mut Option<Loaded>, files: &LocalModel) -> Result<()> {
     *guard = None; // liberar el modelo anterior antes de cargar el nuevo
     let backend = backend()?;
     let (params, device) = model_params(files);
-    let model = LlamaModel::load_from_file(backend, &files.model, &params)
+    let model = LlamaModel::load_from_file(backend, &files.model, &*params)
         .map_err(|e| anyhow::anyhow!("No se pudo cargar el modelo {}: {}", files.model.display(), e))?;
     let mtmd = match &files.mmproj {
         Some(mmproj) => {
@@ -150,7 +203,7 @@ pub fn unload() {
 
 /// Genera la respuesta del asistente para (system, user) y opcionalmente una imagen
 /// (bytes PNG/JPEG). Bloqueante.
-pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8]>) -> Result<String> {
+pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8]>) -> Result<Generation> {
     let mut guard = LOADED.lock().unwrap_or_else(|e| e.into_inner());
     ensure_loaded(&mut guard, files)?;
     let loaded = guard.as_ref().expect("modelo cargado");
@@ -167,21 +220,11 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
         (None, _) => None,
     };
 
-    // Plantilla de chat del propio GGUF; chatml si no trae ninguna
-    let tmpl = match model.chat_template(None) {
-        Ok(t) => t,
-        Err(_) => LlamaChatTemplate::new("chatml")?,
-    };
     let user = match mtmd {
         Some(_) => format!("{}\n{}", llama_cpp_2::mtmd::mtmd_default_marker(), user),
         None => user.to_string(),
     };
-    let chat = [
-        LlamaChatMessage::new("system".into(), system.into())?,
-        LlamaChatMessage::new("user".into(), user)?,
-    ];
-    let prompt = model.apply_chat_template(&tmpl, &chat, true)
-        .map_err(|e| anyhow::anyhow!("No se pudo aplicar la plantilla de chat: {}", e))?;
+    let prompt = render_prompt(model, system, &user)?;
 
     let params = LlamaContextParams::default()
         .with_n_ctx(NonZeroU32::new(N_CTX))
@@ -234,6 +277,8 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
     ]);
     let mut batch = LlamaBatch::new(1, 1);
     let mut out = Vec::new();
+    let started = Instant::now();
+    let mut generated = 0usize;
     let budget = MAX_NEW_TOKENS.min((N_CTX as i32 - pos).max(0) as usize);
     for _ in 0..budget {
         let tok = sampler.sample(&ctx, -1);
@@ -241,10 +286,83 @@ pub fn generate(files: &LocalModel, system: &str, user: &str, image: Option<&[u8
             break;
         }
         out.extend(vocab.token_to_piece(tok, false, None));
+        generated += 1;
         batch.clear();
         batch.add(tok, pos, &[0], true)?;
         pos += 1;
         ctx.decode(&mut batch)?;
     }
-    Ok(String::from_utf8_lossy(&out).trim().to_string())
+    let secs = started.elapsed().as_secs_f64();
+    let tokens_per_second = if secs > 0.0 { generated as f64 / secs } else { 0.0 };
+    Ok(Generation { text: strip_thinking(&String::from_utf8_lossy(&out)), tokens_per_second })
+}
+
+/// Velocidad de la ultima respuesta (tokens/s), para mostrarla en la lista de modelos
+static LAST_SPEED: Mutex<Option<f64>> = Mutex::new(None);
+
+pub fn record_speed(tokens_per_second: f64) {
+    *LAST_SPEED.lock().unwrap_or_else(|e| e.into_inner()) = Some(tokens_per_second);
+}
+
+pub fn take_last_speed() -> Option<f64> {
+    LAST_SPEED.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
+/// Respuesta generada y velocidad medida
+pub struct Generation {
+    pub text: String,
+    pub tokens_per_second: f64,
+}
+
+/// Quita el razonamiento interno (`<think>...</think>`) si el modelo lo genero
+pub(crate) fn strip_thinking(text: &str) -> String {
+    let text = match text.rfind("</think>") {
+        Some(end) => &text[end + "</think>".len()..],
+        None => text,
+    };
+    text.trim().to_string()
+}
+
+/// Construye el prompt con la plantilla Jinja del propio GGUF (como llama-server), sin modo
+/// "pensar". Si la plantilla no se puede renderizar, usa el motor de plantillas de llama.cpp.
+fn render_prompt(model: &LlamaModel, system: &str, user: &str) -> Result<String> {
+    if let Ok(source) = model.meta_val_str("tokenizer.chat_template") {
+        let vocab = model.vocab();
+        let piece = |t| String::from_utf8_lossy(&vocab.token_to_piece(t, true, None)).to_string();
+        match render_jinja(&source, system, user, &piece(vocab.bos()), &piece(vocab.eos())) {
+            Ok(prompt) => return Ok(prompt),
+            Err(e) => eprintln!("Plantilla Jinja no soportada, se usa la de llama.cpp: {}", e),
+        }
+    }
+    let tmpl = match model.chat_template(None) {
+        Ok(t) => t,
+        Err(_) => LlamaChatTemplate::new("chatml")?,
+    };
+    let chat = [
+        LlamaChatMessage::new("system".into(), system.into())?,
+        LlamaChatMessage::new("user".into(), user.into())?,
+    ];
+    model.apply_chat_template(&tmpl, &chat, true)
+        .map_err(|e| anyhow::anyhow!("No se pudo aplicar la plantilla de chat: {}", e))
+}
+
+pub(crate) fn render_jinja(source: &str, system: &str, user: &str, bos: &str, eos: &str) -> Result<String> {
+    let mut env = minijinja::Environment::new();
+    env.set_unknown_method_callback(minijinja_contrib::pycompat::unknown_method_callback);
+    env.add_function("raise_exception", |msg: String| -> Result<String, minijinja::Error> {
+        Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, msg))
+    });
+    env.add_function("strftime_now", |_fmt: String| chrono::Local::now().format("%d %B %Y").to_string());
+    env.add_template("chat", source)?;
+    let prompt = env.get_template("chat")?.render(minijinja::context! {
+        messages => vec![
+            minijinja::context! { role => "system", content => system },
+            minijinja::context! { role => "user", content => user },
+        ],
+        add_generation_prompt => true,
+        enable_thinking => false,
+        bos_token => bos,
+        eos_token => eos,
+    })?;
+    Ok(prompt)
 }

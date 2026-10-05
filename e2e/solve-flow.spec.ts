@@ -51,11 +51,11 @@ test.describe('Flujo de resolver problemas', () => {
     expect(args.problemText).toBe('');
   });
 
-  test('dibujo con proveedor en la nube resuelve y envia la imagen', async ({ page }) => {
-    // El mock lee su estado al cargar: recargar para tomar el proveedor
+  test('dibujo con modelo local activo resuelve y envia la imagen', async ({ page }) => {
+    // El mock lee su estado al cargar: recargar para tomar el modelo activo
     await page.evaluate(() => localStorage.setItem('__e2e_state__', JSON.stringify({
-      settings: { provider: 'anthropic', openai_key: '', anthropic_key: 'k', active_model_id: null },
-      models: [],
+      settings: { active_model_id: 'm-small' },
+      models: [{ id: 'm-small', name: 'Qwen 2.5 1.5B Instruct', description: 'Modelo ligero', filename: 'small.gguf', size_mb: 1024, recommended_for: ['rapido'], tags: ['1.5B'], downloaded: true }],
     })));
     await page.reload();
     await page.waitForSelector('.input-section', { timeout: 15000 });

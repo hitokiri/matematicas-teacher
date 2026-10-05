@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import ModelBrowser from '../components/ModelBrowser';
-import type { AppSettings } from '../App';
 
 interface ModelInfo {
   id: string;
@@ -11,6 +10,9 @@ interface ModelInfo {
   filename: string;
   mmproj_filename?: string | null;
   size_mb: number;
+  benchmark?: string | null;
+  tokens_per_second?: number | null;
+  is_recommended?: boolean;
   is_downloaded: boolean;
   is_downloading: boolean;
   download_progress: number;
@@ -20,16 +22,11 @@ interface ModelInfo {
 }
 
 interface SettingsProps {
-  settings: AppSettings;
-  onSave: (settings: AppSettings) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function Settings({ settings, onSave, onCancel }: SettingsProps) {
-  const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
+export default function Settings({ onCancel }: SettingsProps) {
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [savingSuccess, setSavingSuccess] = useState(false);
   const [computeDevice, setComputeDevice] = useState<string | null>(null);
 
   // Hardware que usa el modelo local (GPU si la PC tiene una con memoria suficiente)
@@ -81,9 +78,8 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
 
   const handleSelect = async (modelId: string) => {
     try {
+      // El backend guarda el modelo activo y lo carga en memoria
       await invoke('select_model', { modelId });
-      // Elegir un modelo local implica usar el proveedor local
-      setLocalSettings(prev => ({ ...prev, provider: 'local', active_model_id: modelId }));
       await loadModels();
       // El modelo se carga en segundo plano; luego se sabe si quedo en GPU o CPU
       setTimeout(() => { void loadComputeDevice(); }, 5000);
@@ -129,19 +125,6 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await onSave(localSettings);
-      setSavingSuccess(true);
-      setTimeout(() => setSavingSuccess(false), 3000);
-    } catch (err) {
-      console.error('Error saving settings:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   useEffect(() => {
     loadModels();
     loadComputeDevice();
@@ -173,87 +156,8 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
       </div>
 
       <div className="provider-section">
-        <h2>🤖 Proveedor de IA</h2>
-        <div className="provider-options">
-          <div 
-            className={`provider-option ${localSettings.provider === 'local' ? 'active' : ''}`}
-            onClick={() => setLocalSettings({ ...localSettings, provider: 'local' })}
-          >
-            <input
-              type="radio"
-              id="provider-local"
-              name="provider"
-              value="local"
-              checked={localSettings.provider === 'local'}
-              onChange={() => setLocalSettings({ ...localSettings, provider: 'local' })}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label htmlFor="provider-local">Modelo Local (GGUF)</label>
-          </div>
-          
-          <div 
-            className={`provider-option ${localSettings.provider === 'openai' ? 'active' : ''}`}
-            onClick={() => setLocalSettings({ ...localSettings, provider: 'openai' })}
-          >
-            <input
-              type="radio"
-              id="provider-openai"
-              name="provider"
-              value="openai"
-              checked={localSettings.provider === 'openai'}
-              onChange={() => setLocalSettings({ ...localSettings, provider: 'openai' })}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label htmlFor="provider-openai">OpenAI (GPT-4)</label>
-          </div>
-          
-          <div 
-            className={`provider-option ${localSettings.provider === 'anthropic' ? 'active' : ''}`}
-            onClick={() => setLocalSettings({ ...localSettings, provider: 'anthropic' })}
-          >
-            <input
-              type="radio"
-              id="provider-anthropic"
-              name="provider"
-              value="anthropic"
-              checked={localSettings.provider === 'anthropic'}
-              onChange={() => setLocalSettings({ ...localSettings, provider: 'anthropic' })}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label htmlFor="provider-anthropic">Anthropic (Claude)</label>
-          </div>
-        </div>
-
-        {localSettings.provider === 'local' && computeDevice && (
-          <div className="api-key-section compute-device">
-            <label>💻 Hardware del modelo local</label>
-            <span>{computeDevice}</span>
-          </div>
-        )}
-
-        {localSettings.provider === 'openai' && (
-          <div className="api-key-section">
-            <label>🔑 API Key de OpenAI</label>
-            <input
-              type="password"
-              value={localSettings.openai_key}
-              onChange={(e) => setLocalSettings({ ...localSettings, openai_key: e.target.value })}
-              placeholder="sk-proj-..."
-            />
-          </div>
-        )}
-
-        {localSettings.provider === 'anthropic' && (
-          <div className="api-key-section">
-            <label>🔑 API Key de Anthropic</label>
-            <input
-              type="password"
-              value={localSettings.anthropic_key}
-              onChange={(e) => setLocalSettings({ ...localSettings, anthropic_key: e.target.value })}
-              placeholder="sk-ant-..."
-            />
-          </div>
-        )}
+        <h2>💻 Hardware del modelo local</h2>
+        <p className="compute-device">{computeDevice ?? 'Detectando...'}</p>
       </div>
 
       <ModelBrowser
@@ -266,17 +170,6 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
         onResume={handleResume}
         onCancel={handleCancel}
       />
-
-      <div className="save-section">
-        {savingSuccess && <span className="save-status">✓ Guardado correctamente</span>}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`btn ${saving ? 'btn-secondary' : 'btn-primary'}`}
-        >
-          {saving ? '⏳ Guardando...' : savingSuccess ? '✓ Guardado' : '💾 Guardar Configuración'}
-        </button>
-      </div>
     </>
   );
 }

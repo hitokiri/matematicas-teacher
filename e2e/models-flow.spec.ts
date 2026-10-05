@@ -56,10 +56,10 @@ test.describe('Flujo completo de modelos', () => {
     await expect(card(page, 'Qwen 2.5 1.5B').locator('.status-active')).toBeVisible();
   });
 
-  test('el modelo activo persiste tras guardar y reabrir configuracion', async ({ page }) => {
+  test('el modelo activo persiste tras cerrar y reabrir configuracion', async ({ page }) => {
     await downloadSmall(page);
     await card(page, 'Qwen 2.5 1.5B').getByRole('button', { name: /select/i }).click();
-    await page.getByRole('button', { name: /guardar/i }).click();
+    await page.locator('.modal-back-btn').click();
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 5000 });
 
     await openSettings(page);
@@ -69,7 +69,6 @@ test.describe('Flujo completo de modelos', () => {
   test('el modelo activo y las descargas persisten tras recargar la app', async ({ page }) => {
     await downloadSmall(page);
     await card(page, 'Qwen 2.5 1.5B').getByRole('button', { name: /select/i }).click();
-    await page.getByRole('button', { name: /guardar/i }).click();
 
     await page.reload();
     await page.waitForSelector('.input-section', { timeout: 15000 });

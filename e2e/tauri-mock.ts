@@ -16,7 +16,7 @@ const loadState = () => {
     if (raw) return JSON.parse(raw);
   } catch (_) {}
   return {
-    settings: { provider: 'local', openai_key: '', anthropic_key: '', active_model_id: null },
+    settings: { active_model_id: null },
     models: defaultModels(),
   };
 };
@@ -57,16 +57,6 @@ const mockInvoke = (cmd, args) => {
   switch (cmd) {
     case 'get_settings':
       return Promise.resolve({ ...state.settings });
-
-    case 'save_settings':
-      state.settings = {
-        provider: args.provider,
-        openai_key: args.openaiKey ?? args.openai_key ?? '',
-        anthropic_key: args.anthropicKey ?? args.anthropic_key ?? '',
-        active_model_id: args.activeModelId ?? args.active_model_id ?? null,
-      };
-      persist();
-      return Promise.resolve(undefined);
 
     case 'get_compute_device':
       return Promise.resolve('CPU');

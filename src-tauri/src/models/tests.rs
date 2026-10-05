@@ -15,12 +15,13 @@ fn test_list_models_returns_all_models() {
     
     let model_ids: Vec<&str> = models.iter().map(|m| m.id.as_str()).collect();
     
-    assert!(model_ids.contains(&"lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF"));
-    assert!(model_ids.contains(&"bartowski/Qwen2.5-3B-Instruct-GGUF"));
-    assert!(model_ids.contains(&"lmstudio-community/Phi-3.5-mini-instruct-GGUF"));
-    assert!(model_ids.contains(&"bartowski/gemma-2-2b-it-GGUF"));
-    assert!(model_ids.contains(&"lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF"));
-    assert!(model_ids.contains(&"bartowski/Qwen2.5-1.5B-Instruct-GGUF"));
+    // Pequenos, medianos y grandes
+    assert!(model_ids.contains(&"unsloth/Qwen3.5-2B-GGUF"));
+    assert!(model_ids.contains(&"ggml-org/gemma-4-E2B-it-GGUF"));
+    assert!(model_ids.contains(&"unsloth/Qwen3.5-4B-GGUF"));
+    assert!(model_ids.contains(&"unsloth/Qwen3.5-9B-GGUF"));
+    assert!(model_ids.contains(&"ggml-org/gemma-4-12b-it-GGUF"));
+    assert!(model_ids.contains(&"unsloth/Qwen3.5-35B-A3B-GGUF"));
 }
 
 #[test]
@@ -28,17 +29,20 @@ fn test_model_info_has_correct_properties() {
     let mut manager = ModelManager::new();
     let models = manager.list_models();
     
-    let llama_model = models.iter()
-        .find(|m| m.id == "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF")
-        .expect("Deberia encontrar Llama 3.1");
+    let qwen = models.iter()
+        .find(|m| m.id == "unsloth/Qwen3.5-4B-GGUF")
+        .expect("Deberia encontrar Qwen 3.5 4B");
     
-    assert_eq!(llama_model.name, "Llama 3.1 8B Instruct");
-    assert!(llama_model.description.len() > 0);
-    assert_eq!(llama_model.filename, "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf");
-    assert_eq!(llama_model.size_mb, 4915.0);
-    assert!(!llama_model.is_downloaded);
-    assert!(!llama_model.is_active);
-    assert_eq!(llama_model.download_progress, 0.0);
+    assert_eq!(qwen.name, "Qwen 3.5 4B");
+    assert!(qwen.description.len() > 0);
+    assert_eq!(qwen.filename, "Qwen3.5-4B-Q4_K_M.gguf");
+    // El mmproj generico del repo se guarda con nombre propio para no chocar con otros modelos
+    assert_eq!(qwen.mmproj_filename.as_deref(), Some("mmproj-Qwen3.5-4B-F16.gguf"));
+    assert_eq!(qwen.mmproj_remote.as_deref(), Some("mmproj-F16.gguf"));
+    assert_eq!(qwen.benchmark.as_deref(), Some("MATH-Vision 74.6%"));
+    assert!(!qwen.is_downloaded);
+    assert!(!qwen.is_active);
+    assert_eq!(qwen.download_progress, 0.0);
 }
 
 #[test]
@@ -98,35 +102,53 @@ fn test_models_have_recommended_for() {
 }
 
 #[test]
-fn test_model_tags_format() {
-    let models = ModelManager::get_default_models();
-    
-    let qwen_1_5b = models.iter()
-        .find(|m| m.id == "bartowski/Qwen2.5-1.5B-Instruct-GGUF")
-        .expect("Deberia encontrar Qwen 2.5 1.5B");
-    
-    assert!(qwen_1_5b.tags.contains(&"ultra-ligero".to_string()));
-    assert!(qwen_1_5b.tags.contains(&"1.5B".to_string()));
-    assert!(qwen_1_5b.tags.contains(&"rapido".to_string()));
+fn test_all_models_read_drawings() {
+    for model in ModelManager::get_default_models() {
+        assert!(model.mmproj_filename.is_some(), "{} debe leer dibujos", model.name);
+        assert!(model.benchmark.is_some(), "{} debe tener benchmark publicado", model.name);
+    }
 }
 
 #[test]
-fn test_model_recommended_for_categories() {
+fn test_mmproj_local_names_do_not_collide() {
     let models = ModelManager::get_default_models();
-    
-    let qwen_1_5b = models.iter()
-        .find(|m| m.id == "bartowski/Qwen2.5-1.5B-Instruct-GGUF")
-        .expect("Deberia encontrar Qwen 2.5 1.5B");
-    
-    assert!(qwen_1_5b.recommended_for.contains(&"principiante".to_string()));
-    assert!(qwen_1_5b.recommended_for.contains(&"aritmetica".to_string()));
-    
-    let llama = models.iter()
-        .find(|m| m.id == "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF")
-        .expect("Deberia encontrar Llama 3.1");
-    
-    assert!(llama.recommended_for.contains(&"matematicas".to_string()));
-    assert!(llama.recommended_for.contains(&"logica".to_string()));
+    let mut names: Vec<&str> = models.iter().filter_map(|m| m.mmproj_filename.as_deref()).collect();
+    let total = names.len();
+    names.sort();
+    names.dedup();
+    assert_eq!(names.len(), total, "cada modelo necesita su propio archivo mmproj en disco");
+}
+
+#[test]
+fn test_recommended_model_fits_hardware() {
+    let mut manager = ModelManager::new();
+    let find = |models: &[crate::types::ModelInfo]| {
+        models.iter().filter(|m| m.is_recommended).map(|m| m.id.clone()).collect::<Vec<_>>()
+    };
+
+    // Sin hardware detectado no se recomienda nada
+    assert!(find(&manager.list_models()).is_empty());
+
+    // GPU de 16 GB: el mejor benchmark que cabe entero (Gemma 4 26B A4B no cabe con el margen)
+    manager.set_hardware(Some(16303.0), 32000.0);
+    assert_eq!(find(&manager.list_models()), vec!["ggml-org/gemma-4-12b-it-GGUF".to_string()]);
+
+    // GPU de 8 GB
+    manager.set_hardware(Some(8192.0), 16000.0);
+    assert_eq!(find(&manager.list_models()), vec!["unsloth/Qwen3.5-9B-GGUF".to_string()]);
+
+    // Sin GPU: uno ligero que corra con soltura en CPU
+    manager.set_hardware(None, 16000.0);
+    assert_eq!(find(&manager.list_models()), vec!["unsloth/Qwen3.5-4B-GGUF".to_string()]);
+}
+
+#[test]
+fn test_measured_speed_is_listed() {
+    let mut manager = ModelManager::new();
+    manager.record_speed("unsloth/Qwen3.5-2B-GGUF", 123.4);
+    let models = manager.list_models();
+    let m = models.iter().find(|m| m.id == "unsloth/Qwen3.5-2B-GGUF").unwrap();
+    assert_eq!(m.tokens_per_second, Some(123.4));
 }
 
 #[test]

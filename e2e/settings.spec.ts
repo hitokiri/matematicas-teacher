@@ -16,20 +16,21 @@ test.describe('Settings Modal', () => {
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
   });
 
-  test('settings modal shows provider options', async ({ page }) => {
+  test('settings modal only offers local models', async ({ page }) => {
     const settingsButton = page.locator('button', { hasText: /configuracion/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.provider-option')).toHaveCount(3);
+    await expect(page.getByText(/openai|anthropic/i)).toHaveCount(0);
+    await expect(page.locator('button', { hasText: /guardar/i })).toHaveCount(0);
   });
 
-  test('settings modal has save button', async ({ page }) => {
+  test('settings modal shows the local model hardware', async ({ page }) => {
     const settingsButton = page.locator('button', { hasText: /configuracion/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('button', { hasText: /guardar/i })).toBeVisible();
+    await expect(page.locator('.compute-device')).toHaveText('CPU');
   });
 
   test('closing settings modal hides it', async ({ page }) => {
@@ -66,8 +67,8 @@ test.describe('Settings Modal', () => {
     // Verify modal is still open
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
     
-    // Click save button to close modal
-    await page.locator('button', { hasText: /guardar/i }).click();
+    // Volver cierra el modal (el modelo activo se guarda al seleccionarlo)
+    await page.locator('.modal-back-btn').click();
     
     // Verify modal is closed
     await expect(page.locator('.modal-overlay')).not.toBeVisible({ timeout: 5000 });

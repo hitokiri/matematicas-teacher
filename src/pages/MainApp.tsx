@@ -4,9 +4,6 @@ import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
 
 interface AppSettings {
-  provider: 'local' | 'openai' | 'anthropic'
-  openai_key: string
-  anthropic_key: string
   active_model_id: string | null
 }
 
@@ -106,9 +103,9 @@ function MainApp({ settings }: MainAppProps) {
           </div>
         )}
 
-        {settings.provider === 'local' && !settings.active_model_id && (
+        {!settings.active_model_id && (
           <div className="warning-message">
-            No tienes un modelo local configurado. Ve a <strong>Configuracion</strong> para descargar un modelo o usar OpenAI/Anthropic.
+            No tienes un modelo configurado. Ve a <strong>Configuracion</strong> para descargar y seleccionar uno.
           </div>
         )}
       </div>

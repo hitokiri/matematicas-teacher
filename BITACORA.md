@@ -377,3 +377,13 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Medido (RTX 5070 Ti): Qwen 2.5 3B ~1.5 s en GPU vs ~14 s en CPU (`CUDA_VISIBLE_DEVICES=""`).
 - Prueba de vision: `LOCAL_GGUF=... LOCAL_MMPROJ=... LOCAL_IMAGE=dibujo.png cargo test vision -- --ignored`
 - Pendiente: incluir las .so y `backends/` en el paquete de `tauri build`.
+
+### Solo modelos locales y catalogo 2026 (2026-10-04)
+- Se quitaron OpenAI/Anthropic (UI y backend) y el boton "Guardar": el modelo activo se guarda al seleccionarlo.
+- Catalogo: Qwen3.5 2B/4B/9B/35B-A3B, Gemma 4 E2B/E4B/12B/26B-A4B y Qwen3-VL 4B; todos leen dibujos.
+- Cada tarjeta muestra el benchmark de matematicas publicado (MATH-Vision o MathVista, de las fichas
+  oficiales) y la velocidad medida en esta PC (tokens/s, guardada en settings.json `model_speeds`).
+- "Recomendado para tu PC": mejor MATH-Vision que cabe entero en la VRAM; sin GPU, el mejor de hasta ~3.5 GB.
+- Modelos que no caben en la GPU: MoE con expertos en CPU (como --cpu-moe); densos con capas repartidas.
+- Prompt con la plantilla Jinja del GGUF (minijinja) y `enable_thinking=false` (Qwen3.5 piensa por defecto).
+- Medido: Qwen3.5 2B ~375 tokens/s en la RTX 5070 Ti, texto y dibujo.

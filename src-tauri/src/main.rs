@@ -9,7 +9,7 @@ use models::ModelManager;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
-use types::{AIProvider, AppSettings};
+use types::AppSettings;
 
 struct AppState {
     ai: Mutex<AIEngine>,
@@ -28,12 +28,7 @@ fn main() {
         .manage(AppState {
             ai: Mutex::new(AIEngine::new()),
             models: Mutex::new(ModelManager::new()),
-            settings: Mutex::new(AppSettings {
-                provider: AIProvider::Local,
-                openai_key: String::new(),
-                anthropic_key: String::new(),
-                active_model_id: None,
-            }),
+            settings: Mutex::new(AppSettings { active_model_id: None }),
         })
         .setup(|app| {
             // Igual que Handy: los modelos viven en <app_data_dir>/models
@@ -45,50 +40,32 @@ fn main() {
                 }
             }
             if let Ok(config) = app.store("settings.json") {
-                if let Some(provider_val) = config.get("provider") {
-                    let provider = match provider_val.as_str() {
-                        Some("openai") => AIProvider::OpenAI,
-                        Some("anthropic") => AIProvider::Anthropic,
-                        _ => AIProvider::Local,
-                    };
-                    
-                    let openai_key = config.get("openai_key")
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                        .unwrap_or_default();
-                    
-                    let anthropic_key = config.get("anthropic_key")
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                        .unwrap_or_default();
-                    
-                    let active_model_id = config.get("active_model_id")
-                        .and_then(|v| v.as_str().map(String::from));
-                    
-                    let state = app.state::<AppState>();
-                    {
-                        let mut settings = state.settings.lock().unwrap();
-                        settings.provider = provider;
-                        settings.openai_key = openai_key;
-                        settings.anthropic_key = anthropic_key;
-                        settings.active_model_id = active_model_id.clone();
-                    }
-                    
-                    {
-                        let mut models = state.models.lock().unwrap();
-                        models.restore_active_model(active_model_id);
-                        if matches!(state.settings.lock().unwrap().provider, AIProvider::Local) {
-                            if let Some(files) = models.get_active_local_model() {
-                                ai::local::preload(files);
-                            }
-                        }
-                    }
+                let active_model_id = config.get("active_model_id")
+                    .and_then(|v| v.as_str().map(String::from));
+                let speeds: std::collections::HashMap<String, f64> = config.get("model_speeds")
+                    .and_then(|v| serde_json::from_value(v).ok())
+                    .unwrap_or_default();
 
-                    {
-                        let mut ai = state.ai.lock().unwrap();
-                        let settings = state.settings.lock().unwrap();
-                        ai.configure(&settings);
-                    }
+                let state = app.state::<AppState>();
+                let mut models = state.models.lock().unwrap();
+                models.set_speeds(speeds);
+                models.restore_active_model(active_model_id);
+                let mut settings = state.settings.lock().unwrap();
+                settings.active_model_id = models.get_active_model().map(|m| m.id.clone());
+                state.ai.lock().unwrap().configure(&settings);
+                // Como Handy: el modelo activo se carga en memoria al arrancar
+                if let Some(files) = models.get_active_local_model() {
+                    ai::local::preload(files);
                 }
             }
+
+            // Detectar GPU/RAM en segundo plano para recomendar el modelo que mejor cabe
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let (gpu, ram) = ai::local::hardware_mb();
+                handle.state::<AppState>().models.lock().unwrap().set_hardware(gpu, ram);
+                let _ = tauri::Emitter::emit(&handle, "models-updated", ());
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -105,7 +82,6 @@ fn main() {
             models::commands::delete_model,
             // Settings
             ai::commands::get_settings,
-            ai::commands::save_settings,
             ai::commands::get_compute_device,
         ])
         .run(tauri::generate_context!())

@@ -28,6 +28,10 @@ pub struct ModelManager {
     downloading: Mutex<HashSet<String>>,
     /// Download handles for pause/cancel
     download_handles: Mutex<std::collections::HashMap<String, DownloadHandle>>,
+    /// Velocidad medida en esta PC por modelo (tokens/segundo)
+    speeds: std::collections::HashMap<String, f64>,
+    /// Memoria disponible para modelos: (VRAM de la GPU, RAM), en MB
+    hardware_mb: Option<(Option<f64>, f64)>,
 }
 
 impl ModelManager {
@@ -43,7 +47,47 @@ impl ModelManager {
             available_models: Self::get_default_models(),
             downloading: Mutex::new(HashSet::new()),
             download_handles: Mutex::new(std::collections::HashMap::new()),
+            speeds: std::collections::HashMap::new(),
+            hardware_mb: None,
         }
+    }
+
+    /// Restaura las velocidades medidas guardadas
+    pub fn set_speeds(&mut self, speeds: std::collections::HashMap<String, f64>) {
+        self.speeds = speeds;
+    }
+
+    /// Registra la velocidad medida de un modelo y devuelve todas (para persistirlas)
+    pub fn record_speed(&mut self, model_id: &str, tokens_per_second: f64) -> &std::collections::HashMap<String, f64> {
+        self.speeds.insert(model_id.to_string(), tokens_per_second);
+        &self.speeds
+    }
+
+    /// Fija la memoria disponible (VRAM de la GPU si hay, y RAM) para elegir el recomendado
+    pub fn set_hardware(&mut self, gpu_vram_mb: Option<f64>, ram_mb: f64) {
+        self.hardware_mb = Some((gpu_vram_mb, ram_mb));
+    }
+
+    /// El mejor modelo (mayor benchmark) que cabe entero en la GPU; sin GPU, el mejor que
+    /// corre con soltura en CPU (hasta ~3.5 GB) y cabe en la RAM
+    fn recommended_id(&self) -> Option<String> {
+        let (gpu, ram) = self.hardware_mb?;
+        let limit = match gpu {
+            Some(vram) => vram - 1536.0,
+            None => 3500.0_f64.min(ram / 2.0),
+        };
+        // Solo se comparan puntajes del mismo benchmark (MATH-Vision); los demas van detras
+        let key = |m: &ModelInfo| {
+            let comparable = m.benchmark.as_deref().is_some_and(|b| b.starts_with("MATH-Vision"));
+            (comparable, m.benchmark_score.unwrap_or(0.0))
+        };
+        self.available_models.iter()
+            .filter(|m| m.size_mb <= limit)
+            .max_by(|a, b| {
+                let (ka, kb) = (key(a), key(b));
+                ka.0.cmp(&kb.0).then(ka.1.total_cmp(&kb.1))
+            })
+            .map(|m| m.id.clone())
     }
 
     /// Fija el directorio de modelos y lo crea si no existe
@@ -54,122 +98,96 @@ impl ModelManager {
         Ok(())
     }
 
-    /// Lista de modelos disponibles predefinidos
+    /// Lista de modelos disponibles predefinidos: todos leen dibujos (GGUF + mmproj).
+    /// Benchmarks tomados de las fichas oficiales en Hugging Face (Qwen y Google).
     pub(crate) fn get_default_models() -> Vec<ModelInfo> {
         vec![
-            ModelInfo {
-                id: "Qwen/Qwen3-VL-4B-Instruct-GGUF".to_string(),
-                name: "Qwen 3 VL 4B (lee dibujos)".to_string(),
-                description: "Modelo con vision: lee problemas escritos a mano y los explica paso a paso".to_string(),
-                filename: "Qwen3VL-4B-Instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: Some("mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf".to_string()),
-                size_mb: 2950.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["dibujos".to_string(), "matematicas".to_string(), "ecuaciones".to_string()],
-                tags: vec!["imagenes".to_string(), "4B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "ggml-org/Qwen2.5-VL-3B-Instruct-GGUF".to_string(),
-                name: "Qwen 2.5 VL 3B (lee dibujos)".to_string(),
-                description: "Modelo con vision mas ligero: lee problemas dibujados".to_string(),
-                filename: "Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: Some("mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf".to_string()),
-                size_mb: 2775.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["dibujos".to_string(), "aritmetica".to_string(), "pc-ligero".to_string()],
-                tags: vec!["imagenes".to_string(), "3B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF".to_string(),
-                name: "Llama 3.1 8B Instruct".to_string(),
-                description: "Modelo de Meta con excelente capacidad de razonamiento matematico".to_string(),
-                filename: "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 4915.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["matematicas".to_string(), "logica".to_string(), "general".to_string()],
-                tags: vec!["poderoso".to_string(), "8B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "bartowski/Qwen2.5-3B-Instruct-GGUF".to_string(),
-                name: "Qwen 2.5 3B Instruct".to_string(),
-                description: "Modelo de Alibaba eficiente, ideal para aritmetica basica".to_string(),
-                filename: "Qwen2.5-3B-Instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 2048.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["aritmetica".to_string(), "rapido".to_string(), "pc-ligero".to_string()],
-                tags: vec!["eficiente".to_string(), "3B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "lmstudio-community/Phi-3.5-mini-instruct-GGUF".to_string(),
-                name: "Phi 3.5 Mini 3.8B (Microsoft)".to_string(),
-                description: "Modelo pequeno de Microsoft con buen rendimiento en matematicas".to_string(),
-                filename: "Phi-3.5-mini-instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 2304.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["matematicas".to_string(), "ecuaciones".to_string(), "pc-ligero".to_string()],
-                tags: vec!["microsoft".to_string(), "3.8B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "bartowski/gemma-2-2b-it-GGUF".to_string(),
-                name: "Gemma 2 2B IT (Google)".to_string(),
-                description: "Modelo ligero de Google, perfecto para empezar con matematicas basicas".to_string(),
-                filename: "gemma-2-2b-it-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 1536.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["principiante".to_string(), "aritmetica".to_string(), "pc-ligero".to_string()],
-                tags: vec!["google".to_string(), "2B".to_string(), "ligero".to_string()],
-            },
-            ModelInfo {
-                id: "lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF".to_string(),
-                name: "Mistral 7B Instruct v3".to_string(),
-                description: "Modelo versatil con buen razonamiento para fracciones y ecuaciones".to_string(),
-                filename: "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 4096.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["matematicas".to_string(), "fracciones".to_string(), "ecuaciones".to_string()],
-                tags: vec!["versatil".to_string(), "7B".to_string(), "Q4".to_string()],
-            },
-            ModelInfo {
-                id: "bartowski/Qwen2.5-1.5B-Instruct-GGUF".to_string(),
-                name: "Qwen 2.5 1.5B Instruct".to_string(),
-                description: "El modelo mas ligero, corre en cualquier PC. Bueno para aritmetica basica".to_string(),
-                filename: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf".to_string(),
-                mmproj_filename: None,
-                size_mb: 1024.0,
-                is_downloaded: false,
-                is_downloading: false,
-                download_progress: 0.0,
-                is_active: false,
-                recommended_for: vec!["principiante".to_string(), "aritmetica".to_string(), "pc-antiguo".to_string()],
-                tags: vec!["ultra-ligero".to_string(), "1.5B".to_string(), "rapido".to_string()],
-            },
+            // Pequenos: corren en cualquier PC
+            Self::vision_model(
+                "unsloth/Qwen3.5-2B-GGUF", "Qwen 3.5 2B",
+                "El mas ligero: corre bien incluso sin GPU",
+                "Qwen3.5-2B-Q4_K_M.gguf", "mmproj-Qwen3.5-2B-F16.gguf", Some("mmproj-F16.gguf"),
+                1949.0, ("MathVista", 73.9), "pequeño", "2B",
+            ),
+            Self::vision_model(
+                "ggml-org/gemma-4-E2B-it-GGUF", "Gemma 4 E2B (Google)",
+                "Modelo ligero de Google pensado para equipos modestos",
+                "gemma-4-E2B-it-Q4_0.gguf", "mmproj-gemma-4-E2B-it-Q8_0.gguf", None,
+                3398.0, ("MATH-Vision", 52.4), "pequeño", "E2B",
+            ),
+            // Medianos: buen equilibrio entre calidad y velocidad
+            Self::vision_model(
+                "unsloth/Qwen3.5-4B-GGUF", "Qwen 3.5 4B",
+                "Muy buen razonamiento matematico para su tamano",
+                "Qwen3.5-4B-Q4_K_M.gguf", "mmproj-Qwen3.5-4B-F16.gguf", Some("mmproj-F16.gguf"),
+                3413.0, ("MATH-Vision", 74.6), "mediano", "4B",
+            ),
+            Self::vision_model(
+                "Qwen/Qwen3-VL-4B-Instruct-GGUF", "Qwen 3 VL 4B",
+                "Especializado en leer imagenes y texto escrito a mano",
+                "Qwen3VL-4B-Instruct-Q4_K_M.gguf", "mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf", None,
+                2950.0, ("MathVista", 79.5), "mediano", "4B",
+            ),
+            Self::vision_model(
+                "ggml-org/gemma-4-E4B-it-GGUF", "Gemma 4 E4B (Google)",
+                "Modelo mediano de Google con buena comprension de imagenes",
+                "gemma-4-E4B-it-Q4_0.gguf", "mmproj-gemma-4-E4B-it-Q8_0.gguf", None,
+                5151.0, ("MATH-Vision", 59.5), "mediano", "E4B",
+            ),
+            // Grandes: necesitan GPU con 8 GB o mas
+            Self::vision_model(
+                "unsloth/Qwen3.5-9B-GGUF", "Qwen 3.5 9B",
+                "Explicaciones de alta calidad; recomendado con GPU",
+                "Qwen3.5-9B-Q4_K_M.gguf", "mmproj-Qwen3.5-9B-F16.gguf", Some("mmproj-F16.gguf"),
+                6599.0, ("MATH-Vision", 78.9), "grande", "9B",
+            ),
+            Self::vision_model(
+                "ggml-org/gemma-4-12b-it-GGUF", "Gemma 4 12B (Google)",
+                "El mejor de Google que cabe en una GPU de 8-12 GB",
+                "gemma-4-12B-it-Q4_0.gguf", "mmproj-gemma-4-12B-it-Q8_0.gguf", None,
+                7379.0, ("MATH-Vision", 79.7), "grande", "12B",
+            ),
+            // Muy grandes (MoE): reparten capas entre GPU y CPU si no caben
+            Self::vision_model(
+                "ggml-org/gemma-4-26B-A4B-it-GGUF", "Gemma 4 26B A4B (Google)",
+                "Mixture of experts: calidad alta con la velocidad de un modelo de 4B",
+                "gemma-4-26B-A4B-it-Q4_0.gguf", "mmproj-gemma-4-26B-A4B-it-Q8_0.gguf", None,
+                15424.0, ("MATH-Vision", 82.4), "muy grande", "26B-A4B",
+            ),
+            Self::vision_model(
+                "unsloth/Qwen3.5-35B-A3B-GGUF", "Qwen 3.5 35B A3B",
+                "El mas potente: mixture of experts, requiere 32 GB de RAM o GPU grande",
+                "Qwen3.5-35B-A3B-Q4_K_M.gguf", "mmproj-Qwen3.5-35B-A3B-F16.gguf", Some("mmproj-F16.gguf"),
+                22915.0, ("MATH-Vision", 83.9), "muy grande", "35B-A3B",
+            ),
         ]
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vision_model(
+        id: &str, name: &str, description: &str,
+        filename: &str, mmproj: &str, mmproj_remote: Option<&str>,
+        size_mb: f64, (bench_name, bench_score): (&str, f64), tier: &str, params: &str,
+    ) -> ModelInfo {
+        ModelInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            description: description.to_string(),
+            filename: filename.to_string(),
+            mmproj_filename: Some(mmproj.to_string()),
+            mmproj_remote: mmproj_remote.map(String::from),
+            size_mb,
+            benchmark: Some(format!("{} {:.1}%", bench_name, bench_score)),
+            benchmark_score: Some(bench_score),
+            tokens_per_second: None,
+            is_recommended: false,
+            is_downloaded: false,
+            is_downloading: false,
+            download_progress: 0.0,
+            is_active: false,
+            recommended_for: vec!["dibujos".to_string(), "matematicas".to_string()],
+            tags: vec![tier.to_string(), params.to_string()],
+        }
     }
 
     /// Verifica que modelos ya estan descargados
@@ -198,6 +216,14 @@ impl ModelManager {
             .collect()
     }
 
+    /// Nombre del archivo en el repositorio de Hugging Face (puede diferir del nombre en disco)
+    fn remote_name<'a>(model: &'a ModelInfo, local: &'a str) -> &'a str {
+        match (&model.mmproj_filename, &model.mmproj_remote) {
+            (Some(mmproj), Some(remote)) if mmproj == local => remote,
+            _ => local,
+        }
+    }
+
     /// El modelo esta descargado si estan todos sus archivos
     fn is_complete(&self, model: &ModelInfo) -> bool {
         Self::model_files(model).iter().all(|f| self.find_file(model, f).is_some())
@@ -224,7 +250,7 @@ impl ModelManager {
             .join("snapshots");
         std::fs::read_dir(snapshots).ok()?
             .flatten()
-            .map(|e| e.path().join(filename))
+            .map(|e| e.path().join(Self::remote_name(model, filename)))
             .find(|p| p.is_file())
     }
 
@@ -243,7 +269,10 @@ impl ModelManager {
         self.refresh_download_status();
         let handles = self.download_handles.lock().unwrap();
         let mut models = self.available_models.clone();
+        let recommended = self.recommended_id();
         for m in &mut models {
+            m.tokens_per_second = self.speeds.get(&m.id).copied();
+            m.is_recommended = recommended.as_deref() == Some(m.id.as_str());
             if let Some(h) = handles.get(&m.id) {
                 let p = h.progress.load(Ordering::SeqCst);
                 m.is_downloading = (0..100).contains(&p) && !m.is_downloaded;
@@ -289,7 +318,7 @@ impl ModelManager {
         let files: Vec<(String, PathBuf, PathBuf)> = Self::model_files(model).into_iter()
             .filter(|f| self.find_file(model, f).is_none())
             .map(|f| (
-                format!("https://huggingface.co/{}/resolve/main/{}", model_id, f),
+                format!("https://huggingface.co/{}/resolve/main/{}", model_id, Self::remote_name(model, f)),
                 self.get_model_path(f),
                 self.get_partial_path(f),
             ))

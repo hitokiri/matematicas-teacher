@@ -8,6 +8,9 @@ interface ModelInfo {
   filename: string;
   mmproj_filename?: string | null;
   size_mb: number;
+  benchmark?: string | null;
+  tokens_per_second?: number | null;
+  is_recommended?: boolean;
   is_downloaded: boolean;
   is_downloading: boolean;
   download_progress: number;
@@ -150,17 +153,6 @@ export default function ModelBrowser({
     return model.download_progress;
   };
 
-  const getAccuracy = (model: ModelInfo) => {
-    if (model.recommended_for.includes('high-accuracy')) return 90;
-    if (model.recommended_for.includes('medium-accuracy')) return 70;
-    return 50;
-  };
-
-  const getSpeed = (model: ModelInfo) => {
-    if (model.recommended_for.includes('fast')) return 90;
-    if (model.recommended_for.includes('medium')) return 70;
-    return 50;
-  };
 
   const renderSection = (title: string, modelsList: ModelInfo[], icon: string) => {
     if (modelsList.length === 0) return null;
@@ -191,31 +183,25 @@ export default function ModelBrowser({
                       {model.mmproj_filename && (
                         <span className="badge recommended-badge">🖼 Lee dibujos</span>
                       )}
-                      {model.recommended_for.length > 0 && !model.is_downloaded && (
-                        <span className="badge recommended-badge">Recommended</span>
+                      {model.is_recommended && (
+                        <span className="badge recommended-badge">⭐ Recomendado para tu PC</span>
                       )}
                     </div>
                     <p className="model-description">{model.description}</p>
                   </div>
 
                   <div className="model-metrics">
-                    <div className="metric">
-                      <span className="metric-label">accuracy</span>
-                      <div className="metric-bar">
-                        <div 
-                          className="metric-fill accuracy" 
-                          style={{ width: `${getAccuracy(model)}%` }}
-                        />
-                      </div>
+                    <div className="metric" title="Puntaje de matematicas publicado por el autor del modelo">
+                      <span className="metric-label">🎯 Matemáticas (publicado)</span>
+                      <span className="metric-value">{model.benchmark ?? 'Sin datos'}</span>
                     </div>
-                    <div className="metric">
-                      <span className="metric-label">speed</span>
-                      <div className="metric-bar">
-                        <div 
-                          className="metric-fill speed" 
-                          style={{ width: `${getSpeed(model)}%` }}
-                        />
-                      </div>
+                    <div className="metric" title="Velocidad medida en esta PC la ultima vez que se uso">
+                      <span className="metric-label">⚡ Velocidad en tu PC</span>
+                      <span className="metric-value">
+                        {model.tokens_per_second
+                          ? `${model.tokens_per_second.toFixed(0)} tokens/s`
+                          : 'Úsalo para medirla'}
+                      </span>
                     </div>
                   </div>
 

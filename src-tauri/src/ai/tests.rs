@@ -174,6 +174,8 @@ fn test_embedded_model_generates_solution() {
     println!("dispositivo: {}", crate::ai::local::compute_device());
     let content = crate::ai::local::generate(&files, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7", None)
         .expect("el modelo integrado debe responder");
+    println!("{:.1} tokens/s\n{}", content.tokens_per_second, content.text);
+    let content = content.text;
     assert!(content.contains('2'), "respuesta inesperada: {}", content);
 }
 
@@ -192,6 +194,33 @@ fn test_embedded_vision_model_reads_drawing() {
         "La imagen contiene un problema de matematicas. Transcribelo en una linea que empiece con \"Problema:\" y resuelvelo.",
         Some(&image),
     ).expect("el modelo de vision debe responder");
-    println!("dispositivo: {}\n{}", crate::ai::local::compute_device(), content);
+    println!("dispositivo: {} ({:.1} tokens/s)\n{}", crate::ai::local::compute_device(), content.tokens_per_second, content.text);
+    let content = content.text;
     assert!(content.contains("Problema:"), "respuesta inesperada: {}", content);
+}
+
+#[test]
+fn test_strip_thinking_removes_reasoning_block() {
+    let out = crate::ai::local::strip_thinking("<think>\nprimero pienso...\n</think>\n\nPaso 1: restar 3");
+    assert_eq!(out, "Paso 1: restar 3");
+    assert_eq!(crate::ai::local::strip_thinking("  Paso 1  "), "Paso 1");
+}
+
+#[test]
+fn test_render_jinja_disables_thinking() {
+    // Fragmento al estilo de la plantilla de Qwen3.5
+    let tmpl = "{%- for m in messages %}{{- '<|im_start|>' + m.role + '\\n' + m.content + '<|im_end|>\\n' }}{%- endfor %}\
+{%- if add_generation_prompt %}{{- '<|im_start|>assistant\\n' }}\
+{%- if enable_thinking is defined and enable_thinking is false %}{{- '<think>\\n\\n</think>\\n\\n' }}{%- endif %}{%- endif %}";
+    let prompt = crate::ai::local::render_jinja(tmpl, "sistema", "2+2", "", "").unwrap();
+    assert!(prompt.contains("<|im_start|>user\n2+2<|im_end|>"));
+    assert!(prompt.ends_with("<think>\n\n</think>\n\n"), "debe pedir respuesta directa: {:?}", prompt);
+}
+
+#[test]
+fn test_transcription_on_following_lines() {
+    let problem = crate::types::MathProblem { text: String::new(), image: Some("data:image/png;base64,AA==".into()) };
+    let content = "Problema:  \nResuelve la ecuación:  \n3x + 4 = 19\n\n---\n\nx = 5";
+    let solution = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
+    assert_eq!(solution.problem, "Resuelve la ecuación: 3x + 4 = 19");
 }

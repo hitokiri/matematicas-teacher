@@ -4,18 +4,12 @@ import MainApp from './pages/MainApp'
 import Settings from './pages/Settings'
 
 export interface AppSettings {
-  provider: 'local' | 'openai' | 'anthropic'
-  openai_key: string
-  anthropic_key: string
   active_model_id: string | null
 }
 
 function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<AppSettings>({
-    provider: 'local',
-    openai_key: '',
-    anthropic_key: '',
     active_model_id: null,
   })
   const [isLoaded, setIsLoaded] = useState(false)
@@ -46,19 +40,10 @@ function App() {
     }
   }
 
-  async function saveSettings(newSettings: AppSettings) {
-    try {
-      await invoke('save_settings', {
-        provider: newSettings.provider,
-        openaiKey: newSettings.openai_key,
-        anthropicKey: newSettings.anthropic_key,
-        activeModelId: newSettings.active_model_id,
-      })
-      setSettings(newSettings)
-      setShowSettings(false)
-    } catch (e) {
-      console.error('Error saving settings:', e)
-    }
+  // El modelo activo se guarda al seleccionarlo; al cerrar se recarga para la pantalla principal
+  function closeSettings() {
+    setShowSettings(false)
+    void loadSettings()
   }
 
   function toggleTheme() {
@@ -95,13 +80,9 @@ function App() {
       </button>
 
       {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+        <div className="modal-overlay" onClick={closeSettings}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <Settings 
-              settings={settings}
-              onSave={saveSettings}
-              onCancel={() => setShowSettings(false)}
-            />
+            <Settings onCancel={closeSettings} />
           </div>
         </div>
       )}

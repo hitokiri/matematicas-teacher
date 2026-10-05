@@ -429,10 +429,11 @@ describe('ModelBrowser Component', () => {
     expect(screen.getByText(/2048 MB/)).toBeInTheDocument()
   })
 
-  it('shows recommended badge for non-downloaded models', () => {
+  it('shows the recommended badge only on the model that fits this PC', () => {
+    const models = createMockModels().map(m => ({ ...m, is_recommended: m.id === 'model-2' }))
     render(
       <ModelBrowser
-        models={createMockModels()}
+        models={models}
         onListModels={vi.fn()}
         onDownload={vi.fn()}
         onSelect={vi.fn()}
@@ -443,7 +444,9 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getAllByText('Recommended')[0]).toBeInTheDocument()
+    const badges = screen.getAllByText(/Recomendado para tu PC/)
+    expect(badges).toHaveLength(1)
+    expect(badges[0].closest('.model-card')).toHaveTextContent('Qwen 2.5 3B')
   })
 
   it('shows model tags', () => {
@@ -506,10 +509,13 @@ describe('ModelBrowser Component', () => {
     expect(onListModels).toHaveBeenCalled()
   })
 
-  it('renders metrics bars for accuracy and speed', () => {
+  it('shows published benchmark and speed measured on this PC', () => {
+    const models = createMockModels().map(m => m.id === 'model-1'
+      ? { ...m, benchmark: 'MATH-Vision 74.6%', tokens_per_second: 123.4 }
+      : m)
     render(
       <ModelBrowser
-        models={createMockModels()}
+        models={models}
         onListModels={vi.fn()}
         onDownload={vi.fn()}
         onSelect={vi.fn()}
@@ -520,7 +526,10 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getAllByText('accuracy')[0]).toBeInTheDocument()
-    expect(screen.getAllByText('speed')[0]).toBeInTheDocument()
+    expect(screen.getByText('MATH-Vision 74.6%')).toBeInTheDocument()
+    expect(screen.getByText('123 tokens/s')).toBeInTheDocument()
+    // Sin datos reales no se inventa nada
+    expect(screen.getAllByText('Sin datos').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Úsalo para medirla').length).toBeGreaterThan(0)
   })
 })

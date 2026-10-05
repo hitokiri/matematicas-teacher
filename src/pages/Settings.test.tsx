@@ -32,29 +32,18 @@ const createMockModels = () => [
   },
 ]
 
-const mockSettings = {
-  provider: 'local' as const,
-  openai_key: '',
-  anthropic_key: '',
-  active_model_id: null,
-}
-
 describe('Settings Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInvoke.mockReset()
   })
 
-  it('renders settings modal with provider options', async () => {
+  it('renders settings modal with only local models', async () => {
     mockInvoke.mockResolvedValue(createMockModels())
-    
-    const onSave = vi.fn()
     const onCancel = vi.fn()
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={onSave}
         onCancel={onCancel}
       />
     )
@@ -63,10 +52,11 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/Proveedor de IA/)).toBeInTheDocument()
-    expect(screen.getByText('Modelo Local (GGUF)')).toBeInTheDocument()
-    expect(screen.getByText('OpenAI (GPT-4)')).toBeInTheDocument()
-    expect(screen.getByText('Anthropic (Claude)')).toBeInTheDocument()
+    expect(screen.getByText(/Hardware del modelo local/)).toBeInTheDocument()
+    // Solo modelos locales: sin proveedores en la nube ni boton de guardar
+    expect(screen.queryByText(/OpenAI/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Anthropic/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /guardar/i })).not.toBeInTheDocument()
   })
 
   it('shows the hardware used by the local model', async () => {
@@ -74,97 +64,19 @@ describe('Settings Component', () => {
       cmd === 'get_compute_device' ? 'GPU: NVIDIA GeForce RTX 5070 Ti' : createMockModels()
     )
 
-    render(<Settings settings={mockSettings} onSave={vi.fn()} onCancel={vi.fn()} />)
+    render(<Settings onCancel={vi.fn()} />)
 
     await waitFor(() => {
       expect(screen.getByText('GPU: NVIDIA GeForce RTX 5070 Ti')).toBeInTheDocument()
     })
   })
 
-  it('switches between provider options', async () => {
-    mockInvoke.mockResolvedValue(createMockModels())
-    
-    const onSave = vi.fn()
-    const onCancel = vi.fn()
-    
-    render(
-      <Settings
-        settings={mockSettings}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
-    })
-
-    const openaiOption = screen.getByRole('radio', { name: /openai/i })
-    fireEvent.click(openaiOption)
-
-    expect(screen.getByPlaceholderText('sk-proj-...')).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText('sk-ant-...')).not.toBeInTheDocument()
-  })
-
-  it('shows Anthropic API key when Anthropic selected', async () => {
-    mockInvoke.mockResolvedValue(createMockModels())
-    
-    const settings = { ...mockSettings, provider: 'openai' as const }
-    
-    render(
-      <Settings
-        settings={settings}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-      />
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
-    })
-
-    const anthropicOption = screen.getByRole('radio', { name: /anthropic/i })
-    fireEvent.click(anthropicOption)
-
-    expect(screen.getByPlaceholderText('sk-ant-...')).toBeInTheDocument()
-  })
-
-  it('calls onSave when save button is clicked', async () => {
-    mockInvoke.mockResolvedValue(createMockModels())
-    
-    const onSave = vi.fn()
-    const onCancel = vi.fn()
-    
-    render(
-      <Settings
-        settings={mockSettings}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
-    })
-
-    const saveButton = screen.getByText(/guardar/i)
-    fireEvent.click(saveButton)
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalled()
-    })
-  })
-
   it('calls onCancel when back button is clicked', async () => {
     mockInvoke.mockResolvedValue(createMockModels())
-    
-    const onSave = vi.fn()
     const onCancel = vi.fn()
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={onSave}
         onCancel={onCancel}
       />
     )
@@ -184,8 +96,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -210,8 +120,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -245,8 +153,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -276,8 +182,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -319,8 +223,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -361,8 +263,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -406,8 +306,6 @@ describe('Settings Component', () => {
     
     render(
       <Settings
-        settings={mockSettings}
-        onSave={vi.fn()}
         onCancel={vi.fn()}
       />
     )
@@ -429,38 +327,4 @@ describe('Settings Component', () => {
     window.confirm = originalConfirm
   })
 
-  it('updates local settings when provider changes', async () => {
-    mockInvoke.mockResolvedValue(createMockModels())
-    
-    const onSave = vi.fn()
-    const onCancel = vi.fn()
-    
-    render(
-      <Settings
-        settings={mockSettings}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
-    })
-
-    const openaiRadio = screen.getByRole('radio', { name: /openai/i })
-    fireEvent.click(openaiRadio)
-
-    const apiKeyInput = screen.getByPlaceholderText('sk-proj-...')
-    fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key-123' } })
-
-    const saveButton = screen.getByText(/guardar/i)
-    fireEvent.click(saveButton)
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalled()
-      const calledWith = onSave.mock.calls[0][0]
-      expect(calledWith.provider).toBe('openai')
-      expect(calledWith.openai_key).toBe('sk-test-key-123')
-    })
-  })
 })

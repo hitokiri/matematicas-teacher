@@ -1,106 +1,34 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use serde::{Deserialize, Serialize};
 
 use crate::ai::local::LocalModel;
-use crate::types::{AIProvider, AppSettings, MathProblem, Solution, SolutionStep};
-
-#[derive(Debug, Deserialize)]
-struct OpenAIResponse {
-    #[serde(default)]
-    choices: Vec<OpenAIChoice>,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIChoice {
-    message: OpenAIMessage,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIMessage {
-    content: String,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAIRequest {
-    model: String,
-    messages: Vec<OpenAIMessageInput>,
-}
-
-#[derive(Debug, Serialize)]
-struct OpenAIMessageInput {
-    role: String,
-    content: serde_json::Value,
-}
-
-#[derive(Debug, Deserialize)]
-struct AnthropicResponse {
-    #[serde(default)]
-    content: Vec<AnthropicContent>,
-}
-
-#[derive(Debug, Deserialize)]
-struct AnthropicContent {
-    text: String,
-}
-
-#[derive(Debug, Serialize)]
-struct AnthropicRequest {
-    model: String,
-    messages: Vec<AnthropicMessageInput>,
-    max_tokens: u32,
-}
-
-#[derive(Debug, Serialize)]
-struct AnthropicMessageInput {
-    role: String,
-    content: serde_json::Value,
-}
+use crate::types::{AppSettings, MathProblem, Solution, SolutionStep};
 
 /// llama-server propio (respaldo) para el modelo activo: (archivos del modelo, puerto, proceso)
 static LOCAL_SERVER: Mutex<Option<(LocalModel, u16, tokio::process::Child)>> = Mutex::new(None);
 
+/// Solo modelos locales: la inferencia corre dentro de la app
 pub struct AIEngine {
-    provider: AIProvider,
-    openai_key: String,
-    anthropic_key: String,
     active_model_id: Option<String>,
 }
 
 impl AIEngine {
     pub fn new() -> Self {
-        Self {
-            provider: AIProvider::Local,
-            openai_key: String::new(),
-            anthropic_key: String::new(),
-            active_model_id: None,
-        }
+        Self { active_model_id: None }
     }
 
     pub fn configure(&mut self, settings: &AppSettings) {
-        self.provider = settings.provider.clone();
-        self.openai_key = settings.openai_key.clone();
-        self.anthropic_key = settings.anthropic_key.clone();
         self.active_model_id = settings.active_model_id.clone();
     }
 
     pub async fn solve(&self, problem: &MathProblem, local_model: Option<LocalModel>) -> Result<Solution> {
-        match &self.provider {
-            AIProvider::OpenAI => Self::solve_with_openai(problem, &self.openai_key).await,
-            AIProvider::Anthropic => Self::solve_with_anthropic(problem, &self.anthropic_key).await,
-            AIProvider::Local => Self::solve_locally(problem, local_model.as_ref(), self.active_model_id.as_deref()).await,
-        }
+        Self::solve_locally(problem, local_model.as_ref(), self.active_model_id.as_deref()).await
     }
 
     // Static method for use in commands
     pub async fn solve_with_settings(problem: &MathProblem, settings: &AppSettings, local_model: Option<LocalModel>) -> Result<Solution> {
-        let engine = Self {
-            provider: settings.provider.clone(),
-            openai_key: settings.openai_key.clone(),
-            anthropic_key: settings.anthropic_key.clone(),
-            active_model_id: settings.active_model_id.clone(),
-        };
+        let engine = Self { active_model_id: settings.active_model_id.clone() };
         engine.solve(problem, local_model).await
     }
 
@@ -119,7 +47,8 @@ REGLAS IMPORTANTES:
 4. Al final, da la respuesta final claramente con "Respuesta final:"
 5. Para fracciones, simplifica siempre cuando sea posible
 6. Usa formato claro con saltos de linea entre cada paso
-7. NO des solo la respuesta - explica el PROCESO completo"#.to_string()
+7. NO des solo la respuesta - explica el PROCESO completo
+8. Escribe las operaciones en texto plano (por ejemplo 3x + 4 = 19, 15 / 3 = 5); NO uses LaTeX ni simbolos $"#.to_string()
     }
 
     /// Texto del usuario; si hay dibujo, se le pide al modelo que lea la imagen
@@ -147,9 +76,21 @@ REGLAS IMPORTANTES:
     /// Si el modelo transcribio el dibujo ("Problema: ..."), usarlo como enunciado
     pub(crate) fn with_transcription(mut solution: Solution, content: &str, problem: &MathProblem) -> Solution {
         if problem.image.is_some() {
-            let transcribed = content.lines().find_map(|l| {
-                let clean = l.trim().trim_start_matches(|c: char| c == '*' || c == '#' || c == ' ');
-                clean.strip_prefix("Problema:").map(|t| t.trim().trim_matches('*').trim().to_string())
+            let clean = |l: &str| l.trim().trim_start_matches(|c: char| c == '*' || c == '#' || c == ' ')
+                .trim_matches('*').trim().to_string();
+            let lines: Vec<String> = content.lines().map(clean).collect();
+            // "Problema: 3x + 4 = 19", o "Problema:" con el enunciado en las lineas siguientes
+            let transcribed = lines.iter().position(|l| l.starts_with("Problema:")).and_then(|i| {
+                let same_line = lines[i]["Problema:".len()..].trim().trim_matches('*').trim().to_string();
+                if !same_line.is_empty() {
+                    return Some(same_line);
+                }
+                let following: Vec<&str> = lines[i + 1..].iter()
+                    .skip_while(|l| l.is_empty())
+                    .take_while(|l| !l.is_empty() && !l.starts_with("---"))
+                    .map(|l| l.as_str())
+                    .collect();
+                Some(following.join(" "))
             });
             if let Some(t) = transcribed.filter(|t| !t.is_empty()) {
                 solution.problem = t;
@@ -186,80 +127,6 @@ REGLAS IMPORTANTES:
             return Err(anyhow::anyhow!("{} respondio {}: {}", provider, status, msg));
         }
         Ok(body)
-    }
-
-    async fn solve_with_openai(problem: &MathProblem, api_key: &str) -> Result<Solution> {
-        if api_key.trim().is_empty() {
-            return Err(anyhow::anyhow!("Falta la API key de OpenAI. Agregala en Configuracion."));
-        }
-        let user_prompt = Self::user_prompt(problem);
-        let user_content = match &problem.image {
-            Some(image) => serde_json::json!([
-                { "type": "text", "text": user_prompt },
-                { "type": "image_url", "image_url": { "url": image } },
-            ]),
-            None => serde_json::json!(user_prompt),
-        };
-
-        let resp = reqwest::Client::new()
-            .post("https://api.openai.com/v1/chat/completions")
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&OpenAIRequest {
-                model: if problem.image.is_some() { "gpt-4o-mini" } else { "gpt-3.5-turbo" }.to_string(),
-                messages: vec![
-                    OpenAIMessageInput { role: "system".to_string(), content: serde_json::json!(Self::build_system_prompt()) },
-                    OpenAIMessageInput { role: "user".to_string(), content: user_content },
-                ],
-            })
-            .send()
-            .await
-            .map_err(|e| anyhow::anyhow!("No se pudo conectar con OpenAI: {}", e))?;
-
-        let body = Self::read_json(resp, "OpenAI").await?;
-        let parsed: OpenAIResponse = serde_json::from_value(body)?;
-        let content = parsed.choices.first()
-            .map(|c| c.message.content.clone())
-            .ok_or_else(|| anyhow::anyhow!("OpenAI no devolvio respuesta"))?;
-
-        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
-    }
-
-    async fn solve_with_anthropic(problem: &MathProblem, api_key: &str) -> Result<Solution> {
-        if api_key.trim().is_empty() {
-            return Err(anyhow::anyhow!("Falta la API key de Anthropic. Agregala en Configuracion."));
-        }
-        let user_prompt = format!("{}\n\n{}", Self::build_system_prompt(), Self::user_prompt(problem));
-        let user_content = match &problem.image {
-            Some(image) => {
-                let (media_type, data) = Self::split_data_url(image)?;
-                serde_json::json!([
-                    { "type": "image", "source": { "type": "base64", "media_type": media_type, "data": data } },
-                    { "type": "text", "text": user_prompt },
-                ])
-            }
-            None => serde_json::json!(user_prompt),
-        };
-
-        let resp = reqwest::Client::new()
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", api_key)
-            .header("anthropic-version", "2023-06-01")
-            .json(&AnthropicRequest {
-                model: "claude-3-haiku-20240307".to_string(),
-                messages: vec![AnthropicMessageInput { role: "user".to_string(), content: user_content }],
-                max_tokens: 2048,
-            })
-            .send()
-            .await
-            .map_err(|e| anyhow::anyhow!("No se pudo conectar con Anthropic: {}", e))?;
-
-        let body = Self::read_json(resp, "Anthropic").await?;
-        let parsed: AnthropicResponse = serde_json::from_value(body)?;
-        let content = parsed.content.first()
-            .map(|c| c.text.clone())
-            .ok_or_else(|| anyhow::anyhow!("Anthropic no devolvio respuesta"))?;
-
-        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
     }
 
     async fn solve_locally(problem: &MathProblem, local_model: Option<&LocalModel>, active_id: Option<&str>) -> Result<Solution> {
@@ -318,10 +185,12 @@ REGLAS IMPORTANTES:
         };
         let files = files.clone();
         let user = Self::user_prompt(problem);
-        let content = tokio::task::spawn_blocking(move || {
+        let generation = tokio::task::spawn_blocking(move || {
             crate::ai::local::generate(&files, &Self::build_system_prompt(), &user, image.as_deref())
         })
         .await??;
+        crate::ai::local::record_speed(generation.tokens_per_second);
+        let content = generation.text;
         if content.is_empty() {
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }

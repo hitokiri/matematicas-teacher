@@ -10,9 +10,6 @@ export interface Solution {
 }
 
 export interface AppSettings {
-  provider: string;
-  openai_key: string;
-  anthropic_key: string;
   active_model_id: string | null;
 }
 
@@ -23,6 +20,9 @@ export interface ModelInfo {
   filename: string;
   mmproj_filename?: string | null;
   size_mb: number;
+  benchmark?: string | null;
+  tokens_per_second?: number | null;
+  is_recommended?: boolean;
   is_downloaded: boolean;
   is_downloading: boolean;
   download_progress: number;
@@ -41,20 +41,6 @@ export async function solveProblem(problemText: string): Promise<Solution> {
 export async function getSettings(): Promise<AppSettings> {
   const result = await window.__TAURI__.core.invoke('get_settings');
   return result as AppSettings;
-}
-
-export async function saveSettings(settings: {
-  provider: string;
-  openaiKey: string;
-  anthropicKey: string;
-  activeModelId: string | null;
-}): Promise<void> {
-  await window.__TAURI__.core.invoke('save_settings', {
-    provider: settings.provider,
-    openaiKey: settings.openaiKey,
-    anthropicKey: settings.anthropicKey,
-    activeModelId: settings.activeModelId,
-  });
 }
 
 export async function listModels(): Promise<ModelInfo[]> {
