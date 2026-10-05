@@ -1221,3 +1221,20 @@ body {
   25% { transform: translateX(-3px); }
   75% { transform: translateX(3px); }
 }
+
+/* Pizzas */
+.pizza { animation: pan-drop 0.5s ease both; }
+.slice { stroke: #7a4f2a; stroke-width: 2; }
+.slice.taken { fill: #ffc94d; }
+.slice.second { fill: #ff8fb1; }
+.slice.removed { fill: #ffc94d; opacity: 0.35; }
+.slice.empty { fill: rgba(255, 255, 255, 0.06); stroke: #f4f1e8; stroke-dasharray: 5 4; stroke-width: 1.5; }
+.pepperoni { fill: #d9534f; opacity: 0.85; }
+.pizza-crust { fill: none; stroke: #e09a3e; stroke-width: 6; }
+
+/* Rectangulo para multiplicar fracciones */
+.grid-cell { fill: rgba(255, 255, 255, 0.04); stroke: #f4f1e8; stroke-width: 1.5; }
+.grid-cell.col { fill: #7cc4ef; }
+.grid-cell.row { fill: #f2d55c; }
+.grid-cell.both { fill: #ff9ecf; }
+.grid-frame { fill: none; stroke: #f4f1e8; stroke-width: 4; }

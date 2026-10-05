@@ -1,11 +1,118 @@
-import type { PanItem, Visual } from '../lib/board/types'
+import type { ReactElement } from 'react'
+import type { PanItem, Pizza, PizzaTerm, Visual } from '../lib/board/types'
 
 /** Dibujo que acompana a la pizarra (balanza, pizzas...) con estilo de tiza */
 export default function BoardVisual({ visual }: { visual: Visual }) {
   switch (visual.kind) {
     case 'balance':
       return <Balance left={visual.left} right={visual.right} />
+    case 'pizzas':
+      return <Pizzas terms={visual.terms} ops={visual.ops} />
+    case 'grid':
+      return <Grid {...visual} />
   }
+}
+
+// ---------- Pizzas ----------
+
+const R = 54
+const PIZZA_GAP = 14
+const OP_W = 56
+
+function Pizzas({ terms, ops }: { terms: PizzaTerm[]; ops: string[] }) {
+  const termWidth = (t: PizzaTerm) => t.pizzas.length * (2 * R) + (t.pizzas.length - 1) * PIZZA_GAP
+  const width = terms.reduce((w, t) => w + termWidth(t), 0) + ops.length * OP_W + 40
+  const height = 2 * R + 70
+  let x = 20
+  const parts: ReactElement[] = []
+  terms.forEach((t, k) => {
+    const tw = termWidth(t)
+    t.pizzas.forEach((p, i) => {
+      const cx = x + R + i * (2 * R + PIZZA_GAP)
+      parts.push(<PizzaShape key={`p${k}-${i}`} cx={cx} cy={R + 14} pizza={p} delay={(k * 3 + i) * 0.12} />)
+    })
+    parts.push(
+      <text key={`l${k}`} className="chalk-text" x={x + tw / 2} y={2 * R + 58} textAnchor="middle" fontSize={30}>
+        {t.label}
+      </text>,
+    )
+    x += tw
+    if (k < ops.length) {
+      parts.push(
+        <text key={`o${k}`} className="chalk-text tone-op" x={x + OP_W / 2} y={R + 26} textAnchor="middle" fontSize={40}>
+          {ops[k]}
+        </text>,
+      )
+      x += OP_W
+    }
+  })
+  return (
+    <svg className="board-visual" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Pizzas">
+      {parts}
+    </svg>
+  )
+}
+
+function PizzaShape({ cx, cy, pizza, delay }: { cx: number; cy: number; pizza: Pizza; delay: number }) {
+  const { slices, filled } = pizza
+  const second = pizza.second ?? 0
+  const removed = pizza.removed ?? 0
+  const wedge = (i: number) => {
+    if (slices === 1) return `M ${cx - R} ${cy} A ${R} ${R} 0 1 0 ${cx + R} ${cy} A ${R} ${R} 0 1 0 ${cx - R} ${cy} Z`
+    const a0 = -Math.PI / 2 + (i * 2 * Math.PI) / slices
+    const a1 = a0 + (2 * Math.PI) / slices
+    const large = a1 - a0 > Math.PI ? 1 : 0
+    return `M ${cx} ${cy} L ${cx + R * Math.cos(a0)} ${cy + R * Math.sin(a0)} A ${R} ${R} 0 ${large} 1 ${cx + R * Math.cos(a1)} ${cy + R * Math.sin(a1)} Z`
+  }
+  const mid = (i: number, f = 0.6) => {
+    const a = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / slices
+    return slices === 1 ? { x: cx, y: cy } : { x: cx + R * f * Math.cos(a), y: cy + R * f * Math.sin(a) }
+  }
+  return (
+    <g className="pizza" style={{ animationDelay: `${delay}s` }}>
+      {Array.from({ length: slices }, (_, i) => {
+        const taken = i < filled
+        const isSecond = taken && i >= filled - second
+        const isRemoved = taken && i >= filled - removed
+        const cls = !taken ? 'slice empty' : isRemoved ? 'slice removed' : isSecond ? 'slice second' : 'slice taken'
+        const m = mid(i)
+        const r = Math.max(4, Math.min(9, 40 / slices + 2))
+        return (
+          <g key={i}>
+            <path className={cls} d={wedge(i)} />
+            {taken && !isRemoved && <circle className="pepperoni" cx={m.x} cy={m.y} r={r} />}
+            {isRemoved && (
+              <path className="pan-cross" d={`M ${m.x - 8} ${m.y - 8} L ${m.x + 8} ${m.y + 8} M ${m.x + 8} ${m.y - 8} L ${m.x - 8} ${m.y + 8}`} />
+            )}
+          </g>
+        )
+      })}
+      <circle className="pizza-crust" cx={cx} cy={cy} r={R} />
+    </g>
+  )
+}
+
+// ---------- Rectangulo para multiplicar fracciones ----------
+
+function Grid({ rows, cols, rowsFilled, colsFilled }: { rows: number; cols: number; rowsFilled: number; colsFilled: number }) {
+  const size = 300
+  const cw = size / cols
+  const ch = size / rows
+  const cells: ReactElement[] = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const inCol = c < colsFilled
+      const inRow = r < rowsFilled
+      const cls = inCol && inRow ? 'grid-cell both' : inCol ? 'grid-cell col' : inRow ? 'grid-cell row' : 'grid-cell'
+      cells.push(<rect key={`${r}-${c}`} className={cls} x={20 + c * cw} y={20 + r * ch} width={cw} height={ch} />)
+    }
+  }
+  return (
+    <svg className="board-visual" viewBox={`0 0 ${size + 40} ${size + 40}`} role="img" aria-label="Rectángulo de fracciones">
+      {cells}
+      <rect className="grid-frame" x={20} y={20} width={size} height={size} />
+    </svg>
+  )
 }
 
 const W = 640

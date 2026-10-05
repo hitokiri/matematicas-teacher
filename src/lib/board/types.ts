@@ -35,9 +35,30 @@ export interface PanItem {
   group?: number
 }
 
+/** Una pizza cortada en `slices` rebanadas iguales */
+export interface Pizza {
+  slices: number
+  /** Rebanadas tomadas (color 1) */
+  filled: number
+  /** Rebanadas tomadas de la segunda fraccion, despues de las primeras (color 2) */
+  second?: number
+  /** De las tomadas, cuantas se quitan (resta): se dibujan tachadas */
+  removed?: number
+}
+
+export interface PizzaTerm {
+  /** Fraccion escrita debajo, p. ej. "1/2" */
+  label: string
+  pizzas: Pizza[]
+}
+
 /** Dibujo que acompana a la pizarra en un paso */
 export type Visual =
   | { kind: 'balance'; left: PanItem[]; right: PanItem[]; groups?: number }
+  /** Pizzas separadas por signos: [1/2] + [1/4] = [3/4] */
+  | { kind: 'pizzas'; terms: PizzaTerm[]; ops: string[] }
+  /** Rectangulo para multiplicar fracciones: filas de la primera, columnas de la segunda */
+  | { kind: 'grid'; rows: number; cols: number; rowsFilled: number; colsFilled: number }
 
 export interface BoardStep {
   /** Lo que dice la maestra en este paso */

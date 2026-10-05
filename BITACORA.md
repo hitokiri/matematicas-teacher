@@ -420,3 +420,10 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - `src/components/BoardVisual.tsx`: balanza con bolsas x y pesas; tacha lo que se quita de los dos lados
   y dibuja los grupos iguales al repartir. Se muestra bajo la pizarra en cada paso.
 - Casos especiales: "cualquier numero sirve" y "no tiene solucion".
+
+### Fracciones con pizzas (2026-10-04)
+- `src/lib/board/fraction.ts`: suma y resta (recortar a rebanadas del mismo tamano con la "tabla" comun),
+  multiplicacion (rectangulo de filas x columnas; entero x fraccion = sumar varias veces), division
+  (voltear y multiplicar), simplificar y pasar a enteros + fraccion. Todo con numeros exactos.
+- Pizzas en `BoardVisual.tsx`: rebanadas tomadas, las de la segunda fraccion en otro color, las que se
+  restan tachadas. "/" se lee como fraccion; "1/2" sola ya no va a division en casita.

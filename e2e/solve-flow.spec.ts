@@ -57,6 +57,21 @@ test.describe('Flujo de resolver problemas', () => {
     expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
   });
 
+  test('fracciones: la app las resuelve con pizzas', async ({ page }) => {
+    await page.locator('.problem-input').fill('1/2 + 1/4');
+    await solveButton(page).click();
+
+    await expect(page.locator('.board-visual')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /pausa/i }).click();
+    // Inicio: dos pizzas (medios y cuartos) con 1 rebanada tomada cada una
+    await expect(page.locator('.pizza')).toHaveCount(2);
+    await expect(page.locator('.slice.taken')).toHaveCount(2);
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalk-answer')).toContainText('3/4');
+    expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
+  });
+
   test('otro problema: el modelo explica y la pizarra escribe cada paso', async ({ page }) => {
     await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();
