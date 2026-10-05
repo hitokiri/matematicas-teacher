@@ -6,6 +6,7 @@ import Chalkboard from '../components/Chalkboard'
 import { parseArithmetic } from '../lib/board/parse'
 import { buildArithmetic } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
+import { expressionScript, parseExpression } from '../lib/board/expression'
 import type { BoardScript } from '../lib/board/types'
 
 interface AppSettings {
@@ -25,6 +26,14 @@ interface Solution {
 
 interface MainAppProps {
   settings: AppSettings
+}
+
+/** Pizarra que la app resuelve sola: cuentas en columna o expresiones (orden de operaciones, raices) */
+function boardFor(text: string): BoardScript | null {
+  const arithmetic = parseArithmetic(text)
+  if (arithmetic) return buildArithmetic(arithmetic)
+  const expression = parseExpression(text)
+  return expression ? expressionScript(expression, text.trim()) : null
 }
 
 function MainApp({ settings }: MainAppProps) {
@@ -51,10 +60,10 @@ function MainApp({ settings }: MainAppProps) {
     setSolution(null)
     setBoard(null)
 
-    // Las cuentas escritas se resuelven en la pizarra con el algoritmo de la escuela, al instante
-    const arithmetic = inputMode === 'text' ? parseArithmetic(problemText) : null
-    if (arithmetic) {
-      showBoard(buildArithmetic(arithmetic))
+    // Las cuentas y expresiones numericas las resuelve la app en la pizarra, al instante
+    const own = inputMode === 'text' ? boardFor(problemText) : null
+    if (own) {
+      showBoard(own)
       return
     }
 
@@ -65,8 +74,8 @@ function MainApp({ settings }: MainAppProps) {
         problemImage: inputMode === 'draw' ? problemImage : null,
       })
       // Si el modelo leyo una cuenta en el dibujo, la pizarra la hace con el algoritmo exacto
-      const read = parseArithmetic(result.problem)
-      showBoard(read ? buildArithmetic(read) : solutionScript(result))
+      const read = boardFor(result.problem)
+      showBoard(read ?? solutionScript(result))
       if (!read) setSolution(result)
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e?.message || 'Error al resolver el problema')

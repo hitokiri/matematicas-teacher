@@ -46,7 +46,8 @@ REGLAS:
 5. "operacion": la cuenta de ese paso en texto plano, por ejemplo "2x = 7 - 3 = 4" o "3 × 3 = 9". Sin LaTeX ni simbolos $. Vacia ("") si el paso no tiene cuenta.
 6. "problema": el enunciado tal cual (si viene en una imagen, transcribelo).
 7. "respuesta_final": solo el resultado, por ejemplo "x = 5" o "18".
-8. Para fracciones, simplifica siempre que se pueda. Revisa tus cuentas antes de responder."#.to_string()
+8. Para fracciones, simplifica siempre que se pueda. Revisa tus cuentas antes de responder.
+9. No te saltes calculos: cada resultado debe salir de una operacion escrita en un paso anterior. Si un resultado es aproximado (por ejemplo una raiz no exacta), muestra como se encuentra probando numeros."#.to_string()
     }
 
     #[cfg(test)]

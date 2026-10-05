@@ -1042,6 +1042,8 @@ body {
 .chalk-text.tone-result { fill: #ff9ecf; stroke: #ff9ecf; }
 .chalk-text.tone-muted { fill: #c9d6cc; stroke: #c9d6cc; opacity: 0.85; }
 .chalk-text.tone-line-text { fill: #f4f1e8; }
+.chalk-text tspan.tone-result { fill: #ff9ecf; stroke: #ff9ecf; }
+.chalk-text tspan.tone-carry { fill: #ffe066; stroke: #ffe066; }
 
 .chalk-line {
   stroke: #f4f1e8;

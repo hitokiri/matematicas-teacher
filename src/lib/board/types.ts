@@ -14,6 +14,8 @@ export type BoardItem =
       small?: boolean
       /** 'center' para digitos en su celda; 'start' para renglones de texto */
       align?: 'center' | 'start'
+      /** Partes del renglon con su propio color (p. ej. el numero recien calculado) */
+      parts?: Array<{ text: string; tone?: Tone }>
     }
   /** Raya horizontal bajo la fila `row`, de la columna `from` a la `to` (incluidas) */
   | { id: string; kind: 'line'; row: number; from: number; to: number }

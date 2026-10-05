@@ -399,3 +399,6 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   y cada operacion se escribe en un renglon de la pizarra. La explicacion en texto queda en un desplegable.
 - Gramatica rapida: se muestrea sin gramatica y solo si el token no la cumple se filtra todo el vocabulario
   (como llama-server): Qwen3.5 2B ~320 tokens/s con JSON vs ~44 aplicandola siempre.
+- Expresiones numericas (`src/lib/board/expression.ts`): orden de operaciones, parentesis, potencias y raices
+  (√ ∛ ∜, "raiz cubica de ...") resueltas por la app. Raices no exactas por tanteo: enteros, decimas y
+  centesimas (∛7: 1³=1, 2³=8, 1.9³=6.859, 1.91³=6.968, 1.92³=7.078 -> ≈ 1.91). Sin modelo.

@@ -162,7 +162,11 @@ function renderItem(item: BoardItem) {
           fontSize={size}
           textAnchor={start ? 'start' : 'middle'}
         >
-          {item.text}
+          {item.parts
+            ? item.parts.map((p, k) => (
+                <tspan key={k} className={p.tone ? `tone-${p.tone}` : undefined}>{p.text}</tspan>
+              ))
+            : item.text}
         </text>
       )
     }
