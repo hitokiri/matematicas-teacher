@@ -39,12 +39,30 @@ test.describe('Flujo de resolver problemas', () => {
     expect(args).toBeUndefined();
   });
 
+  test('ecuacion: la app la resuelve con una balanza', async ({ page }) => {
+    await page.locator('.problem-input').fill('2x + 4 = 10');
+    await solveButton(page).click();
+
+    await expect(page.locator('.board-visual')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /pausa/i }).click();
+    // Inicio: 2 bolsas x
+    await expect(page.locator('.pan-bag')).toHaveCount(2);
+    const next = page.getByRole('button', { name: /siguiente/i });
+    await next.click();
+    // Quitar 4 de cada lado: 8 pesas tachadas
+    await expect(page.locator('.pan-item.removed')).toHaveCount(8);
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalk-answer')).toContainText('x = 3');
+    await expect(page.locator('.chalkboard')).toContainText('2 × 3 + 4 = 10');
+    expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
+  });
+
   test('otro problema: el modelo explica y la pizarra escribe cada paso', async ({ page }) => {
-    await page.locator('.problem-input').fill('x + 2 = 5');
+    await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();
 
     await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.chalkboard')).toContainText('x + 2 = 5');
+    await expect(page.locator('.chalkboard')).toContainText('Ana tiene 3 dulces y le dan 6');
     await page.getByRole('button', { name: /pausa/i }).click();
     const next = page.getByRole('button', { name: /siguiente/i });
     while (await next.isEnabled()) await next.click();
@@ -56,7 +74,7 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(page.locator('.solution-steps')).toContainText('Multiplicamos');
 
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
-    expect(args.problemText).toBe('x + 2 = 5');
+    expect(args.problemText).toBe('Ana tiene 3 dulces y le dan 6');
   });
 
   test('dibujo: el boton Resolver se habilita al dibujar y envia la imagen', async ({ page }) => {
@@ -135,7 +153,7 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(page.locator('.error-message')).toHaveCount(0);
     await page.locator('.tab', { hasText: /texto/i }).click();
 
-    await page.locator('.problem-input').fill('x + 2 = 5');
+    await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();
     await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.error-message')).toHaveCount(0);

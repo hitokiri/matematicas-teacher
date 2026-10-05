@@ -412,3 +412,11 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Lienzo: coordenadas escaladas al tamano real, el dibujo se conserva al redimensionar, pointer events
   (raton, tactil y lapiz) con captura, sin hueco vacio debajo.
 - Probado: Qwen3-VL 4B lee "√(3 × 7 × 6 + 12)" y "raiz quinta de (30)"; Qwen3.5 2B a veces usa LaTeX.
+
+### Ecuaciones con balanza (2026-10-04)
+- `src/lib/board/equation.ts`: ecuaciones de primer grado (ax + b = cx + d, con parentesis, fracciones y
+  cualquier letra) resueltas por la app con aritmetica exacta (`rational.ts`). Pasos: quitar parentesis,
+  voltear si hay mas x a la derecha, quitar x de un lado, quitar/sumar el numero, repartir, comprobar.
+- `src/components/BoardVisual.tsx`: balanza con bolsas x y pesas; tacha lo que se quita de los dos lados
+  y dibuja los grupos iguales al repartir. Se muestra bajo la pizarra en cada paso.
+- Casos especiales: "cualquier numero sirve" y "no tiene solucion".

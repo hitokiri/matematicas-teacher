@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import '@fontsource/patrick-hand'
 import type { BoardItem, BoardScript } from '../lib/board/types'
+import BoardVisual from './BoardVisual'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
 const CW = 52
@@ -65,6 +66,11 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
     return { visible: [...items.values()], fresh }
   }, [script, step, last])
 
+  // Dibujo del paso (balanza, pizzas...): el ultimo definido hasta el paso actual
+  let visualStep = -1
+  for (let i = 0; i <= Math.min(step, last); i++) if (script.steps[i].visual) visualStep = i
+  const visual = visualStep >= 0 ? script.steps[visualStep].visual : undefined
+
   const width = PAD * 2 + script.cols * CW
   const height = PAD * 2 + script.rows * CH
   const current = script.steps[Math.min(step, last)]
@@ -109,6 +115,11 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
             )
           })}
         </svg>
+        {visual && (
+          <div className="board-visual-wrap" key={visualStep}>
+            <BoardVisual visual={visual} />
+          </div>
+        )}
       </div>
 
       <div className="chalk-narration" aria-live="polite">

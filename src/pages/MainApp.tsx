@@ -7,6 +7,7 @@ import { parseArithmetic } from '../lib/board/parse'
 import { buildArithmetic } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
 import { expressionScript, parseExpression } from '../lib/board/expression'
+import { equationScript, parseEquation } from '../lib/board/equation'
 import type { BoardScript } from '../lib/board/types'
 
 interface AppSettings {
@@ -28,12 +29,15 @@ interface MainAppProps {
   settings: AppSettings
 }
 
-/** Pizarra que la app resuelve sola: cuentas en columna o expresiones (orden de operaciones, raices) */
+/** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
+ *  y ecuaciones de primer grado con balanza */
 function boardFor(text: string): BoardScript | null {
   const arithmetic = parseArithmetic(text)
   if (arithmetic) return buildArithmetic(arithmetic)
   const expression = parseExpression(text)
-  return expression ? expressionScript(expression, text.trim()) : null
+  if (expression) return expressionScript(expression, text.trim())
+  const equation = parseEquation(text)
+  return equation ? equationScript(equation) : null
 }
 
 function MainApp({ settings }: MainAppProps) {

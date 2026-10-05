@@ -24,9 +24,26 @@ export type BoardItem =
   /** "Casita" de la division: raya vertical a la izquierda de `col` y raya arriba de `row` */
   | { id: string; kind: 'bracket'; row: number; col: number; width: number }
 
+/** Algo que va en un platillo de la balanza */
+export interface PanItem {
+  /** 'x' = bolsa de peso desconocido; 'unit' = pesa conocida */
+  kind: 'x' | 'unit'
+  label: string
+  /** Se esta quitando en este paso (se dibuja tachado) */
+  removed?: boolean
+  /** Grupo al repartir (para dibujar los grupos iguales) */
+  group?: number
+}
+
+/** Dibujo que acompana a la pizarra en un paso */
+export type Visual =
+  | { kind: 'balance'; left: PanItem[]; right: PanItem[]; groups?: number }
+
 export interface BoardStep {
   /** Lo que dice la maestra en este paso */
   say: string
+  /** Dibujo de este paso (si no hay, se mantiene el del paso anterior) */
+  visual?: Visual
   add: BoardItem[]
   /** Ids de trazos que se borran (p. ej. llevadas de la fila anterior) */
   remove?: string[]
