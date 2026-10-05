@@ -13,7 +13,9 @@
     "test:e2e:ui": "playwright test --ui",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "package:gpu": "node scripts/clean-llama-libs.mjs && tauri build --no-bundle && node scripts/stage-libs.mjs --gpu && LINUXDEPLOY_EXCLUDED_LIBRARIES='libcuda.so*' tauri bundle --config src-tauri/target/release/bundle-files.json && node scripts/collect-bundles.mjs gpu",
+    "package:cpu": "node scripts/clean-llama-libs.mjs && tauri build --no-bundle -- --no-default-features --features custom-protocol && node scripts/stage-libs.mjs && LINUXDEPLOY_EXCLUDED_LIBRARIES='libcuda.so*' tauri bundle --config src-tauri/target/release/bundle-files.json && node scripts/collect-bundles.mjs cpu"
   },
   "dependencies": {
     "@fontsource/patrick-hand": "^5.3.0",

@@ -1,0 +1,48 @@
+# Pruebas en cada push y pull request (version solo CPU: no hace falta CUDA en GitHub)
+
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend (tipos, vitest y Playwright)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tipos
+        run: npx tsc --noEmit -p .
+      - name: Pruebas unitarias
+        run: npm run test:run
+      - name: Navegador para Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas de la interfaz
+        run: npx playwright test --reporter=line
+
+  rust:
+    name: Rust (solo CPU)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config cmake clang libclang-dev \
+            libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # tauri::generate_context! necesita la carpeta del frontend compilado
+      - run: mkdir -p dist
+      - name: Pruebas
+        working-directory: src-tauri
+        run: cargo test --no-default-features

@@ -57,10 +57,15 @@ fn backend() -> Result<&'static LlamaBackend> {
         return Ok(b);
     }
     llama_cpp_2::send_logs_to_tracing(llama_cpp_2::LogOptions::default().with_logs_enabled(false));
-    // App empaquetada: los modulos van junto al ejecutable; en desarrollo, en OUT_DIR
+    // Modulos de backend: junto al ejecutable (desarrollo), en ../lib/matematicas-teacher (app
+    // instalada) o, si no, en la carpeta donde se compilaron
     let bundled = std::env::current_exe().ok()
-        .and_then(|exe| exe.parent().map(|d| d.join("backends")))
-        .filter(|d| d.is_dir());
+        .and_then(|exe| exe.parent().map(|d| d.to_path_buf()))
+        .and_then(|dir| {
+            [dir.join("backends"), dir.join("../lib/matematicas-teacher/backends")]
+                .into_iter()
+                .find(|d| d.is_dir())
+        });
     match bundled {
         Some(dir) => llama_cpp_2::llama_backend::load_backends_from_path(&dir),
         None => llama_cpp_2::llama_backend::load_backends(),

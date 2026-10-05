@@ -4,8 +4,9 @@ Aplicación de escritorio (Tauri + React) que enseña a niños a resolver proble
 paso a paso en una pizarra animada. La inteligencia artificial corre **dentro de la app**, sin
 internet y sin servidores: los modelos se descargan una vez y se usan en la propia computadora.
 
-> Esta guía es para **compilar y ejecutar desde el código**. El instalador de escritorio
-> (`.deb` / AppImage) todavía no está listo; ver [Instalador de escritorio](#9-instalador-de-escritorio-estado).
+> - **¿Solo quieres instalar la app?** Descarga el instalador (`.deb` o AppImage) de la página de
+>   *Releases* del repositorio; ver [Instaladores](#9-instaladores-de-escritorio).
+> - El resto de la guía explica cómo **compilarla desde el código**.
 
 ---
 
@@ -32,10 +33,12 @@ internet y sin servidores: los modelos se descargan una vez y se usan en la prop
 ```bash
 sudo apt update
 sudo apt install -y build-essential curl wget file pkg-config cmake clang libclang-dev \
-  libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+  libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
+  patchelf libfuse2t64
 ```
 
 - `cmake`, `clang` y `libclang-dev` son para compilar **llama.cpp**, el motor de IA que va dentro de la app.
+- `patchelf` y `libfuse2t64` solo hacen falta para generar los instaladores.
 - El resto son los requisitos de Tauri.
 
 ### 2.2 Rust
@@ -176,17 +179,110 @@ LOCAL_GGUF=$M/Qwen3VL-4B-Instruct-Q4_K_M.gguf LOCAL_MMPROJ=$M/mmproj-Qwen3VL-4B-
 | `npm run test:e2e`: "localhost:5173 is already used" | Tienes `npm run tauri dev` abierto en ese puerto; ciérralo antes de las pruebas. |
 | La primera compilación es muy lenta | Es normal: compila llama.cpp y CUDA. Se hace una sola vez. |
 
-## 9. Instalador de escritorio (estado)
+## 9. Instaladores de escritorio
 
-`npm run tauri build` **todavía no genera un instalador que funcione en otra computadora**. Falta:
+### ¿Hace falta una versión distinta para PCs con y sin GPU?
 
-1. **Incluir las librerías de llama.cpp en el paquete.**
-   - Qué son: `libllama.so`, `libggml*.so`, `libmtmd.so` y la carpeta `backends/` (CPU y CUDA).
-   - Hoy se copian junto al ejecutable solo en `src-tauri/target/<perfil>/` para desarrollo; el `.deb`
-     y la AppImage no las llevan.
-2. **Iconos de la app.** `tauri.conf.json` tiene `"icon": []`; hay que generarlos con `npx tauri icon`.
-3. **Decidir qué hacer con CUDA en el instalador.**
-   - El módulo CUDA necesita `libcudart` y `libcublas` en la PC de destino: hay que incluirlas en el
-     paquete, que crece varios cientos de MB, o pedirle al usuario que instale CUDA.
-   - Sin ellas la app funciona igual en CPU.
-4. Probar el instalador en una computadora limpia, con y sin GPU.
+**No para que funcione:** la versión con GPU revisa al arrancar si hay una tarjeta NVIDIA con
+driver. Si la hay, la usa; si no, el módulo de GPU no se carga y la app usa la CPU, sin hacer nada.
+Hay dos versiones solo por el **tamaño de la descarga**:
+
+| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage) |
+|---|---|---|---|
+| **con-GPU-NVIDIA** | Cualquier PC | Sí, si hay NVIDIA con driver | ~520 MB / ~590 MB |
+| **solo-CPU** | Cualquier PC | Nunca | ~20 MB / ~100 MB |
+
+- La versión con GPU pesa más porque incluye las librerías de CUDA (`libcudart`, `libcublas`,
+  `libcublasLt`). Así no hay que instalar el CUDA Toolkit: basta con el driver de NVIDIA
+  (`nvidia-smi` debe funcionar).
+- Ninguna de las dos incluye modelos: se descargan desde la app.
+
+### Instalar
+
+```bash
+# Ubuntu / Debian
+sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
+
+# Cualquier Linux (sin instalar)
+chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
+./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
+```
+
+- El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y sus librerías en
+  `/usr/lib/matematicas-teacher/`.
+- La app aparece en el menú como **Matemáticas Teacher**.
+
+### Generar los instaladores en tu computadora
+
+```bash
+npm run package:gpu    # con GPU NVIDIA (necesita el CUDA Toolkit para compilar)
+npm run package:cpu    # solo CPU
+```
+
+Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-GPU-NVIDIA.deb`,
+`..._solo-CPU.AppImage`). Cada comando hace estos pasos:
+
+1. `scripts/clean-llama-libs.mjs`: borra copias viejas de las librerías de llama.cpp (evita un error
+   al alternar entre las dos versiones).
+2. `tauri build --no-bundle`: compila la app en modo *release*.
+3. `scripts/stage-libs.mjs`: reúne las librerías de llama.cpp, los módulos de CPU y, en la versión
+   con GPU, el de CUDA y sus librerías. Les ajusta las rutas de búsqueda (`patchelf`) y genera la
+   lista de archivos del paquete.
+4. `tauri bundle`: arma el `.deb` y la AppImage.
+5. `scripts/collect-bundles.mjs`: los copia a `instaladores/` con el nombre de la versión.
+
+### En GitHub (Actions)
+
+| Workflow | Cuándo corre | Qué hace |
+|---|---|---|
+| `.github/workflows/pruebas.yml` | Cada *push* a `main` y cada *pull request* | Tipos, vitest, Playwright y `cargo test` (versión solo CPU) |
+| `.github/workflows/instaladores.yml` | A mano (*Actions → Instaladores → Run workflow*) o al subir una etiqueta `v*` | Genera las dos versiones en paralelo y las sube como *artifacts*; con una etiqueta, también publica un *Release* |
+
+Para publicar una versión:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+La versión con GPU tarda bastante en los servidores de GitHub (compila los kernels de CUDA para
+varias generaciones de tarjetas), del orden de una a varias horas. La de CPU tarda unos minutos.
+
+### Probado
+
+- **Con GPU (`.deb` y AppImage) en una PC con RTX 5070 Ti:** el modelo se carga en la GPU y la app
+  usa las librerías de CUDA del paquete; del sistema solo toma el driver.
+- **Solo CPU:** funciona sin cargar nada de CUDA y elige sola la variante de CPU más rápida para el
+  procesador (por ejemplo `zen4`).
+- **Pendiente:** probar en una computadora limpia (sin CUDA Toolkit ni herramientas de compilación).
+
+## 10. Funciones futuras
+
+### Versiones para teléfonos y tablets (Android / iOS)
+
+La idea es llevar la app a tabletas y teléfonos, donde dibujar el problema con el dedo o con un lápiz
+es todavía más natural para un niño. Mucho de lo que ya existe sirve tal cual:
+
+| Parte | Estado para móvil |
+|---|---|
+| Interfaz (React) | Se reutiliza. Habría que adaptar el diseño a pantallas chicas: la pizarra arriba y el chat abajo o en una pestaña. |
+| Pizarra, balanza, pizzas y algoritmos (cuentas, ecuaciones, fracciones, raíces) | Se reutilizan sin cambios: son TypeScript y no dependen de la computadora. |
+| Lienzo para dibujar | Ya usa *pointer events*, así que funciona con dedo y lápiz (Apple Pencil, S Pen). |
+| Tauri | La versión 2 ya compila para Android e iOS (`tauri android init`, `tauri ios init`). |
+| IA local (llama.cpp) | llama.cpp funciona en Android (CPU, y Vulkan/OpenCL en algunos teléfonos) y en iOS/iPadOS (GPU con Metal). Hay que compilar `llama-cpp-2` para esas plataformas. |
+| Modelos | Hay que usar los pequeños (Qwen 3.5 2B, Gemma 4 E2B) por la memoria de los teléfonos, y avisar del tamaño de la descarga y del espacio libre. |
+
+Pendientes principales:
+
+1. Compilar llama.cpp para Android (NDK) e iOS (Metal) y probar la velocidad en equipos reales.
+2. Diseño adaptable (*responsive*) de la pantalla principal, la pizarra y el chat.
+3. Elegir el modelo recomendado según la memoria del teléfono o tableta.
+4. Publicar en Google Play y App Store (cuentas de desarrollador, firma, revisión de tiendas).
+
+### Otras ideas
+
+- Versiones de escritorio para Windows y macOS (Tauri ya lo permite; en macOS la GPU sería Metal).
+- Que la app compruebe las cuentas que escribe el modelo y marque las que estén mal.
+- Más dibujos en la pizarra: objetos para contar en sumas y restas pequeñas, recta numérica,
+  cuadrícula para multiplicar.
+- Respuestas del chat que aparezcan palabra por palabra mientras el modelo escribe.

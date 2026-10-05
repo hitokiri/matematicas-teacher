@@ -1,0 +1,114 @@
+# Genera los instaladores de Linux (.deb y AppImage) en dos versiones:
+#
+#   - Con GPU NVIDIA (CUDA): usa la GPU si la PC tiene una NVIDIA con driver, y si no, la CPU.
+#     Funciona en cualquier PC, pero pesa mas porque incluye las librerias de CUDA
+#     (no hace falta instalar el CUDA Toolkit, solo el driver de NVIDIA).
+#   - Solo CPU: mas ligera; funciona en cualquier PC pero nunca usa la GPU.
+#
+# Se ejecuta a mano (Actions -> Instaladores -> Run workflow) o al subir una etiqueta v* (v0.2.0),
+# que ademas publica un Release con los instaladores.
+
+name: Instaladores
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    # Compilar llama.cpp con CUDA en los runners de GitHub tarda (varias arquitecturas de GPU)
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: gpu
+            name: Con GPU NVIDIA (CUDA)
+            artifact: matematicas-teacher-con-GPU-NVIDIA
+          - variant: cpu
+            name: Solo CPU
+            artifact: matematicas-teacher-solo-CPU
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Liberar espacio en disco
+        if: matrix.variant == 'gpu'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Dependencias del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget file pkg-config cmake clang libclang-dev \
+            libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2t64
+
+      - name: CUDA Toolkit 13.0 (solo version con GPU)
+        if: matrix.variant == 'gpu'
+        run: |
+          wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-nvcc-13-0 cuda-cudart-dev-13-0 libcublas-dev-13-0
+          echo "CUDA_PATH=/usr/local/cuda-13.0" >> "$GITHUB_ENV"
+          echo "CUDACXX=/usr/local/cuda-13.0/bin/nvcc" >> "$GITHUB_ENV"
+          echo "/usr/local/cuda-13.0/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.variant }}
+
+      - name: Dependencias de npm
+        run: npm ci
+
+      - name: Compilar y empaquetar
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: npm run package:${{ matrix.variant }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: instaladores/*
+          if-no-files-found: error
+
+  release:
+    name: Publicar Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: instaladores
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: instaladores/*
+          body: |
+            ## ¿Qué versión descargo?
+
+            | Versión | Para quién | Tamaño |
+            |---|---|---|
+            | **con-GPU-NVIDIA** | PCs con tarjeta NVIDIA: la usa automáticamente (mucho más rápido). Si la PC no tiene NVIDIA, funciona igual con la CPU. | Grande (incluye CUDA) |
+            | **solo-CPU** | PCs sin NVIDIA o si prefieres una descarga ligera. Nunca usa la GPU. | Pequeña |
+
+            - `.deb`: Ubuntu / Debian → `sudo apt install ./matematicas-teacher_*.deb`
+            - `.AppImage`: cualquier Linux → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
+
+            Para la versión con GPU solo hace falta el driver de NVIDIA (`nvidia-smi` debe funcionar); no hay que instalar CUDA.

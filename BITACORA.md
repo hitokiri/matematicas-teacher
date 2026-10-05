@@ -444,3 +444,15 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Dos signos seguidos ("+*") muestran un aviso en vez de mandarlo al modelo.
 - Prompt del modelo: una sola operacion por paso, sin saltar conversiones, hasta 12 pasos, fracciones como
   fraccion. Medido: Qwen3.5 2B sigue juntando pasos; Qwen3-VL 4B los separa y resuelve x² = 9 como ±3.
+
+### Instaladores y GitHub Actions (2026-10-04)
+- `npm run package:gpu` / `package:cpu` generan .deb y AppImage en `instaladores/` (con-GPU-NVIDIA / solo-CPU).
+  La version con GPU funciona tambien sin GPU (cae a CPU); incluye libcudart/libcublas/libcublasLt (~520 MB).
+- `scripts/stage-libs.mjs`: libs de llama.cpp + backends (+ CUDA) en /usr/lib/matematicas-teacher, RUNPATH con
+  patchelf, lista de archivos para `tauri bundle`. libcuda.so (driver) nunca se incluye.
+- productName sin tilde (paquete `matematicas-teacher`, dpkg no acepta tildes); el menu y la ventana dicen
+  "Matemáticas Teacher" (`src-tauri/linux/matematicas-teacher.desktop`). Iconos generados con `tauri icon`.
+- Workflows: `pruebas.yml` (tipos, vitest, Playwright, cargo test sin CUDA) e `instaladores.yml` (matriz GPU/CPU,
+  artifacts y Release con etiquetas v*).
+- Probado en esta PC: .deb y AppImage con GPU cargan el modelo en la RTX 5070 Ti con las libs del paquete;
+  solo CPU no carga nada de CUDA.

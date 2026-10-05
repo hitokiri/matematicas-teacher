@@ -10,3 +10,6 @@ graft/
 test-results/
 playwright-report/
 .claude/
+
+# Instaladores generados por npm run package:gpu / package:cpu
+instaladores/

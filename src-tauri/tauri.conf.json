@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Matemáticas Teacher",
+  "productName": "Matematicas Teacher",
   "version": "0.1.0",
   "identifier": "com.matematicas.teacher",
   "build": {
@@ -22,13 +22,32 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["dist/**"]
+        "scope": [
+          "dist/**"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": []
+    "targets": [
+      "deb",
+      "appimage"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Education",
+    "shortDescription": "Aprende matematicas paso a paso en una pizarra",
+    "longDescription": "Explica paso a paso como resolver problemas de matematicas, con una pizarra animada, balanza, pizzas y un chat de preguntas. La inteligencia artificial corre en la propia computadora, sin internet.",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/matematicas-teacher.desktop"
+      }
+    }
   }
 }

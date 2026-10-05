@@ -22,7 +22,8 @@ fn copy_llama_libs() {
     copy_shared_libs(&backends, &profile_dir.join("backends"));
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
-        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,$ORIGIN");
+        // $ORIGIN: desarrollo (target/<perfil>); ../lib/matematicas-teacher: app instalada (.deb/AppImage)
+        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,$ORIGIN:$ORIGIN/../lib/matematicas-teacher");
     }
 }
 
