@@ -33,7 +33,7 @@ jobs:
             artifact: matematicas-teacher-solo-CPU
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Liberar espacio en disco
         if: matrix.variant == 'gpu'
@@ -58,7 +58,7 @@ jobs:
           echo "CUDACXX=/usr/local/cuda-13.0/bin/nvcc" >> "$GITHUB_ENV"
           echo "/usr/local/cuda-13.0/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -78,7 +78,7 @@ jobs:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         run: npm run package:${{ matrix.variant }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: instaladores/*
@@ -92,7 +92,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: instaladores
           merge-multiple: true

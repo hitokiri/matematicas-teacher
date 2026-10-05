@@ -12,8 +12,8 @@ jobs:
     name: Frontend (tipos, vitest y Playwright)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -31,7 +31,7 @@ jobs:
     name: Rust (solo CPU)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dependencias del sistema
         run: |
           sudo apt-get update
