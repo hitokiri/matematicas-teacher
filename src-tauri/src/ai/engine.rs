@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
+use crate::ai::local::LocalModel;
 use crate::types::{AIProvider, AppSettings, MathProblem, Solution, SolutionStep};
 
 #[derive(Debug, Deserialize)]
@@ -57,8 +58,8 @@ struct AnthropicMessageInput {
     content: serde_json::Value,
 }
 
-/// llama-server propio (respaldo) para el modelo activo: (ruta del GGUF, puerto, proceso)
-static LOCAL_SERVER: Mutex<Option<(PathBuf, u16, tokio::process::Child)>> = Mutex::new(None);
+/// llama-server propio (respaldo) para el modelo activo: (archivos del modelo, puerto, proceso)
+static LOCAL_SERVER: Mutex<Option<(LocalModel, u16, tokio::process::Child)>> = Mutex::new(None);
 
 pub struct AIEngine {
     provider: AIProvider,
@@ -84,16 +85,16 @@ impl AIEngine {
         self.active_model_id = settings.active_model_id.clone();
     }
 
-    pub async fn solve(&self, problem: &MathProblem, local_model: Option<PathBuf>) -> Result<Solution> {
+    pub async fn solve(&self, problem: &MathProblem, local_model: Option<LocalModel>) -> Result<Solution> {
         match &self.provider {
             AIProvider::OpenAI => Self::solve_with_openai(problem, &self.openai_key).await,
             AIProvider::Anthropic => Self::solve_with_anthropic(problem, &self.anthropic_key).await,
-            AIProvider::Local => Self::solve_locally(problem, local_model.as_deref(), self.active_model_id.as_deref()).await,
+            AIProvider::Local => Self::solve_locally(problem, local_model.as_ref(), self.active_model_id.as_deref()).await,
         }
     }
 
     // Static method for use in commands
-    pub async fn solve_with_settings(problem: &MathProblem, settings: &AppSettings, local_model: Option<PathBuf>) -> Result<Solution> {
+    pub async fn solve_with_settings(problem: &MathProblem, settings: &AppSettings, local_model: Option<LocalModel>) -> Result<Solution> {
         let engine = Self {
             provider: settings.provider.clone(),
             openai_key: settings.openai_key.clone(),
@@ -261,9 +262,9 @@ REGLAS IMPORTANTES:
         Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
     }
 
-    async fn solve_locally(problem: &MathProblem, model_path: Option<&Path>, active_id: Option<&str>) -> Result<Solution> {
+    async fn solve_locally(problem: &MathProblem, local_model: Option<&LocalModel>, active_id: Option<&str>) -> Result<Solution> {
         // Solo modelos propios de la app (como Handy): no se conecta a servidores externos.
-        let Some(path) = model_path else {
+        let Some(files) = local_model else {
             return Err(anyhow::anyhow!(match active_id {
                 Some(_) => "El modelo activo no esta descargado. Descargalo en Configuracion.",
                 None => "No hay un modelo local activo. Descarga y selecciona uno en Configuracion.",
@@ -272,11 +273,11 @@ REGLAS IMPORTANTES:
 
         // 1) Inferencia dentro de la app (sin puertos).
         // 2) Si falla y hay llama-server instalado, se lanza uno propio en un puerto libre.
-        let embedded_error = match Self::solve_embedded(problem, path).await {
+        let embedded_error = match Self::solve_embedded(problem, files).await {
             Ok(solution) => return Ok(solution),
             Err(e) => e,
         };
-        let Some(base) = Self::ensure_own_server(path).await? else {
+        let Some(base) = Self::ensure_own_server(files).await? else {
             return Err(embedded_error);
         };
 
@@ -304,23 +305,27 @@ REGLAS IMPORTANTES:
     }
 
     /// Resuelve con llama.cpp integrado en la app (en un hilo aparte: es bloqueante)
-    async fn solve_embedded(problem: &MathProblem, path: &Path) -> Result<Solution> {
-        if problem.image.is_some() {
-            return Err(anyhow::anyhow!(
-                "El modelo local integrado no puede leer dibujos. Escribe el problema \
-                 o usa OpenAI/Anthropic en Configuracion."
-            ));
-        }
-        let path = path.to_path_buf();
+    async fn solve_embedded(problem: &MathProblem, files: &LocalModel) -> Result<Solution> {
+        // El dibujo llega como data URL; el modelo recibe los bytes de la imagen
+        let image = match &problem.image {
+            Some(url) => {
+                use base64::Engine;
+                let (_, data) = Self::split_data_url(url)?;
+                Some(base64::engine::general_purpose::STANDARD.decode(data)
+                    .map_err(|_| anyhow::anyhow!("Imagen invalida"))?)
+            }
+            None => None,
+        };
+        let files = files.clone();
         let user = Self::user_prompt(problem);
         let content = tokio::task::spawn_blocking(move || {
-            crate::ai::local::generate(&path, &Self::build_system_prompt(), &user)
+            crate::ai::local::generate(&files, &Self::build_system_prompt(), &user, image.as_deref())
         })
         .await??;
         if content.is_empty() {
             return Err(anyhow::anyhow!("El modelo local no genero respuesta."));
         }
-        Ok(Self::parse_response(&content, &Self::display_text(problem)))
+        Ok(Self::with_transcription(Self::parse_response(&content, &Self::display_text(problem)), &content, problem))
     }
 
     /// Localiza el binario de llama-server (LLAMA_SERVER_BIN o PATH)
@@ -340,9 +345,9 @@ REGLAS IMPORTANTES:
 
     /// Arranca (o reutiliza) un llama-server con el GGUF dado en un puerto propio.
     /// Devuelve la URL base, o None si llama-server no esta instalado.
-    async fn ensure_own_server(model_path: &Path) -> Result<Option<String>> {
+    async fn ensure_own_server(files: &LocalModel) -> Result<Option<String>> {
         let Some(bin) = Self::find_llama_server() else { return Ok(None) };
-        let port = Self::start_or_reuse_server(&bin, model_path)?;
+        let port = Self::start_or_reuse_server(&bin, files)?;
         let base = format!("http://127.0.0.1:{}", port);
         Self::wait_for_server(&base).await?;
         Ok(Some(base))
@@ -355,25 +360,29 @@ REGLAS IMPORTANTES:
     }
 
     /// Parte sincrona (el guard del Mutex no puede cruzar un await). Devuelve el puerto.
-    fn start_or_reuse_server(bin: &Path, model_path: &Path) -> Result<u16> {
+    fn start_or_reuse_server(bin: &Path, files: &LocalModel) -> Result<u16> {
         let mut guard = LOCAL_SERVER.lock().unwrap();
-        if let Some((path, port, child)) = guard.as_mut() {
+        if let Some((loaded, port, child)) = guard.as_mut() {
             let alive = matches!(child.try_wait(), Ok(None));
-            if alive && path == model_path {
+            if alive && loaded == files {
                 return Ok(*port);
             }
             let _ = child.start_kill(); // otro modelo activo o proceso caido
         }
         let port = Self::free_port()?;
-        let child = tokio::process::Command::new(bin)
-            .arg("-m").arg(model_path)
+        let mut cmd = tokio::process::Command::new(bin);
+        cmd.arg("-m").arg(&files.model);
+        if let Some(mmproj) = &files.mmproj {
+            cmd.arg("--mmproj").arg(mmproj);
+        }
+        let child = cmd
             .args(["--host", "127.0.0.1", "--port", &port.to_string(), "-c", "4096"])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .kill_on_drop(true)
             .spawn()
             .map_err(|e| anyhow::anyhow!("No se pudo iniciar llama-server: {}", e))?;
-        *guard = Some((model_path.to_path_buf(), port, child));
+        *guard = Some((files.clone(), port, child));
         Ok(port)
     }
 

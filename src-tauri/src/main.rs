@@ -76,8 +76,8 @@ fn main() {
                         let mut models = state.models.lock().unwrap();
                         models.restore_active_model(active_model_id);
                         if matches!(state.settings.lock().unwrap().provider, AIProvider::Local) {
-                            if let Some(path) = models.get_active_model_path() {
-                                ai::local::preload(path);
+                            if let Some(files) = models.get_active_local_model() {
+                                ai::local::preload(files);
                             }
                         }
                     }
@@ -106,6 +106,7 @@ fn main() {
             // Settings
             ai::commands::get_settings,
             ai::commands::save_settings,
+            ai::commands::get_compute_device,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

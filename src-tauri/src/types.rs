@@ -34,6 +34,9 @@ pub struct ModelInfo {
     pub name: String,
     pub description: String,
     pub filename: String,
+    /// Proyector de vision (mmproj) para modelos que leen imagenes
+    #[serde(default)]
+    pub mmproj_filename: Option<String>,
     pub size_mb: f64,
     pub is_downloaded: bool,
     pub is_downloading: bool,

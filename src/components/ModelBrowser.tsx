@@ -6,6 +6,7 @@ interface ModelInfo {
   name: string;
   description: string;
   filename: string;
+  mmproj_filename?: string | null;
   size_mb: number;
   is_downloaded: boolean;
   is_downloading: boolean;
@@ -186,6 +187,9 @@ export default function ModelBrowser({
                       <h3 className="model-name">{model.name}</h3>
                       {model.is_active && (
                         <span className="badge active-badge">✓ Active</span>
+                      )}
+                      {model.mmproj_filename && (
+                        <span className="badge recommended-badge">🖼 Lee dibujos</span>
                       )}
                       {model.recommended_for.length > 0 && !model.is_downloaded && (
                         <span className="badge recommended-badge">Recommended</span>

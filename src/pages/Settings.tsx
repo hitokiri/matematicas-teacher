@@ -9,6 +9,7 @@ interface ModelInfo {
   name: string;
   description: string;
   filename: string;
+  mmproj_filename?: string | null;
   size_mb: number;
   is_downloaded: boolean;
   is_downloading: boolean;
@@ -29,6 +30,17 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
   const [savingSuccess, setSavingSuccess] = useState(false);
+  const [computeDevice, setComputeDevice] = useState<string | null>(null);
+
+  // Hardware que usa el modelo local (GPU si la PC tiene una con memoria suficiente)
+  const loadComputeDevice = async () => {
+    try {
+      const res = await invoke<string>('get_compute_device');
+      if (typeof res === 'string') setComputeDevice(res);
+    } catch (err) {
+      console.error('Error loading compute device:', err);
+    }
+  };
 
   const loadModels = async () => {
     try {
@@ -73,6 +85,8 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
       // Elegir un modelo local implica usar el proveedor local
       setLocalSettings(prev => ({ ...prev, provider: 'local', active_model_id: modelId }));
       await loadModels();
+      // El modelo se carga en segundo plano; luego se sabe si quedo en GPU o CPU
+      setTimeout(() => { void loadComputeDevice(); }, 5000);
     } catch (err) {
       console.error('Error selecting model:', err);
     }
@@ -130,6 +144,7 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
 
   useEffect(() => {
     loadModels();
+    loadComputeDevice();
 
     // Como Handy: el backend emite eventos cuando cambia el estado de los modelos
     const unlisteners: Array<() => void> = [];
@@ -208,6 +223,13 @@ export default function Settings({ settings, onSave, onCancel }: SettingsProps) 
             <label htmlFor="provider-anthropic">Anthropic (Claude)</label>
           </div>
         </div>
+
+        {localSettings.provider === 'local' && computeDevice && (
+          <div className="api-key-section compute-device">
+            <label>💻 Hardware del modelo local</label>
+            <span>{computeDevice}</span>
+          </div>
+        )}
 
         {localSettings.provider === 'openai' && (
           <div className="api-key-section">

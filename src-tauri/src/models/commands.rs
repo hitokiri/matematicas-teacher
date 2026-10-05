@@ -57,8 +57,8 @@ pub fn select_model(app: tauri::AppHandle, model_id: String) -> Result<(), Strin
     let mut models = state.models.lock().map_err(|e| e.to_string())?;
     models.select_model(&model_id).map_err(|e| e.to_string())?;
     // Como Handy: el modelo activo se carga en memoria en segundo plano
-    if let Some(path) = models.get_active_model_path() {
-        crate::ai::local::preload(path);
+    if let Some(files) = models.get_active_local_model() {
+        crate::ai::local::preload(files);
     }
     
     // Update settings with active model

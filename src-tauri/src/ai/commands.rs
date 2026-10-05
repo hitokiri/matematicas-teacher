@@ -12,19 +12,27 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
         settings.clone()
     };
     
-    // Ruta del GGUF del modelo activo (si esta descargado)
-    let local_model_path = {
+    // Archivos del modelo activo (si esta descargado)
+    let local_model = {
         let mut models = state.models.lock().map_err(|e| e.to_string())?;
         models.refresh_download_status();
-        models.get_active_model_path()
+        models.get_active_local_model()
     };
 
     let problem = MathProblem { text: problem_text, image: problem_image.filter(|i| !i.is_empty()) };
-    let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings, local_model_path)
+    let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings, local_model)
         .await
         .map_err(|e| e.to_string())?;
     
     serde_json::to_value(&solution).map_err(|e| e.to_string())
+}
+
+/// Hardware que usa el modelo local ("GPU: ..." o "CPU")
+#[tauri::command]
+pub async fn get_compute_device() -> Result<String, String> {
+    tokio::task::spawn_blocking(crate::ai::local::compute_device)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

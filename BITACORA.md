@@ -364,7 +364,16 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Se precarga al seleccionar el modelo y al arrancar (si el proveedor es local); se libera al borrarlo.
 - Ya no se conecta a `localhost:8080`. Respaldo: si la carga integrada falla y hay `llama-server`
   instalado, se lanza uno propio en un puerto libre asignado por el sistema.
-- El modelo integrado no lee dibujos (los modelos del catalogo son solo texto).
-- GPU opcional: `cargo build --features cuda` o `--features vulkan`.
+- Modelos con vision (Qwen3-VL 4B, Qwen2.5-VL 3B) leen dibujos: se descargan GGUF + mmproj.
+- GPU automatica: los backends de ggml se cargan al arrancar (`dynamic-backends`); si hay GPU
+  NVIDIA con VRAM suficiente para el modelo se usa entera, si no CPU. Configuracion muestra el hardware.
 - Configuracion: el modelo activo aparece arriba del todo en su propia seccion "Active Model".
 - Prueba real: `LOCAL_GGUF=/ruta/modelo.gguf cargo test embedded -- --ignored`
+
+### GPU y dibujos (2026-10-04)
+- Compilar requiere CUDA toolkit (rutas en `src-tauri/.cargo/config.toml`). Sin CUDA:
+  `cargo build --no-default-features --features custom-protocol`.
+- `build.rs` copia libllama/libggml/libmtmd y `backends/` junto al ejecutable y fija RUNPATH=$ORIGIN.
+- Medido (RTX 5070 Ti): Qwen 2.5 3B ~1.5 s en GPU vs ~14 s en CPU (`CUDA_VISIBLE_DEVICES=""`).
+- Prueba de vision: `LOCAL_GGUF=... LOCAL_MMPROJ=... LOCAL_IMAGE=dibujo.png cargo test vision -- --ignored`
+- Pendiente: incluir las .so y `backends/` en el paquete de `tauri build`.

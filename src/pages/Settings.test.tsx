@@ -69,6 +69,18 @@ describe('Settings Component', () => {
     expect(screen.getByText('Anthropic (Claude)')).toBeInTheDocument()
   })
 
+  it('shows the hardware used by the local model', async () => {
+    mockInvoke.mockImplementation(async (cmd: string) =>
+      cmd === 'get_compute_device' ? 'GPU: NVIDIA GeForce RTX 5070 Ti' : createMockModels()
+    )
+
+    render(<Settings settings={mockSettings} onSave={vi.fn()} onCancel={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('GPU: NVIDIA GeForce RTX 5070 Ti')).toBeInTheDocument()
+    })
+  })
+
   it('switches between provider options', async () => {
     mockInvoke.mockResolvedValue(createMockModels())
     

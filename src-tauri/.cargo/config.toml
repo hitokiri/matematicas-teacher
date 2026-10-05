@@ -1,0 +1,10 @@
+# Compilacion de llama.cpp con CUDA (feature "cuda", activa por defecto).
+# El backend CUDA se compila como modulo aparte que la app carga al arrancar solo si la PC
+# tiene GPU NVIDIA; si no, usa el backend de CPU. Sin CUDA toolkit:
+#   cargo build --no-default-features --features custom-protocol
+[env]
+CUDACXX = { value = "/usr/local/cuda/bin/nvcc", force = false }
+CUDA_PATH = { value = "/usr/local/cuda", force = false }
+# 75-virtual da PTX para cualquier GPU >= Turing; el resto son binarios nativos
+# (Ampere 86, Ada 89, Blackwell 120)
+CMAKE_CUDA_ARCHITECTURES = { value = "75-virtual;86-real;89-real;120-real", force = false }

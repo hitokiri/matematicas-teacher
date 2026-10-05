@@ -139,14 +139,43 @@ fn test_downloaded_model_in_models_dir_is_listed_and_selectable() {
     let first = manager.list_models().remove(0);
 
     std::fs::write(dir.join(&first.filename), b"gguf").unwrap();
+    if let Some(mmproj) = &first.mmproj_filename {
+        std::fs::write(dir.join(mmproj), b"gguf").unwrap();
+    }
     let listed = manager.list_models();
     let model = listed.iter().find(|m| m.id == first.id).unwrap();
     assert!(model.is_downloaded, "un GGUF en el directorio de la app debe verse como descargado");
 
     manager.select_model(&first.id).unwrap();
     assert_eq!(manager.get_active_model_path(), Some(dir.join(&first.filename)));
+    let files = manager.get_active_local_model().expect("archivos del modelo activo");
+    assert_eq!(files.mmproj, first.mmproj_filename.as_ref().map(|f| dir.join(f)));
 
     manager.delete_model(&first.id).unwrap();
     assert!(!dir.join(&first.filename).exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn test_vision_model_needs_mmproj_to_be_downloaded() {
+    let dir = std::env::temp_dir().join(format!("mt-vision-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut manager = ModelManager::new();
+    manager.set_models_dir(dir.clone()).unwrap();
+
+    let vision = manager.list_models().into_iter()
+        .find(|m| m.mmproj_filename.is_some())
+        .expect("debe haber un modelo que lee dibujos");
+    std::fs::write(dir.join(&vision.filename), b"gguf").unwrap();
+    let listed = manager.list_models();
+    assert!(!listed.iter().find(|m| m.id == vision.id).unwrap().is_downloaded,
+        "sin el mmproj el modelo de vision no esta completo");
+
+    std::fs::write(dir.join(vision.mmproj_filename.as_ref().unwrap()), b"gguf").unwrap();
+    let listed = manager.list_models();
+    assert!(listed.iter().find(|m| m.id == vision.id).unwrap().is_downloaded);
+
+    manager.delete_model(&vision.id).unwrap();
+    assert!(!dir.join(vision.mmproj_filename.as_ref().unwrap()).exists(), "borrar elimina tambien el mmproj");
     let _ = std::fs::remove_dir_all(&dir);
 }

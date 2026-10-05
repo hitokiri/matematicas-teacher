@@ -58,10 +58,39 @@ impl ModelManager {
     pub(crate) fn get_default_models() -> Vec<ModelInfo> {
         vec![
             ModelInfo {
+                id: "Qwen/Qwen3-VL-4B-Instruct-GGUF".to_string(),
+                name: "Qwen 3 VL 4B (lee dibujos)".to_string(),
+                description: "Modelo con vision: lee problemas escritos a mano y los explica paso a paso".to_string(),
+                filename: "Qwen3VL-4B-Instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: Some("mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf".to_string()),
+                size_mb: 2950.0,
+                is_downloaded: false,
+                is_downloading: false,
+                download_progress: 0.0,
+                is_active: false,
+                recommended_for: vec!["dibujos".to_string(), "matematicas".to_string(), "ecuaciones".to_string()],
+                tags: vec!["imagenes".to_string(), "4B".to_string(), "Q4".to_string()],
+            },
+            ModelInfo {
+                id: "ggml-org/Qwen2.5-VL-3B-Instruct-GGUF".to_string(),
+                name: "Qwen 2.5 VL 3B (lee dibujos)".to_string(),
+                description: "Modelo con vision mas ligero: lee problemas dibujados".to_string(),
+                filename: "Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: Some("mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf".to_string()),
+                size_mb: 2775.0,
+                is_downloaded: false,
+                is_downloading: false,
+                download_progress: 0.0,
+                is_active: false,
+                recommended_for: vec!["dibujos".to_string(), "aritmetica".to_string(), "pc-ligero".to_string()],
+                tags: vec!["imagenes".to_string(), "3B".to_string(), "Q4".to_string()],
+            },
+            ModelInfo {
                 id: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF".to_string(),
                 name: "Llama 3.1 8B Instruct".to_string(),
                 description: "Modelo de Meta con excelente capacidad de razonamiento matematico".to_string(),
                 filename: "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 4915.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -75,6 +104,7 @@ impl ModelManager {
                 name: "Qwen 2.5 3B Instruct".to_string(),
                 description: "Modelo de Alibaba eficiente, ideal para aritmetica basica".to_string(),
                 filename: "Qwen2.5-3B-Instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 2048.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -88,6 +118,7 @@ impl ModelManager {
                 name: "Phi 3.5 Mini 3.8B (Microsoft)".to_string(),
                 description: "Modelo pequeno de Microsoft con buen rendimiento en matematicas".to_string(),
                 filename: "Phi-3.5-mini-instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 2304.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -101,6 +132,7 @@ impl ModelManager {
                 name: "Gemma 2 2B IT (Google)".to_string(),
                 description: "Modelo ligero de Google, perfecto para empezar con matematicas basicas".to_string(),
                 filename: "gemma-2-2b-it-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 1536.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -114,6 +146,7 @@ impl ModelManager {
                 name: "Mistral 7B Instruct v3".to_string(),
                 description: "Modelo versatil con buen razonamiento para fracciones y ecuaciones".to_string(),
                 filename: "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 4096.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -127,6 +160,7 @@ impl ModelManager {
                 name: "Qwen 2.5 1.5B Instruct".to_string(),
                 description: "El modelo mas ligero, corre en cualquier PC. Bueno para aritmetica basica".to_string(),
                 filename: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf".to_string(),
+                mmproj_filename: None,
                 size_mb: 1024.0,
                 is_downloaded: false,
                 is_downloading: false,
@@ -141,9 +175,7 @@ impl ModelManager {
     /// Verifica que modelos ya estan descargados
     pub fn refresh_download_status(&mut self) {
         let model_data: Vec<(String, bool)> = self.available_models.iter()
-            .map(|m| {
-                (m.id.clone(), self.find_model_file(m).is_some())
-            })
+            .map(|m| (m.id.clone(), self.is_complete(m)))
             .collect();
         
         for (model_id, is_downloaded) in model_data {
@@ -159,10 +191,27 @@ impl ModelManager {
         }
     }
 
-    /// Busca un modelo ya descargado: primero en el directorio de la app y luego en la
-    /// cache estandar de Hugging Face (`models--<id>/snapshots/*/<archivo>`).
+    /// Archivos que forman el modelo: el GGUF y, si tiene vision, su mmproj
+    fn model_files(model: &ModelInfo) -> Vec<&str> {
+        std::iter::once(model.filename.as_str())
+            .chain(model.mmproj_filename.as_deref())
+            .collect()
+    }
+
+    /// El modelo esta descargado si estan todos sus archivos
+    fn is_complete(&self, model: &ModelInfo) -> bool {
+        Self::model_files(model).iter().all(|f| self.find_file(model, f).is_some())
+    }
+
+    /// Busca el GGUF principal de un modelo ya descargado
     fn find_model_file(&self, model: &ModelInfo) -> Option<PathBuf> {
-        let own = self.get_model_path(model);
+        self.find_file(model, &model.filename)
+    }
+
+    /// Busca un archivo del modelo: primero en el directorio de la app y luego en la
+    /// cache estandar de Hugging Face (`models--<id>/snapshots/*/<archivo>`).
+    fn find_file(&self, model: &ModelInfo, filename: &str) -> Option<PathBuf> {
+        let own = self.get_model_path(filename);
         if own.is_file() {
             return Some(own);
         }
@@ -175,18 +224,18 @@ impl ModelManager {
             .join("snapshots");
         std::fs::read_dir(snapshots).ok()?
             .flatten()
-            .map(|e| e.path().join(&model.filename))
+            .map(|e| e.path().join(filename))
             .find(|p| p.is_file())
     }
 
-    /// Obtiene la ruta donde la app guarda el modelo
-    fn get_model_path(&self, model: &ModelInfo) -> PathBuf {
-        self.models_dir.join(&model.filename)
+    /// Obtiene la ruta donde la app guarda un archivo del modelo
+    fn get_model_path(&self, filename: &str) -> PathBuf {
+        self.models_dir.join(filename)
     }
 
     /// Archivo temporal de una descarga en curso o interrumpida (se reanuda con Range)
-    fn get_partial_path(&self, model: &ModelInfo) -> PathBuf {
-        self.models_dir.join(format!("{}.partial", model.filename))
+    fn get_partial_path(&self, filename: &str) -> PathBuf {
+        self.models_dir.join(format!("{}.partial", filename))
     }
 
     /// Lista todos los modelos disponibles
@@ -204,7 +253,7 @@ impl ModelManager {
         models
     }
 
-    /// Descarga un modelo desde HuggingFace en segundo plano.
+    /// Descarga un modelo desde HuggingFace en segundo plano (GGUF y, si tiene, su mmproj).
     /// Como Handy: escribe a `<archivo>.partial`, reanuda con `Range` si ya existe,
     /// y emite `model-download-progress`, `model-download-complete` y `models-updated`.
     pub fn download_model_async(&self, model_id: &str, app: AppHandle) -> Result<()> {
@@ -212,7 +261,7 @@ impl ModelManager {
             .find(|m| m.id == model_id)
             .ok_or_else(|| anyhow::anyhow!("Modelo no encontrado: {}", model_id))?;
 
-        if self.find_model_file(model).is_some() {
+        if self.is_complete(model) {
             return Err(anyhow::anyhow!("El modelo ya esta descargado: {}", model_id));
         }
         if let Some(h) = self.download_handles.lock().unwrap().get(model_id) {
@@ -236,10 +285,16 @@ impl ModelManager {
             paused: paused.clone(),
         });
 
-        let filename = model.filename.clone();
+        // Solo los archivos que faltan: (url, destino final, .partial)
+        let files: Vec<(String, PathBuf, PathBuf)> = Self::model_files(model).into_iter()
+            .filter(|f| self.find_file(model, f).is_none())
+            .map(|f| (
+                format!("https://huggingface.co/{}/resolve/main/{}", model_id, f),
+                self.get_model_path(f),
+                self.get_partial_path(f),
+            ))
+            .collect();
         let model_id = model_id.to_string();
-        let save_path = self.get_model_path(model);
-        let part_path = self.get_partial_path(model);
 
         tokio::spawn(async move {
             use futures_util::StreamExt;
@@ -263,82 +318,97 @@ impl ModelManager {
                 eprintln!("{}", msg);
                 finish(-1);
             };
-
-            let url = format!("https://huggingface.co/{}/resolve/main/{}", model_id, filename);
-            let mut resume_from = std::fs::metadata(&part_path).map(|m| m.len()).unwrap_or(0);
-
-            let mut request = reqwest::Client::new().get(&url);
-            if resume_from > 0 {
-                request = request.header(reqwest::header::RANGE, format!("bytes={}-", resume_from));
-            }
-            let response = match request.send().await {
-                Ok(r) => r,
-                Err(e) => return fail(format!("Error conectando: {}", e)),
+            // 100 se reserva para cuando todos los archivos estan completos
+            let percent = |done: u64, total: u64| {
+                if total > 0 { ((done * 100 / total) as i32).min(99) } else { 0 }
             };
-            let status = response.status();
-            // 416: el .partial ya esta completo
-            if status.as_u16() == 416 {
-                return match std::fs::rename(&part_path, &save_path) {
-                    Ok(_) => finish(100),
-                    Err(e) => fail(format!("Error guardando archivo: {}", e)),
+
+            let client = reqwest::Client::new();
+            // Tamano total de todos los archivos para un progreso unico
+            let mut sizes = Vec::new();
+            for (url, _, _) in &files {
+                let size = match client.head(url).send().await {
+                    Ok(r) if r.status().is_success() => r.content_length().unwrap_or(0),
+                    _ => 0,
                 };
+                sizes.push(size);
             }
-            if !status.is_success() {
-                return fail(format!("Error HTTP {} descargando {}", status, url));
-            }
-            // Servidor ignoro Range (200 en vez de 206): empezar de cero
-            if resume_from > 0 && status.as_u16() != 206 {
-                resume_from = 0;
-            }
+            let total: u64 = sizes.iter().sum();
+            let mut done_before = 0u64;
 
-            let total = response.content_length().unwrap_or(0) + resume_from;
-            let mut file = match std::fs::OpenOptions::new()
-                .create(true)
-                .write(true)
-                .append(resume_from > 0)
-                .truncate(resume_from == 0)
-                .open(&part_path)
-            {
-                Ok(f) => f,
-                Err(e) => return fail(format!("Error creando archivo: {}", e)),
-            };
+            for ((url, save_path, part_path), size) in files.iter().zip(&sizes) {
+                let mut resume_from = std::fs::metadata(part_path).map(|m| m.len()).unwrap_or(0);
 
-            let mut downloaded = resume_from;
-            let mut stream = response.bytes_stream();
-            report(downloaded, total, if total > 0 { (downloaded * 100 / total).min(99) as i32 } else { 0 });
-
-            while let Some(chunk) = stream.next().await {
-                while paused.load(Ordering::SeqCst) && !cancelled.load(Ordering::SeqCst) {
-                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                let mut request = client.get(url);
+                if resume_from > 0 {
+                    request = request.header(reqwest::header::RANGE, format!("bytes={}-", resume_from));
                 }
-                if cancelled.load(Ordering::SeqCst) {
-                    // Como Handy: se conserva el .partial para poder reanudar despues
-                    let _ = app.emit("models-updated", ());
-                    return;
-                }
-                match chunk {
-                    Ok(bytes) => {
-                        if let Err(e) = file.write_all(&bytes) {
-                            return fail(format!("Error escribiendo archivo: {}", e));
-                        }
-                        downloaded += bytes.len() as u64;
-                        if total > 0 {
-                            // 100 se reserva para cuando el archivo esta completo
-                            report(downloaded, total, ((downloaded * 100 / total) as i32).min(99));
-                        }
+                let response = match request.send().await {
+                    Ok(r) => r,
+                    Err(e) => return fail(format!("Error conectando: {}", e)),
+                };
+                let status = response.status();
+                // 416: el .partial ya esta completo
+                if status.as_u16() == 416 {
+                    if let Err(e) = std::fs::rename(part_path, save_path) {
+                        return fail(format!("Error guardando archivo: {}", e));
                     }
-                    Err(e) => return fail(format!("Error descargando chunk: {}", e)),
+                    done_before += size;
+                    continue;
                 }
+                if !status.is_success() {
+                    return fail(format!("Error HTTP {} descargando {}", status, url));
+                }
+                // Servidor ignoro Range (200 en vez de 206): empezar de cero
+                if resume_from > 0 && status.as_u16() != 206 {
+                    resume_from = 0;
+                }
+
+                let mut file = match std::fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .append(resume_from > 0)
+                    .truncate(resume_from == 0)
+                    .open(part_path)
+                {
+                    Ok(f) => f,
+                    Err(e) => return fail(format!("Error creando archivo: {}", e)),
+                };
+
+                let mut downloaded = resume_from;
+                let mut stream = response.bytes_stream();
+                report(done_before + downloaded, total, percent(done_before + downloaded, total));
+
+                while let Some(chunk) = stream.next().await {
+                    while paused.load(Ordering::SeqCst) && !cancelled.load(Ordering::SeqCst) {
+                        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                    }
+                    if cancelled.load(Ordering::SeqCst) {
+                        // Como Handy: se conserva el .partial para poder reanudar despues
+                        let _ = app.emit("models-updated", ());
+                        return;
+                    }
+                    match chunk {
+                        Ok(bytes) => {
+                            if let Err(e) = file.write_all(&bytes) {
+                                return fail(format!("Error escribiendo archivo: {}", e));
+                            }
+                            downloaded += bytes.len() as u64;
+                            report(done_before + downloaded, total, percent(done_before + downloaded, total));
+                        }
+                        Err(e) => return fail(format!("Error descargando chunk: {}", e)),
+                    }
+                }
+
+                drop(file);
+                if let Err(e) = std::fs::rename(part_path, save_path) {
+                    return fail(format!("Error guardando archivo: {}", e));
+                }
+                done_before += downloaded.max(*size);
             }
 
-            drop(file);
-            match std::fs::rename(&part_path, &save_path) {
-                Ok(_) => {
-                    report(downloaded, total, 100);
-                    finish(100);
-                }
-                Err(e) => fail(format!("Error guardando archivo: {}", e)),
-            }
+            report(total, total, 100);
+            finish(100);
         });
 
         Ok(())
@@ -412,22 +482,23 @@ impl ModelManager {
         Ok(())
     }
 
-    /// Elimina un modelo descargado
+    /// Elimina un modelo descargado (todos sus archivos y descargas parciales)
     pub fn delete_model(&mut self, model_id: &str) -> Result<()> {
-        let (model_path, partial_path) = {
-            let model = self.available_models.iter()
-                .find(|m| m.id == model_id)
-                .ok_or_else(|| anyhow::anyhow!("Modelo no encontrado: {}", model_id))?;
-            (self.get_model_path(model), self.get_partial_path(model))
-        };
+        let model = self.available_models.iter()
+            .find(|m| m.id == model_id)
+            .ok_or_else(|| anyhow::anyhow!("Modelo no encontrado: {}", model_id))?;
 
-        let found = self.available_models.iter().find(|m| m.id == model_id)
-            .and_then(|m| self.find_model_file(m));
-        for path in [Some(&model_path), Some(&partial_path), found.as_ref()].into_iter().flatten() {
+        let mut paths = Vec::new();
+        for f in Self::model_files(model) {
+            paths.push(self.get_model_path(f));
+            paths.push(self.get_partial_path(f));
+            paths.extend(self.find_file(model, f));
+        }
+        for path in paths {
             if path.is_dir() {
-                std::fs::remove_dir_all(path)?;
+                std::fs::remove_dir_all(&path)?;
             } else if path.exists() {
-                std::fs::remove_file(path)?;
+                std::fs::remove_file(&path)?;
             }
         }
         if let Ok(mut handles) = self.download_handles.lock() {
@@ -455,7 +526,18 @@ impl ModelManager {
     }
 
     /// Obtiene la ruta del modelo activo
+    #[allow(dead_code)]
     pub fn get_active_model_path(&self) -> Option<PathBuf> {
         self.get_active_model().and_then(|m| self.find_model_file(m))
+    }
+
+    /// Archivos del modelo activo para la inferencia integrada (GGUF + mmproj si tiene)
+    pub fn get_active_local_model(&self) -> Option<crate::ai::local::LocalModel> {
+        let m = self.get_active_model()?;
+        let mmproj = match &m.mmproj_filename {
+            Some(f) => Some(self.find_file(m, f)?),
+            None => None,
+        };
+        Some(crate::ai::local::LocalModel { model: self.find_model_file(m)?, mmproj })
     }
 }

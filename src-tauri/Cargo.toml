@@ -31,7 +31,12 @@ futures-util = "0.3"
 # Local LLM inference - llama.cpp Rust bindings (temp disabled - build issue)
 # llama_cpp_rs = "0.3.0"
 # llama.cpp integrado en la app (como Handy con whisper): sin servidor ni puertos
-llama-cpp-2 = "0.1.158"
+# dynamic-backends: CPU/CUDA/Vulkan se cargan en tiempo de ejecucion segun el hardware
+# mtmd: modelos con vision (leer dibujos)
+llama-cpp-2 = { version = "0.1.158", features = ["dynamic-backends", "mtmd"] }
+base64 = "0.22"
+# Dependencia directa solo para que build.rs reciba DEP_LLAMA_BACKENDS_DIR y copie las .so
+llama-cpp-sys-2 = "=0.1.158"
 
 # HuggingFace model downloads (estilo Handy)
 hf-hub = "0.3"
@@ -54,9 +59,9 @@ tempfile = "3"
 mockall = "0.13"
 
 [features]
-default = ["custom-protocol"]
+default = ["custom-protocol", "cuda"]
 custom-protocol = ["tauri/custom-protocol"]
-# Aceleracion por GPU opcional (requiere CUDA toolkit / Vulkan SDK): cargo build --features cuda
+# Backends de GPU (requieren CUDA toolkit / Vulkan SDK al compilar, no al ejecutar)
 cuda = ["llama-cpp-2/cuda"]
 vulkan = ["llama-cpp-2/vulkan"]
 

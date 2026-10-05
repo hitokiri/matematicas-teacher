@@ -68,6 +68,9 @@ const mockInvoke = (cmd, args) => {
       persist();
       return Promise.resolve(undefined);
 
+    case 'get_compute_device':
+      return Promise.resolve('CPU');
+
     case 'list_models':
       return Promise.resolve(state.models.map(toInfo));
 

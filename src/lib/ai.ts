@@ -21,6 +21,7 @@ export interface ModelInfo {
   name: string;
   description: string;
   filename: string;
+  mmproj_filename?: string | null;
   size_mb: number;
   is_downloaded: boolean;
   is_downloading: boolean;

@@ -167,8 +167,31 @@ fn test_with_transcription_uses_problema_line_for_drawings() {
 #[test]
 #[ignore]
 fn test_embedded_model_generates_solution() {
-    let path = std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF"));
-    let content = crate::ai::local::generate(&path, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7")
+    let files = crate::ai::local::LocalModel {
+        model: std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF")),
+        mmproj: std::env::var("LOCAL_MMPROJ").ok().map(std::path::PathBuf::from),
+    };
+    println!("dispositivo: {}", crate::ai::local::compute_device());
+    let content = crate::ai::local::generate(&files, "Eres un profesor de matematicas.", "Resuelve paso a paso: 2x + 3 = 7", None)
         .expect("el modelo integrado debe responder");
     assert!(content.contains('2'), "respuesta inesperada: {}", content);
+}
+
+/// Prueba real de vision: LOCAL_GGUF=... LOCAL_MMPROJ=... LOCAL_IMAGE=dibujo.png cargo test vision -- --ignored
+#[test]
+#[ignore]
+fn test_embedded_vision_model_reads_drawing() {
+    let files = crate::ai::local::LocalModel {
+        model: std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF")),
+        mmproj: Some(std::path::PathBuf::from(std::env::var("LOCAL_MMPROJ").expect("LOCAL_MMPROJ"))),
+    };
+    let image = std::fs::read(std::env::var("LOCAL_IMAGE").expect("LOCAL_IMAGE")).unwrap();
+    let content = crate::ai::local::generate(
+        &files,
+        "Eres un profesor de matematicas.",
+        "La imagen contiene un problema de matematicas. Transcribelo en una linea que empiece con \"Problema:\" y resuelvelo.",
+        Some(&image),
+    ).expect("el modelo de vision debe responder");
+    println!("dispositivo: {}\n{}", crate::ai::local::compute_device(), content);
+    assert!(content.contains("Problema:"), "respuesta inesperada: {}", content);
 }
