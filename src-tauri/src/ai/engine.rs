@@ -19,6 +19,17 @@ Escribe el problema exactamente como esta, en texto plano y SIN LaTeX:
 - Fracciones: a/b.
 Cuidado con los numeros escritos a mano: un 7 puede parecer una x, un 1 una l, un 0 una o, un 5 una s. Escribe la letra x solo si de verdad es una incognita; el signo de multiplicar es ×."#;
 
+/// Instrucciones para el chat de preguntas sobre los pasos
+const CHAT_PROMPT: &str = r#"Eres una maestra de primaria paciente y carinosa. Un nino de 7 a 12 anos esta viendo en una pizarra la solucion de un problema de matematicas, paso a paso, y te hace preguntas sobre ella.
+
+REGLAS:
+1. Responde en espanol, con frases cortas y palabras sencillas.
+2. Si pregunta por un paso (por ejemplo "el paso 3"), explica QUE se hizo en ese paso y POR QUE, con mas detalle que la pizarra. Si sirve, da un ejemplo pequeno con numeros.
+3. Usa como maximo 5 frases. Escribe las cuentas en texto plano (por ejemplo 4 × 4 = 16), sin LaTeX ni simbolos $.
+4. Usa los mismos numeros de paso que la pizarra.
+5. Si la pregunta no es de matematicas, responde amablemente y vuelve al problema.
+6. Animale: termina con una frase corta de animo si viene al caso."#;
+
 /// Solo modelos locales: la inferencia corre dentro de la app
 pub struct AIEngine {
     active_model_id: Option<String>,
@@ -317,6 +328,28 @@ REGLAS:
             return Err(anyhow::anyhow!("No pude leer el dibujo. Intenta escribirlo un poco mas grande."));
         }
         Ok(read)
+    }
+
+    /// Responde una pregunta del nino sobre los pasos de la pizarra (chat)
+    pub async fn answer_question(context: &str, turns: Vec<crate::ai::local::Turn>, local_model: Option<&LocalModel>, active_id: Option<&str>) -> Result<String> {
+        let Some(files) = local_model else {
+            return Err(anyhow::anyhow!(match active_id {
+                Some(_) => "El modelo activo no esta descargado. Descargalo en Configuracion.",
+                None => "Para hacer preguntas selecciona un modelo en Configuracion.",
+            }));
+        };
+        let system = format!("{}\n\nEsto es lo que el nino esta viendo en la pizarra:\n{}", CHAT_PROMPT, context);
+        let files = files.clone();
+        let generation = tokio::task::spawn_blocking(move || {
+            crate::ai::local::generate_chat(&files, &system, &turns, None, None, 700)
+        })
+        .await??;
+        crate::ai::local::record_speed(generation.tokens_per_second);
+        let answer = generation.text.trim().to_string();
+        if answer.is_empty() {
+            return Err(anyhow::anyhow!("La maestra no supo que responder. Intenta preguntar de otra forma."));
+        }
+        Ok(answer)
     }
 
     fn read_grammar() -> Option<&'static str> {

@@ -427,3 +427,12 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   (voltear y multiplicar), simplificar y pasar a enteros + fraccion. Todo con numeros exactos.
 - Pizzas en `BoardVisual.tsx`: rebanadas tomadas, las de la segunda fraccion en otro color, las que se
   restan tachadas. "/" se lee como fraccion; "1/2" sola ya no va a division en casita.
+
+### Pasos numerados y chat de preguntas (2026-10-04)
+- La pizarra numera cada renglon con el numero de su paso (igual que "Paso N de M"); en las cuentas en
+  columna el numero aparece junto a lo que se escribe. Pulsar un numero prepara la pregunta en el chat.
+- Todo paso escribe algo en la pizarra y la explicacion del modelo no repite renglones.
+- `src/components/StepChat.tsx` + comando `ask_about_steps`: chat a la derecha con la maestra (modelo
+  local). Recibe el problema, los pasos numerados (lo escrito y lo narrado) y el paso actual. Botones
+  rapidos: "No entendi el paso N", "¿Por que se hace asi?", "Dame otro ejemplo".
+- `local::generate_chat`: conversaciones de varios turnos con la plantilla del modelo.

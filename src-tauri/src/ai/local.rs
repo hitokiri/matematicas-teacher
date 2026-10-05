@@ -206,6 +206,9 @@ pub fn unload() {
     *LOADED.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
+/// Un turno de la conversacion: ("user" | "assistant", texto)
+pub type Turn = (String, String);
+
 /// Genera la respuesta del asistente para (system, user) y opcionalmente una imagen
 /// (bytes PNG/JPEG). Bloqueante.
 pub fn generate(
@@ -214,6 +217,18 @@ pub fn generate(
     user: &str,
     image: Option<&[u8]>,
     grammar: Option<&str>,
+) -> Result<Generation> {
+    generate_chat(files, system, &[("user".into(), user.into())], image, grammar, MAX_NEW_TOKENS)
+}
+
+/// Como `generate`, pero con una conversacion de varios turnos (chat de preguntas)
+pub fn generate_chat(
+    files: &LocalModel,
+    system: &str,
+    turns: &[Turn],
+    image: Option<&[u8]>,
+    grammar: Option<&str>,
+    max_tokens: usize,
 ) -> Result<Generation> {
     let mut guard = LOADED.lock().unwrap_or_else(|e| e.into_inner());
     ensure_loaded(&mut guard, files)?;
@@ -231,11 +246,15 @@ pub fn generate(
         (None, _) => None,
     };
 
-    let user = match mtmd {
-        Some(_) => format!("{}\n{}", llama_cpp_2::mtmd::mtmd_default_marker(), user),
-        None => user.to_string(),
-    };
-    let prompt = render_prompt(model, system, &user)?;
+    // La imagen va al principio del primer mensaje del usuario
+    let mut messages: Vec<Turn> = vec![("system".into(), system.into())];
+    messages.extend(turns.iter().cloned());
+    if mtmd.is_some() {
+        if let Some(first) = messages.iter_mut().find(|(role, _)| role == "user") {
+            first.1 = format!("{}\n{}", llama_cpp_2::mtmd::mtmd_default_marker(), first.1);
+        }
+    }
+    let prompt = render_prompt(model, &messages)?;
 
     let params = LlamaContextParams::default()
         .with_n_ctx(NonZeroU32::new(N_CTX))
@@ -296,7 +315,7 @@ pub fn generate(
     let mut out = Vec::new();
     let started = Instant::now();
     let mut generated = 0usize;
-    let budget = MAX_NEW_TOKENS.min((N_CTX as i32 - pos).max(0) as usize);
+    let budget = max_tokens.min((N_CTX as i32 - pos).max(0) as usize);
     for _ in 0..budget {
         let mut tok = sampler.sample(&ctx, -1);
         if let Some(g) = grammar.as_mut() {
@@ -364,11 +383,11 @@ pub(crate) fn strip_thinking(text: &str) -> String {
 
 /// Construye el prompt con la plantilla Jinja del propio GGUF (como llama-server), sin modo
 /// "pensar". Si la plantilla no se puede renderizar, usa el motor de plantillas de llama.cpp.
-fn render_prompt(model: &LlamaModel, system: &str, user: &str) -> Result<String> {
+fn render_prompt(model: &LlamaModel, messages: &[Turn]) -> Result<String> {
     if let Ok(source) = model.meta_val_str("tokenizer.chat_template") {
         let vocab = model.vocab();
         let piece = |t| String::from_utf8_lossy(&vocab.token_to_piece(t, true, None)).to_string();
-        match render_jinja(&source, system, user, &piece(vocab.bos()), &piece(vocab.eos())) {
+        match render_jinja(&source, messages, &piece(vocab.bos()), &piece(vocab.eos())) {
             Ok(prompt) => return Ok(prompt),
             Err(e) => eprintln!("Plantilla Jinja no soportada, se usa la de llama.cpp: {}", e),
         }
@@ -377,15 +396,14 @@ fn render_prompt(model: &LlamaModel, system: &str, user: &str) -> Result<String>
         Ok(t) => t,
         Err(_) => LlamaChatTemplate::new("chatml")?,
     };
-    let chat = [
-        LlamaChatMessage::new("system".into(), system.into())?,
-        LlamaChatMessage::new("user".into(), user.into())?,
-    ];
+    let chat = messages.iter()
+        .map(|(role, content)| LlamaChatMessage::new(role.clone(), content.clone()))
+        .collect::<Result<Vec<_>, _>>()?;
     model.apply_chat_template(&tmpl, &chat, true)
         .map_err(|e| anyhow::anyhow!("No se pudo aplicar la plantilla de chat: {}", e))
 }
 
-pub(crate) fn render_jinja(source: &str, system: &str, user: &str, bos: &str, eos: &str) -> Result<String> {
+pub(crate) fn render_jinja(source: &str, messages: &[Turn], bos: &str, eos: &str) -> Result<String> {
     let mut env = minijinja::Environment::new();
     env.set_unknown_method_callback(minijinja_contrib::pycompat::unknown_method_callback);
     env.add_function("raise_exception", |msg: String| -> Result<String, minijinja::Error> {
@@ -394,10 +412,9 @@ pub(crate) fn render_jinja(source: &str, system: &str, user: &str, bos: &str, eo
     env.add_function("strftime_now", |_fmt: String| chrono::Local::now().format("%d %B %Y").to_string());
     env.add_template("chat", source)?;
     let prompt = env.get_template("chat")?.render(minijinja::context! {
-        messages => vec![
-            minijinja::context! { role => "system", content => system },
-            minijinja::context! { role => "user", content => user },
-        ],
+        messages => messages.iter()
+            .map(|(role, content)| minijinja::context! { role => role, content => content })
+            .collect::<Vec<_>>(),
         add_generation_prompt => true,
         enable_thinking => false,
         bos_token => bos,

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
 import Chalkboard from '../components/Chalkboard'
+import StepChat from '../components/StepChat'
 import { parseArithmetic } from '../lib/board/parse'
 import { buildArithmetic } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
@@ -60,6 +61,12 @@ function MainApp({ settings }: MainAppProps) {
   // Lo que el modelo leyo en el dibujo (editable por si leyo mal un numero)
   const [readText, setReadText] = useState<string | null>(null)
   const [loadingMessage, setLoadingMessage] = useState('')
+  // Chat de preguntas: paso que se ve en la pizarra y pregunta preparada al pulsar un numero
+  const [viewStep, setViewStep] = useState(0)
+  const [draft, setDraft] = useState<{ text: string; nonce: number } | null>(null)
+  const askStep = useCallback((step: number) => {
+    setDraft(d => ({ text: `Tengo una duda con el paso ${step + 1}: `, nonce: (d?.nonce ?? 0) + 1 }))
+  }, [])
 
   const hasInput = inputMode === 'draw' ? !!problemImage : !!problemText.trim()
 
@@ -120,7 +127,8 @@ function MainApp({ settings }: MainAppProps) {
   }
 
   return (
-    <>
+    <div className={`workspace ${board && !loading ? 'with-chat' : ''}`}>
+    <div className="workspace-main">
       <div className="input-section">
         <h2>Escribe o dibuja tu problema matematico</h2>
         
@@ -199,7 +207,9 @@ function MainApp({ settings }: MainAppProps) {
         </div>
       )}
 
-      {board && !loading && <Chalkboard key={boardKey} script={board} />}
+      {board && !loading && (
+        <Chalkboard key={boardKey} script={board} onStepChange={setViewStep} onAskStep={askStep} />
+      )}
 
       {solution && !loading && (
         <details className="text-explanation">
@@ -207,7 +217,9 @@ function MainApp({ settings }: MainAppProps) {
           <SolutionDisplay solution={solution} />
         </details>
       )}
-    </>
+    </div>
+    {board && !loading && <StepChat key={boardKey} script={board} currentStep={viewStep} draft={draft} />}
+    </div>
   )
 }
 

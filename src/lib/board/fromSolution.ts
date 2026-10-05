@@ -23,17 +23,20 @@ export function solutionScript(solution: SolutionLike): BoardScript {
     add: [line(0, solution.problem, 'op')],
   }]
   let row = 1
+  const written = [norm(solution.problem)]
   for (const s of solution.steps) {
     const title = s.title?.trim()
     const calc = s.calculation?.trim()
-    const text = calc || title || ''
-    const add = text ? [line(row, text, 'line-text')] : []
+    // Lo que se escribe: la operacion; si repite lo de arriba, el titulo; si no, la explicacion corta
+    const options = [calc, title, shorten(s.explanation)].filter((t): t is string => !!t)
+    const text = options.find(t => norm(t) !== written[written.length - 1]) ?? options[0] ?? '…'
+    written.push(norm(text))
     steps.push({
       say: title ? `${title}. ${s.explanation}` : s.explanation,
-      add,
-      focus: text ? [[row, 0]] : undefined,
+      add: [line(row, text, 'line-text')],
+      focus: [[row, 0]],
     })
-    if (text) row++
+    row++
   }
   steps.push({ say: `¡Listo! La respuesta es ${answer}. 🎉`, add: [line(row, `✔ ${answer}`, 'result')] })
 
@@ -48,6 +51,14 @@ export function solutionScript(solution: SolutionLike): BoardScript {
     steps,
     answer,
   }
+}
+
+const norm = (t: string) => t.replace(/\s+/g, '').toLowerCase()
+
+/** Explicacion corta para escribir en la pizarra */
+function shorten(text: string): string {
+  const first = text.split(/(?<=[.!?])\s/)[0].trim()
+  return first.length > 60 ? `${first.slice(0, 57)}…` : first
 }
 
 /** "Respuesta final: x = 5" -> "x = 5" */

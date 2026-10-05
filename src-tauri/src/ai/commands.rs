@@ -53,6 +53,35 @@ pub async fn read_problem(app: tauri::AppHandle, problem_image: String) -> Resul
         .map_err(|e| e.to_string())
 }
 
+/// Un mensaje del chat de preguntas
+#[derive(serde::Deserialize)]
+pub struct ChatMessage {
+    role: String,
+    content: String,
+}
+
+/// Responde una pregunta sobre los pasos de la pizarra. `context` describe el problema y los pasos
+/// numerados; `messages` es la conversacion (el ultimo es la pregunta nueva).
+#[tauri::command]
+pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: Vec<ChatMessage>) -> Result<String, String> {
+    let state = app.state::<crate::AppState>();
+    let active_id = state.settings.lock().map_err(|e| e.to_string())?.active_model_id.clone();
+    let local_model = {
+        let mut models = state.models.lock().map_err(|e| e.to_string())?;
+        models.refresh_download_status();
+        models.get_active_local_model()
+    };
+    // Solo los ultimos turnos para que quepa en el contexto del modelo
+    let turns: Vec<_> = messages.into_iter()
+        .filter(|m| m.role == "user" || m.role == "assistant")
+        .map(|m| (m.role, m.content))
+        .collect();
+    let turns = turns[turns.len().saturating_sub(12)..].to_vec();
+    crate::ai::engine::AIEngine::answer_question(&context, turns, local_model.as_ref(), active_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Hardware que usa el modelo local ("GPU: ..." o "CPU")
 #[tauri::command]
 pub async fn get_compute_device() -> Result<String, String> {

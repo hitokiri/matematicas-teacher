@@ -213,7 +213,8 @@ fn test_render_jinja_disables_thinking() {
     let tmpl = "{%- for m in messages %}{{- '<|im_start|>' + m.role + '\\n' + m.content + '<|im_end|>\\n' }}{%- endfor %}\
 {%- if add_generation_prompt %}{{- '<|im_start|>assistant\\n' }}\
 {%- if enable_thinking is defined and enable_thinking is false %}{{- '<think>\\n\\n</think>\\n\\n' }}{%- endif %}{%- endif %}";
-    let prompt = crate::ai::local::render_jinja(tmpl, "sistema", "2+2", "", "").unwrap();
+    let messages = [("system".to_string(), "sistema".to_string()), ("user".to_string(), "2+2".to_string())];
+    let prompt = crate::ai::local::render_jinja(tmpl, &messages, "", "").unwrap();
     assert!(prompt.contains("<|im_start|>user\n2+2<|im_end|>"));
     assert!(prompt.ends_with("<think>\n\n</think>\n\n"), "debe pedir respuesta directa: {:?}", prompt);
 }
@@ -289,4 +290,19 @@ async fn test_read_drawing_transcribes_only() {
     let read = AIEngine::read_drawing(&url, Some(&files), None).await.expect("debe leer el dibujo");
     println!("LEIDO: {}", read);
     assert!(!read.is_empty());
+}
+
+/// Chat real: LOCAL_GGUF=... cargo test chat_answers -- --ignored --nocapture
+#[tokio::test]
+#[ignore]
+async fn test_chat_answers_question_about_step() {
+    let files = crate::ai::local::LocalModel {
+        model: std::path::PathBuf::from(std::env::var("LOCAL_GGUF").expect("LOCAL_GGUF")),
+        mmproj: std::env::var("LOCAL_MMPROJ").ok().map(std::path::PathBuf::from),
+    };
+    let context = "Problema: √x = 4\nPaso 1: √x = 4 — Este es el problema.\nPaso 2: (√x)² = 4² — Elevamos al cuadrado los dos lados.\nPaso 3: x = 16 — Simplificamos: el cuadrado de la raíz es el número mismo, y 4 al cuadrado es 16.\nRespuesta: x = 16\nEl niño está viendo el paso 3.";
+    let turns = vec![("user".to_string(), "no entiendo que paso con la raiz cuadrada en el paso 3".to_string())];
+    let answer = AIEngine::answer_question(context, turns, Some(&files), None).await.expect("debe responder");
+    println!("RESPUESTA:\n{}", answer);
+    assert!(!answer.is_empty());
 }

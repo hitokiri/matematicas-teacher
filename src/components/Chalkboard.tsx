@@ -14,7 +14,14 @@ interface ChalkboardProps {
   script: BoardScript
   /** Empieza a reproducir solo (por defecto si) */
   autoPlay?: boolean
+  /** Avisa el paso que se esta viendo (0 = primero) */
+  onStepChange?: (step: number) => void
+  /** Al pulsar el numero de un paso (para preguntar por el en el chat) */
+  onAskStep?: (step: number) => void
 }
+
+/** Ancho de la columna de numeros de paso en los problemas de renglones */
+const GUTTER = 58
 
 /** Tiempo que se queda cada paso al reproducir: lo que tarda en escribirse + leerlo */
 function stepDuration(script: BoardScript, step: number): number {
@@ -24,7 +31,7 @@ function stepDuration(script: BoardScript, step: number): number {
 
 const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
 
-export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps) {
+export default function Chalkboard({ script, autoPlay = true, onStepChange, onAskStep }: ChalkboardProps) {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(false)
@@ -45,6 +52,10 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
     const t = window.setTimeout(() => setStep(s => Math.min(s + 1, last)), stepDuration(script, step))
     return () => window.clearTimeout(t)
   }, [playing, step, last, script])
+
+  useEffect(() => {
+    onStepChange?.(Math.min(step, last))
+  }, [step, last, onStepChange])
 
   // Lectura en voz alta (si el sistema la soporta)
   useEffect(() => {
@@ -71,7 +82,18 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
   for (let i = 0; i <= Math.min(step, last); i++) if (script.steps[i].visual) visualStep = i
   const visual = visualStep >= 0 ? script.steps[visualStep].visual : undefined
 
-  const width = PAD * 2 + script.cols * CW
+  // Numero de paso de cada renglon: solo el primer renglon que escribe cada paso
+  const { stepOf, lined } = useMemo(() => {
+    const stepOf = new Map<string, number>()
+    script.steps.forEach((s, i) => {
+      const first = s.add.find(it => it.kind === 'text' && it.align === 'start')
+      if (first) stepOf.set(first.id, i)
+    })
+    return { stepOf, lined: stepOf.size > 0 }
+  }, [script])
+  const gutter = lined ? GUTTER : 0
+
+  const width = PAD * 2 + gutter + script.cols * CW
   const height = PAD * 2 + script.rows * CH
   const current = script.steps[Math.min(step, last)]
   const rowIsText = (r: number) => visible.some(i => i.kind === 'text' && i.row === r && i.align === 'start')
@@ -90,6 +112,21 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
           role="img"
           aria-label={`Pizarra: ${script.title}`}
         >
+          {lined && visible.map(item => {
+            const n = stepOf.get(item.id)
+            if (n === undefined || item.kind !== 'text') return null
+            return (
+              <StepBadge
+                key={`b${item.id}`}
+                n={n + 1}
+                x={PAD + 22}
+                y={PAD + item.row * CH + CH / 2}
+                active={n === Math.min(step, last)}
+                onClick={onAskStep ? () => onAskStep(n) : undefined}
+              />
+            )
+          })}
+          <g transform={`translate(${gutter} 0)`}>
           {current.focus?.map(([r, c], k) => {
             const wide = rowIsText(r)
             return (
@@ -114,6 +151,18 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
               </g>
             )
           })}
+          {/* Cuentas en columna: el numero del paso junto a lo que se escribe ahora */}
+          {!lined && current.focus?.[0] && step > 0 && (
+            <StepBadge
+              n={Math.min(step, last) + 1}
+              x={PAD + (current.focus[current.focus.length - 1][1] + 1) * CW + 4}
+              y={PAD + current.focus[current.focus.length - 1][0] * CH + 14}
+              active
+              small
+              onClick={onAskStep ? () => onAskStep(Math.min(step, last)) : undefined}
+            />
+          )}
+          </g>
         </svg>
         {visual && (
           <div className="board-visual-wrap" key={visualStep}>
@@ -155,6 +204,23 @@ export default function Chalkboard({ script, autoPlay = true }: ChalkboardProps)
         </div>
       )}
     </div>
+  )
+}
+
+function StepBadge({ n, x, y, active, small, onClick }: {
+  n: number; x: number; y: number; active?: boolean; small?: boolean; onClick?: () => void
+}) {
+  const r = small ? 14 : 18
+  return (
+    <g
+      className={`step-badge ${active ? 'active' : ''} ${onClick ? 'clickable' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      aria-label={onClick ? `Preguntar por el paso ${n}` : `Paso ${n}`}
+    >
+      <circle cx={x} cy={y} r={r} />
+      <text x={x} y={y + (small ? 6 : 7)} textAnchor="middle" fontSize={small ? 17 : 21}>{n}</text>
+    </g>
   )
 }
 

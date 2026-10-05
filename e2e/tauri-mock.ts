@@ -104,6 +104,10 @@ const mockInvoke = (cmd, args) => {
       return Promise.resolve(undefined);
     }
 
+    case 'ask_about_steps':
+      window.__lastAskArgs = args;
+      return Promise.resolve('En ese paso **quitamos la raíz**: la raíz y el cuadrado se cancelan, como 4 × 4 = 16.');
+
     case 'read_problem':
       window.__lastReadArgs = args;
       // Lectura simulada: una "x" que en realidad era un 7 (se corrige a mano en la prueba)

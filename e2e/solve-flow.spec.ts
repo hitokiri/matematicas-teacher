@@ -72,6 +72,36 @@ test.describe('Flujo de resolver problemas', () => {
     expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
   });
 
+  test('chat: preguntar por un paso pulsando su numero en la pizarra', async ({ page }) => {
+    await page.locator('.problem-input').fill('2x + 4 = 10');
+    await solveButton(page).click();
+    await expect(page.locator('.step-chat')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /pausa/i }).click();
+    const next = page.getByRole('button', { name: /siguiente/i });
+    await next.click();
+    await next.click();
+
+    // Cada renglon tiene su numero de paso
+    await expect(page.locator('.step-badge')).toHaveCount(3);
+    await page.getByRole('button', { name: 'Preguntar por el paso 2' }).click();
+    const box = page.locator('.step-chat-form textarea');
+    await expect(box).toHaveValue('Tengo una duda con el paso 2: ');
+    await box.fill('Tengo una duda con el paso 2: ¿por qué quitamos 4?');
+    await page.getByRole('button', { name: 'Enviar' }).click();
+
+    await expect(page.locator('.chat-msg.assistant')).toContainText('quitamos la raíz');
+    await expect(page.locator('.chat-msg.assistant strong')).toHaveText('quitamos la raíz');
+    const ask = await page.evaluate(() => (window as any).__lastAskArgs);
+    expect(ask.messages.at(-1)).toEqual({ role: 'user', content: 'Tengo una duda con el paso 2: ¿por qué quitamos 4?' });
+    // La maestra sabe los pasos numerados y en cual va el nino
+    expect(ask.context).toContain('Paso 2: [en la pizarra: 2x + 4 − 4 = 10 − 4]');
+    expect(ask.context).toContain('El niño está viendo el paso 3');
+
+    // Boton rapido sobre el paso actual
+    await page.getByRole('button', { name: 'No entendí el paso 3' }).click();
+    await expect(page.locator('.chat-msg.user')).toHaveCount(2);
+  });
+
   test('otro problema: el modelo explica y la pizarra escribe cada paso', async ({ page }) => {
     await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();

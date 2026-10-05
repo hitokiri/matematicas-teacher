@@ -72,6 +72,7 @@ fn main() {
             // AI
             ai::commands::solve_problem,
             ai::commands::read_problem,
+            ai::commands::ask_about_steps,
             // Models
             models::commands::list_models,
             models::commands::download_model,

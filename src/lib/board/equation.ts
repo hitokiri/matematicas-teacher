@@ -226,7 +226,7 @@ export function equationScript(e: Equation): BoardScript {
       say: same
         ? `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que siempre es cierto: cualquier número sirve.`
         : `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que nunca es cierto: la ecuación no tiene solución.`,
-      add: [],
+      ...write(`${show(L.b)} = ${show(R.b)}  ${same ? '✔ siempre' : '✗ nunca'}`, 'result'),
     })
     return finish(steps, row, same ? 'Cualquier número' : 'No tiene solución', e)
   }

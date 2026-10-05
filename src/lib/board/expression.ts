@@ -412,10 +412,17 @@ export function expressionScript(root: Node, original?: string): BoardScript {
     if (!r) break
     if (r.red.error) {
       error = r.red.error
-      steps.push({ say: r.red.say, add: [] })
+      steps.push({ say: r.red.say, add: [item(row, 0, `✗ ${r.red.error}`, 'result')], focus: [[row, 0]] })
+      row++
       break
     }
+    let closing = ''
     for (const sub of r.red.substeps) {
+      // Una conclusion sin renglones se dice junto con el resultado (asi todo paso escribe algo)
+      if (!sub.lines.length) {
+        closing = `${sub.say} `
+        continue
+      }
       const add = sub.lines.map(l => item(row++, 1, l, 'muted'))
       steps.push({ say: sub.say, add, focus: add.map(a => [(a as { row: number }).row, 0] as [number, number]) })
     }
@@ -423,7 +430,7 @@ export function expressionScript(root: Node, original?: string): BoardScript {
     const parts = print(node, r.red.node)
     const eq = hasApprox(node) ? '≈ ' : '= '
     const text = eq + parts.map(p => p.text).join('')
-    steps.push({ say: r.red.say, add: [item(row, 0, text, 'line-text', [{ text: eq }, ...parts])], focus: [[row, 0]] })
+    steps.push({ say: closing + r.red.say, add: [item(row, 0, text, 'line-text', [{ text: eq }, ...parts])], focus: [[row, 0]] })
     row++
   }
 

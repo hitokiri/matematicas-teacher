@@ -152,3 +152,18 @@ it('buildArithmetic elige el algoritmo', () => {
   expect(buildArithmetic({ op: '*', a: '10', b: '20' }).answer).toBe('200')
   expect(buildArithmetic({ op: '+', numbers: ['1', '2'] }).answer).toBe('3')
 })
+
+it('la explicacion del modelo no repite renglones y cada paso escribe algo', () => {
+  const s = solutionScript({
+    problem: '√x = 4',
+    steps: [
+      { step: 1, title: 'Este es el problema', explanation: 'Tenemos una raíz.', calculation: '√x = 4' },
+      { step: 2, title: 'Elevamos al cuadrado', explanation: 'Así quitamos la raíz.', calculation: '(√x)² = 4²' },
+      { step: 3, title: '', explanation: 'El cuadrado de la raíz es el número mismo.', calculation: '' },
+    ],
+    final_answer: 'x = 16',
+  })
+  const texts = finalItems(s).map(i => (i.kind === 'text' ? i.text : ''))
+  expect(texts).toEqual(['√x = 4', 'Este es el problema', '(√x)² = 4²', 'El cuadrado de la raíz es el número mismo.', '✔ x = 16'])
+  expect(s.steps.every(st => st.add.length > 0)).toBe(true)
+})
