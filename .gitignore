@@ -13,3 +13,7 @@ playwright-report/
 
 # Instaladores generados por npm run package:gpu / package:cpu
 instaladores/
+
+AGENTS.md
+opencode.json
+.mcp.json
