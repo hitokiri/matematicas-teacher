@@ -62,14 +62,15 @@ Responde SOLO con un objeto JSON con este formato:
 
 REGLAS:
 1. Todo en espanol, con frases cortas y palabras sencillas, como le hablarias a un nino.
-2. Cada paso hace UNA sola cosa. Usa entre 2 y 6 pasos.
-3. "titulo": maximo 6 palabras (por ejemplo "Quitamos el 3 de los dos lados").
-4. "explicacion": 1 o 2 frases que digan que hacemos y por que.
-5. "operacion": la cuenta de ese paso en texto plano, por ejemplo "2x = 7 - 3 = 4" o "3 × 3 = 9". Sin LaTeX ni simbolos $. Vacia ("") si el paso no tiene cuenta.
-6. "problema": el enunciado tal cual (si viene en una imagen, transcribelo).
-7. "respuesta_final": solo el resultado, por ejemplo "x = 5" o "18".
-8. Para fracciones, simplifica siempre que se pueda. Revisa tus cuentas antes de responder.
-9. No te saltes calculos: cada resultado debe salir de una operacion escrita en un paso anterior. Si un resultado es aproximado (por ejemplo una raiz no exacta), muestra como se encuentra probando numeros."#.to_string()
+2. Cada paso hace UNA sola operacion. Nunca juntes dos cuentas en el mismo paso: por ejemplo, en 3/4 + 10 primero convierte 10 = 40/4 (un paso) y despues suma 3/4 + 40/4 = 43/4 (otro paso).
+3. No te saltes los pasos "faciles": buscar el denominador comun, convertir fracciones, pasar un numero al otro lado, multiplicar, simplificar. Usa todos los pasos que hagan falta (hasta 12).
+4. "titulo": maximo 6 palabras (por ejemplo "Quitamos el 3 de los dos lados").
+5. "explicacion": 1 a 3 frases que digan QUE hacemos y POR QUE.
+6. "operacion": la cuenta de ese paso en texto plano, por ejemplo "2x = 7 - 3 = 4" o "3 × 3 = 9". Sin LaTeX ni simbolos $. Vacia ("") si el paso no tiene cuenta.
+7. "problema": el enunciado tal cual (si viene en una imagen, transcribelo).
+8. "respuesta_final": solo el resultado, por ejemplo "x = 5" o "18". Si el problema tiene fracciones, da el resultado como fraccion (y si quieres tambien en decimal: "43/4 = 10.75").
+9. Para fracciones, simplifica siempre que se pueda. Revisa tus cuentas antes de responder.
+10. Cada resultado debe salir de una operacion escrita en un paso anterior. Si un resultado es aproximado (por ejemplo una raiz no exacta), muestra como se encuentra probando numeros."#.to_string()
     }
 
     #[cfg(test)]
@@ -86,7 +87,7 @@ REGLAS:
                 "pasos": {
                     "type": "array",
                     "minItems": 1,
-                    "maxItems": 8,
+                    "maxItems": 12,
                     "items": {
                         "type": "object",
                         "properties": {

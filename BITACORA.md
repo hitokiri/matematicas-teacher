@@ -436,3 +436,11 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   local). Recibe el problema, los pasos numerados (lo escrito y lo narrado) y el paso actual. Botones
   rapidos: "No entendi el paso N", "¿Por que se hace asi?", "Dame otro ejemplo".
 - `local::generate_chat`: conversaciones de varios turnos con la plantilla del modelo.
+
+### Mas detalle en los pasos (2026-10-04)
+- Fracciones en cadena (hasta 5 terminos, enteros incluidos) con orden de operaciones: cada operacion con sus
+  pasos, simplificacion a mitad de camino y renglon "= lo que queda". Entero + fraccion: "10 = 40/4".
+  Resultado como fraccion, entero y fraccion, y el decimal en la narracion (43/4 = 10 y 3/4, 10.75).
+- Dos signos seguidos ("+*") muestran un aviso en vez de mandarlo al modelo.
+- Prompt del modelo: una sola operacion por paso, sin saltar conversiones, hasta 12 pasos, fracciones como
+  fraccion. Medido: Qwen3.5 2B sigue juntando pasos; Qwen3-VL 4B los separa y resuelve x² = 9 como ±3.

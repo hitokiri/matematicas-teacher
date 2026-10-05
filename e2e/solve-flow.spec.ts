@@ -102,6 +102,20 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(page.locator('.chat-msg.user')).toHaveCount(2);
   });
 
+  test('dos signos seguidos: avisa en vez de adivinar', async ({ page }) => {
+    await page.locator('.problem-input').fill('1/2+1/4+*10');
+    await solveButton(page).click();
+    await expect(page.locator('.error-message')).toContainText('dos signos seguidos');
+    await expect(page.locator('.chalkboard')).toHaveCount(0);
+
+    await page.locator('.problem-input').fill('1/2+1/4+10');
+    await solveButton(page).click();
+    await page.getByRole('button', { name: /pausa/i }).click();
+    const next = page.getByRole('button', { name: /siguiente/i });
+    while (await next.isEnabled()) await next.click();
+    await expect(page.locator('.chalk-answer')).toContainText('43/4 = 10 y 3/4');
+  });
+
   test('otro problema: el modelo explica y la pizarra escribe cada paso', async ({ page }) => {
     await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();

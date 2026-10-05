@@ -76,6 +76,33 @@ describe('fracciones con pizzas', () => {
     expect(solve('\\frac{1}{2} + \\frac{1}{4}').answer).toBe('3/4')
   })
 
+  it('varias fracciones y un entero: 1/2 + 1/4 + 10', () => {
+    const s = solve('1/2+1/4+10')
+    expect(lines(s)).toEqual([
+      '1/2 + 1/4 + 10',
+      '1/2 + 1/4',
+      'Tabla del 2: 2, 4   ·   Tabla del 4: 4',
+      '1/2 = (1 × 2)/(2 × 2) = 2/4',
+      '2/4 + 1/4 = 3/4',
+      '= 3/4 + 10',
+      '10 = (10 × 4)/4 = 40/4',
+      '3/4 + 40/4 = 43/4',
+      '43/4 = 10 y 3/4',
+    ])
+    expect(s.answer).toBe('43/4 = 10 y 3/4')
+    expect(s.steps.some(st => st.say.includes('cortamos cada pizza en 4 rebanadas: 10 × 4 = 40'))).toBe(true)
+    expect(s.steps[s.steps.length - 1].say).toContain('En decimales es 10.75')
+  })
+
+  it('orden de operaciones con fracciones', () => {
+    const s = solve('1/2 + 2 × 3/4')
+    expect(s.steps[0].say).toContain('primero multiplicaciones y divisiones')
+    // primero 2 × 3/4 = 6/4 = 3/2, despues 1/2 + 3/2 = 4/2 = 2
+    expect(lines(s)).toContain('2 × 3/4')
+    expect(lines(s)).toContain('= 1/2 + 3/2')
+    expect(s.answer).toBe('2')
+  })
+
   it('no es un problema de fracciones', () => {
     expect(parseFractions('3/4')).toBeNull() // ya esta simplificada, no hay nada que hacer
     expect(parseFractions('6 ÷ 3')).toBeNull()

@@ -44,6 +44,13 @@ function boardFor(text: string): BoardScript | null {
   return fractions ? fractionScript(fractions) : null
 }
 
+/** Dos signos seguidos ("+*") suelen ser un error al escribir: mejor preguntar que adivinar */
+export function typoHint(text: string): string | null {
+  const m = text.match(/([+\-×*÷/:])\s*([+×*÷/:])/)
+  if (!m) return null
+  return `Hay dos signos seguidos ("${m[1]}${m[2]}"). Revisa qué querías escribir y quita uno.`
+}
+
 function MainApp({ settings }: MainAppProps) {
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
@@ -75,6 +82,12 @@ function MainApp({ settings }: MainAppProps) {
     setError('')
     setSolution(null)
     setBoard(null)
+
+    const typo = typoHint(text)
+    if (typo) {
+      setError(typo)
+      return
+    }
 
     // Las cuentas y expresiones numericas las resuelve la app en la pizarra, al instante
     const own = boardFor(text)

@@ -12,12 +12,16 @@ interface Frac {
   d: number
 }
 
+type Op = '+' | '-' | '*' | '/'
+
+/** Una o varias fracciones (y enteros) con operaciones: 1/2 + 1/4 + 10 */
 export interface FractionProblem {
-  a: Frac
-  op?: '+' | '-' | '*' | '/'
-  b?: Frac
+  terms: Frac[]
+  ops: Op[]
   text: string
 }
+
+const MAX_TERMS = 5
 
 const MAX_SLICES = 24
 const MAX_PIZZAS = 4
@@ -34,30 +38,27 @@ export function parseFractions(input: string): FractionProblem | null {
   // "(1)/(2)" de \frac -> "1/2"
   for (let i = 0; i < 3; i++) s = s.replace(/\((\d+)\)/g, '$1').replace(/\((\d+\/\d+)\)/g, '$1')
 
-  const term = '(\\d+(?:\\/\\d+)?)'
   const toFrac = (t: string): Frac | null => {
     const [n, d = '1'] = t.split('/')
     const f = { n: Number(n), d: Number(d) }
     return f.d === 0 || f.d > 100 || f.n > 1000 ? null : f
   }
-  const single = s.match(new RegExp(`^${term}$`))
-  if (single) {
-    const a = toFrac(single[1])
+  // terminos (enteros o a/b) separados por + − × ÷; "/" solo dentro de una fraccion
+  if (!/^\d+(\/\d+)?([-+*÷]\d+(\/\d+)?)*$/.test(s)) return null
+  const termTexts = s.split(/[-+*÷]/)
+  const opTexts = s.match(/[-+*÷]/g) ?? []
+  if (termTexts.length > MAX_TERMS || !s.includes('/')) return null
+  const terms = termTexts.map(toFrac)
+  if (terms.some(t => !t)) return null
+  const ops = opTexts.map(o => (o === '÷' ? '/' : o) as Op)
+
+  if (!ops.length) {
+    const a = terms[0]!
     // Una fraccion sola: solo si hay algo que hacer (simplificar o pasar a entero y fraccion)
-    if (!a || a.d === 1 || !s.includes('/')) return null
-    if (gcd(a.n, a.d) === 1 && a.n < a.d) return null
-    return { a, text: input.trim() }
+    if (a.d === 1 || (gcd(a.n, a.d) === 1 && a.n < a.d)) return null
+    return { terms: [a], ops, text: input.trim() }
   }
-  const m = s.match(new RegExp(`^${term}([-+*÷/])${term}$`))
-  if (!m) return null
-  const a = toFrac(m[1])
-  const b = toFrac(m[3])
-  if (!a || !b) return null
-  // Al menos una fraccion; "8/2" sola o "6÷3" son divisiones, no fracciones
-  if (a.d === 1 && b.d === 1) return null
-  const op = m[2] === '÷' ? '/' : (m[2] as '+' | '-' | '*' | '/')
-  // "1/2/4" no; "/" entre una fraccion y otra se lee como division
-  return { a, op, b, text: input.trim() }
+  return { terms: terms as Frac[], ops, text: input.trim() }
 }
 
 const show = (f: Frac) => (f.d === 1 ? String(f.n) : `${f.n}/${f.d}`)
@@ -137,25 +138,56 @@ export function fractionScript(p: FractionProblem): BoardScript {
   }
   const sym = { '+': '+', '-': '−', '*': '×', '/': '÷' }
 
-  const { a, b, op } = p
-  const title = op && b ? `${show(a)} ${sym[op]} ${show(b)}` : show(a)
+  const exprText = (terms: Frac[], ops: Op[]) =>
+    terms.map((t, i) => (i ? `${sym[ops[i - 1]]} ${show(t)}` : show(t))).join(' ')
+  const title = exprText(p.terms, p.ops)
+  const mixedOps = p.ops.some(o => o === '*' || o === '/') && p.ops.some(o => o === '+' || o === '-')
   steps.push({
     say: 'Cada fracción es una pizza: el número de abajo dice en cuántas rebanadas iguales la cortamos ' +
-      'y el de arriba cuántas rebanadas tomamos.',
+      'y el de arriba cuántas rebanadas tomamos.' +
+      (p.terms.length > 2 ? ' Como hay varias operaciones, las hacemos una por una' +
+        (mixedOps ? ': primero multiplicaciones y divisiones, después sumas y restas.' : ', de izquierda a derecha.') : ''),
     add: [line(title, 'op')],
-    visual: op && b ? pizzas([{ f: a }, { f: b }], [sym[op]]) : pizzas([{ f: a }], []),
+    visual: p.terms.length <= 3 ? pizzas(p.terms.map(f => ({ f })), p.ops.map(o => sym[o])) : undefined,
   })
 
-  let result: Frac
-  if (!op || !b) {
-    result = a
-  } else if (op === '+' || op === '-') {
-    result = addSub(a, b, op)
-  } else if (op === '*') {
-    result = multiply(a, b)
-  } else {
-    result = divide(a, b)
+  const terms = [...p.terms]
+  const ops = [...p.ops]
+  while (ops.length) {
+    // Primero multiplicaciones y divisiones, despues sumas y restas, de izquierda a derecha
+    let i = ops.findIndex(o => o === '*' || o === '/')
+    if (i < 0) i = 0
+    const [x, op, y] = [terms[i], ops[i], terms[i + 1]]
+    if (terms.length > 2) {
+      steps.push({
+        say: `Ahora hacemos ${x.d === 1 && y.d === 1 ? 'esta cuenta' : 'esta operación'}: ${show(x)} ${sym[op]} ${show(y)}.`,
+        ...write(`${show(x)} ${sym[op]} ${show(y)}`, 'muted'),
+      })
+    }
+    let r = op === '+' || op === '-' ? addSub(x, y, op) : op === '*' ? multiply(x, y) : divide(x, y)
+    terms.splice(i, 2, r)
+    ops.splice(i, 1)
+    if (ops.length) {
+      // Simplificar a la mitad del camino hace las siguientes cuentas mas faciles
+      const g = gcd(r.n, r.d)
+      if (g > 1 && r.n !== 0) {
+        const simple = { n: r.n / g, d: r.d / g }
+        steps.push({
+          say: `Antes de seguir, ${show(r)} se puede simplificar: dividimos arriba y abajo entre ${g} y queda ${show(simple)}.`,
+          ...write(`${show(r)} = ${show(simple)}`),
+          visual: pizzas([{ f: r }, { f: simple }], ['=']),
+        })
+        r = simple
+        terms[i] = r
+      }
+      steps.push({
+        say: `Nos queda ${exprText(terms, ops)}.`,
+        ...write(`= ${exprText(terms, ops)}`),
+        visual: terms.length <= 3 ? pizzas(terms.map(f => ({ f })), ops.map(o => sym[o])) : undefined,
+      })
+    }
   }
+  let result: Frac = terms[0]
 
   // Simplificar
   const g = gcd(result.n, result.d)
@@ -183,7 +215,10 @@ export function fractionScript(p: FractionProblem): BoardScript {
     })
   }
 
-  steps.push({ say: `¡Listo! ${title} = ${answer}. 🎉`, add: [] })
+  // Equivalente en decimales cuando es exacto (denominador con solo 2 y 5)
+  const exactDecimal = (d: number) => { while (d % 2 === 0) d /= 2; while (d % 5 === 0) d /= 5; return d === 1 }
+  const decimal = result.d > 1 && exactDecimal(result.d) ? ` En decimales es ${Number((result.n / result.d).toFixed(6))}.` : ''
+  steps.push({ say: `¡Listo! ${title} = ${answer}.${decimal} 🎉`, add: [] })
   const longest = Math.max(...steps.flatMap(s => s.add).map(i => (i.kind === 'text' ? i.text.length : 0)), 10)
   return { title, cols: Math.ceil(longest / 1.6) + 1, rows: row, steps, answer }
 
@@ -191,7 +226,19 @@ export function fractionScript(p: FractionProblem): BoardScript {
     const verb = op === '+' ? 'sumar' : 'restar'
     let x = a
     let y = b
-    if (a.d !== b.d) {
+    if (a.d !== b.d && (a.d === 1 || b.d === 1)) {
+      const whole = a.d === 1 ? a : b
+      const other = a.d === 1 ? b : a
+      const conv = { n: whole.n * other.d, d: other.d }
+      steps.push({
+        say: `El ${whole.n} son ${whole.n} ${whole.n === 1 ? 'pizza entera' : 'pizzas enteras'}. Para ${verb} con ${sliceName(other.d)}, ` +
+          `cortamos cada pizza en ${other.d} rebanadas: ${whole.n} × ${other.d} = ${conv.n} rebanadas. Así ${whole.n} = ${show(conv)}.`,
+        ...write(`${whole.n} = (${whole.n} × ${other.d})/${other.d} = ${show(conv)}`),
+        visual: pizzas([{ f: whole, label: String(whole.n) }, { f: conv }], ['=']),
+      })
+      if (a.d === 1) x = conv
+      else y = conv
+    } else if (a.d !== b.d) {
       const m = lcm(a.d, b.d)
       steps.push({
         say: `Para ${verb}, las rebanadas tienen que ser del mismo tamaño, y ${sliceName(a.d)} y ${sliceName(b.d)} no lo son. ` +
