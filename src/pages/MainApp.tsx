@@ -4,6 +4,8 @@ import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
 import Chalkboard from '../components/Chalkboard'
 import StepChat from '../components/StepChat'
+import LevelsPanel from '../components/LevelsPanel'
+import { DEFAULT_UI_PREFS, type UiPrefs } from '../lib/uiPrefs'
 import { parseArithmetic } from '../lib/board/parse'
 import { buildArithmetic } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
@@ -31,11 +33,12 @@ interface Solution {
 
 interface MainAppProps {
   settings: AppSettings
+  uiPrefs?: UiPrefs
 }
 
 /** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
  *  ecuaciones de primer grado con balanza, sistemas de dos ecuaciones y fracciones con pizzas */
-function boardFor(text: string): BoardScript | null {
+export function boardFor(text: string): BoardScript | null {
   const arithmetic = parseArithmetic(text)
   if (arithmetic) return buildArithmetic(arithmetic)
   const expression = parseExpression(text)
@@ -57,7 +60,7 @@ export function typoHint(text: string): string | null {
   return `Hay dos signos seguidos ("${m[1]}${m[2]}"). Revisa qué querías escribir y quita uno.`
 }
 
-function MainApp({ settings }: MainAppProps) {
+function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS }: MainAppProps) {
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
   const [board, setBoard] = useState<BoardScript | null>(null)
@@ -219,6 +222,10 @@ function MainApp({ settings }: MainAppProps) {
         )}
       </div>
 
+      {uiPrefs.showLevels && (
+        <LevelsPanel onTry={ex => { setInputMode('text'); setProblemText(ex); setError('') }} />
+      )}
+
       {loading && (
         <div className="loading">
           <div className="spinner"></div>
@@ -227,7 +234,14 @@ function MainApp({ settings }: MainAppProps) {
       )}
 
       {board && !loading && (
-        <Chalkboard key={boardKey} script={board} onStepChange={setViewStep} onAskStep={askStep} />
+        <Chalkboard
+          key={boardKey}
+          script={board}
+          autoPlay={uiPrefs.autoPlay}
+          showAllPages={uiPrefs.boards === 'all'}
+          onStepChange={setViewStep}
+          onAskStep={askStep}
+        />
       )}
 
       {solution && !loading && (

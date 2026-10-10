@@ -63,15 +63,50 @@ describe('Chalkboard', () => {
       final_answer: 'x = 1',
     })
     const { container } = render(<Chalkboard script={script} autoPlay={false} />)
-    expect(container.querySelectorAll('svg.chalkboard').length).toBe(2)
-    expect(screen.getByRole('button', { name: 'Pizarra 1' })).toBeInTheDocument()
+    // Una a la vez: solo se ve la pizarra donde se esta escribiendo
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(1)
+    expect(screen.getByRole('button', { name: 'Pizarra 1' })).toHaveAttribute('aria-current', 'true')
     expect(screen.getByRole('button', { name: 'Pizarra 2' })).toBeInTheDocument()
 
     const next = screen.getByRole('button', { name: /siguiente/i })
     for (let i = 0; i < 8; i++) fireEvent.click(next)
-    const active = container.querySelector('.chalk-page.active')
-    expect(active?.textContent).toContain('Pizarra 2')
-    expect(active?.textContent).toContain('linea 8')
+    expect(screen.getByRole('button', { name: 'Pizarra 2' })).toHaveAttribute('aria-current', 'true')
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(1)
+    expect(container.querySelector('.chalk-page.active')?.textContent).toContain('linea 8')
+  })
+
+  it('un paso final sin renglones se queda en la ultima pizarra', () => {
+    const script = solutionScript({
+      problem: 'p',
+      steps: Array.from({ length: 12 }, (_, i) => ({ step: i + 1, explanation: `e${i}`, calculation: `linea ${i + 1}` })),
+      final_answer: 'x = 1',
+    })
+    script.steps.push({ say: 'fin', add: [] })
+    const { container } = render(<Chalkboard script={script} autoPlay={false} />)
+    const next = screen.getByRole('button', { name: /siguiente/i })
+    for (let i = 0; i < script.steps.length; i++) fireEvent.click(next)
+    expect(screen.getByRole('button', { name: 'Pizarra 2' })).toHaveAttribute('aria-current', 'true')
+    expect(container.querySelector('.chalk-page.active')?.textContent).toContain('x = 1')
+  })
+
+  it('muestra todas las pizarras juntas si se pide', () => {
+    const script = solutionScript({
+      problem: '2x + 3 = 7',
+      steps: Array.from({ length: 12 }, (_, i) => ({
+        step: i + 1, title: `paso ${i + 1}`, explanation: `explicacion ${i + 1}`, calculation: `linea ${i + 1}`,
+      })),
+      final_answer: 'x = 1',
+    })
+    const { container, rerender } = render(<Chalkboard script={script} autoPlay={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /ver todas/i }))
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(2)
+    fireEvent.click(screen.getByRole('button', { name: /una a la vez/i }))
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(1)
+
+    // La preferencia de la configuracion
+    rerender(<Chalkboard script={script} autoPlay={false} showAllPages />)
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(2)
+    expect(container.querySelector('.chalk-pages.multi')).toBeInTheDocument()
   })
 
   it('puede volver a ver una pizarra anterior', () => {
@@ -89,8 +124,7 @@ describe('Chalkboard', () => {
     const next = screen.getByRole('button', { name: /siguiente/i })
     for (let i = 0; i < 9; i++) fireEvent.click(next)
     fireEvent.click(screen.getByRole('button', { name: 'Pizarra 1' }))
-    const active = container.querySelector('.chalk-page.active')
-    expect(active?.textContent).toContain('Pizarra 1')
-    expect(active?.textContent).toContain('linea 1')
+    expect(screen.getByRole('button', { name: 'Pizarra 1' })).toHaveAttribute('aria-current', 'true')
+    expect(container.querySelector('.chalk-page.active')?.textContent).toContain('linea 1')
   })
 })

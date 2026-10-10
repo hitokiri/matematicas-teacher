@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import MainApp from './pages/MainApp'
 import Settings from './pages/Settings'
+import { loadUiPrefs, saveUiPrefs, type UiPrefs } from './lib/uiPrefs'
 
 export interface AppSettings {
   active_model_id: string | null
@@ -13,6 +14,7 @@ function App() {
     active_model_id: null,
   })
   const [isLoaded, setIsLoaded] = useState(false)
+  const [uiPrefs, setUiPrefs] = useState<UiPrefs>(loadUiPrefs)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme')
     return (saved === 'dark' ? 'dark' : 'light') as 'light' | 'dark'
@@ -22,6 +24,10 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    saveUiPrefs(uiPrefs)
+  }, [uiPrefs])
 
   useEffect(() => {
     loadSettings()
@@ -67,7 +73,7 @@ function App() {
       
       <main className="main-content">
         <div className="main-container">
-          <MainApp settings={settings} />
+          <MainApp settings={settings} uiPrefs={uiPrefs} />
         </div>
       </main>
 
@@ -82,7 +88,13 @@ function App() {
       {showSettings && (
         <div className="modal-overlay" onClick={closeSettings}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <Settings onCancel={closeSettings} />
+            <Settings
+              onCancel={closeSettings}
+              uiPrefs={uiPrefs}
+              onUiPrefsChange={setUiPrefs}
+              theme={theme}
+              onThemeChange={setTheme}
+            />
           </div>
         </div>
       )}

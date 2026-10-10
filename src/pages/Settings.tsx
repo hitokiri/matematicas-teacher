@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import ModelBrowser from '../components/ModelBrowser';
+import UiPrefsSection from '../components/UiPrefsSection';
+import type { UiPrefs } from '../lib/uiPrefs';
 
 interface ModelInfo {
   id: string;
@@ -23,9 +25,14 @@ interface ModelInfo {
 
 interface SettingsProps {
   onCancel: () => void;
+  /** Como se ve la app (pizarras, reproduccion...); sin esto no se muestra la seccion */
+  uiPrefs?: UiPrefs;
+  onUiPrefsChange?: (prefs: UiPrefs) => void;
+  theme?: 'light' | 'dark';
+  onThemeChange?: (theme: 'light' | 'dark') => void;
 }
 
-export default function Settings({ onCancel }: SettingsProps) {
+export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, onThemeChange }: SettingsProps) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [computeDevice, setComputeDevice] = useState<string | null>(null);
 
@@ -154,6 +161,10 @@ export default function Settings({ onCancel }: SettingsProps) {
           ← Volver
         </button>
       </div>
+
+      {uiPrefs && onUiPrefsChange && (
+        <UiPrefsSection prefs={uiPrefs} onChange={onUiPrefsChange} theme={theme} onThemeChange={onThemeChange} />
+      )}
 
       <div className="provider-section">
         <h2>💻 Hardware del modelo local</h2>

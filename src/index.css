@@ -1104,6 +1104,11 @@ body {
   background: rgba(255, 224, 102, 0.18);
 }
 
+.page-chip-toggle {
+  margin-left: auto;
+  border-style: dashed;
+}
+
 .chalk-text {
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
   fill: #f4f1e8;
@@ -1408,3 +1413,209 @@ body {
   color: var(--text);
   font: inherit;
 }
+
+/* ¿Hasta dónde llega la maestra? */
+.levels-panel {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.levels-panel > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(168, 85, 247, 0.08));
+}
+
+.levels-panel > summary::-webkit-details-marker { display: none; }
+
+.levels-panel > summary::after {
+  content: '▾';
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.levels-panel[open] > summary::after { transform: rotate(180deg); }
+
+.levels-title { font-weight: 700; font-size: 1.05rem; }
+
+.levels-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.levels-bar {
+  width: 90px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.levels-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--success), #34d399);
+}
+
+.levels-intro {
+  padding: 14px 20px 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.levels-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+  padding: 16px 20px 20px;
+}
+
+.level-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--border);
+  background: var(--bg);
+  font-size: 0.88rem;
+}
+
+.level-card p { color: var(--text-secondary); margin: 0; }
+
+.level-head { display: flex; align-items: center; gap: 8px; }
+
+.level-num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  background: var(--text-secondary);
+}
+
+.level-badge {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.level-app { border-left-color: var(--success); }
+.level-app .level-num { background: var(--success); }
+.level-app .level-badge { background: rgba(16, 185, 129, 0.15); color: #059669; }
+
+.level-model { border-left-color: #f59e0b; }
+.level-model .level-num { background: #f59e0b; }
+.level-model .level-badge { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+
+.level-soon { border-left-color: #a855f7; border-style: dashed; border-left-style: solid; }
+.level-soon .level-num { background: #a855f7; }
+.level-soon .level-badge { background: rgba(168, 85, 247, 0.15); color: #7e22ce; }
+
+[data-theme="dark"] .level-app .level-badge { color: #34d399; }
+[data-theme="dark"] .level-model .level-badge { color: #fbbf24; }
+[data-theme="dark"] .level-soon .level-badge { color: #c084fc; }
+
+.level-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+
+.level-example {
+  font: inherit;
+  font-size: 0.78rem;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.level-example:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Configuracion: interfaz */
+.ui-prefs { display: flex; flex-direction: column; gap: 16px; }
+
+.ui-pref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ui-pref-text { display: flex; flex-direction: column; }
+.ui-pref-text small { color: var(--text-secondary); }
+
+.segmented {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--bg);
+}
+
+.segmented button {
+  font: inherit;
+  font-size: 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.switch {
+  flex-shrink: 0;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+}
+
+.switch[aria-checked='true'] { background: var(--primary); }
+.switch[aria-checked='true']::after { transform: translateX(20px); }

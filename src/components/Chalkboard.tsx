@@ -21,6 +21,8 @@ interface ChalkboardProps {
   onAskStep?: (step: number) => void
   /** Renglones que caben en una pizarra antes de pasar a la siguiente */
   maxRowsPerPage?: number
+  /** Ver todas las pizarras juntas; si no, solo la que se esta viendo (el usuario puede cambiarlo) */
+  showAllPages?: boolean
 }
 
 /** Ancho de la columna de numeros de paso en los problemas de renglones */
@@ -35,13 +37,15 @@ function stepDuration(script: BoardScript, step: number): number {
 const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
 
 export default function Chalkboard({
-  script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE,
+  script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
 }: ChalkboardProps) {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(false)
   /** Pizarra que el usuario eligio ver; si no, se sigue a la que se esta escribiendo */
   const [pinned, setPinned] = useState<number | null>(null)
+  const [allPages, setAllPages] = useState(showAllPages)
+  useEffect(() => setAllPages(showAllPages), [showAllPages])
   const last = script.steps.length - 1
 
   // Reiniciar cuando cambia el problema
@@ -104,7 +108,13 @@ export default function Chalkboard({
   // Pizarras: la maestra usa la otra parte cuando se llenan los renglones
   const pages = Math.max(1, Math.ceil(script.rows / maxRowsPerPage))
   const current = script.steps[Math.min(step, last)]
-  const writeRow = current.focus?.[0]?.[0] ?? current.add.find(i => i.kind === 'text')?.row ?? 0
+  // Un paso que no escribe nada (p. ej. el "¡Listo!") se queda en la pizarra del ultimo renglon escrito
+  let writeRow = 0
+  for (let i = Math.min(step, last); i >= 0; i--) {
+    const s = script.steps[i]
+    const r = s.focus?.[0]?.[0] ?? s.add.find(it => it.kind === 'text')?.row
+    if (r !== undefined) { writeRow = r; break }
+  }
   const activePage = pageOf(writeRow, maxRowsPerPage)
   const viewPage = pinned ?? activePage
   const byPage = useMemo(() => {
@@ -136,17 +146,27 @@ export default function Chalkboard({
                 Pizarra {p + 1}
               </button>
             ))}
+            <button
+              className="page-chip page-chip-toggle"
+              onClick={() => setAllPages(a => !a)}
+              aria-pressed={allPages}
+              title={allPages ? 'Ver solo la pizarra elegida' : 'Ver todas las pizarras juntas'}
+            >
+              {allPages ? '📄 Una a la vez' : '🗂 Ver todas'}
+            </button>
           </div>
         )}
 
-        <div className={`chalk-pages ${pages > 1 ? 'multi' : ''}`}>
+        <div className={`chalk-pages ${pages > 1 && allPages ? 'multi' : ''}`}>
           {Array.from({ length: pages }, (_, p) => {
+            // Una a la vez: solo se dibuja la pizarra que se esta viendo (ahorra espacio)
+            if (!allPages && p !== viewPage) return null
             const rowsHere = Math.min(maxRowsPerPage, script.rows - p * maxRowsPerPage)
             const items = byPage[p]
             const isView = p === viewPage
             return (
               <div key={p} className={`chalk-page ${isView ? 'active' : ''}`}>
-                {pages > 1 && <div className="chalk-page-label">Pizarra {p + 1}</div>}
+                {pages > 1 && allPages && <div className="chalk-page-label">Pizarra {p + 1}</div>}
                 <svg
                   className="chalkboard"
                   viewBox={`0 0 ${width} ${PAD * 2 + rowsHere * CH}`}

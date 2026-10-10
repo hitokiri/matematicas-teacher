@@ -140,9 +140,9 @@ test.describe('Flujo de resolver problemas', () => {
     await page.locator('.problem-input').fill('proceso largo');
     await solveButton(page).click();
 
-    await expect(page.locator('.chalk-pages.multi')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.chalk-page')).toHaveCount(2);
-    await expect(page.getByRole('button', { name: 'Pizarra 2' })).toBeVisible();
+    // Por defecto solo se ve una pizarra a la vez
+    await expect(page.getByRole('button', { name: 'Pizarra 2' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-page')).toHaveCount(1);
 
     const next = page.getByRole('button', { name: /siguiente/i });
     for (let i = 0; i < 8; i++) await next.click();
@@ -150,6 +150,37 @@ test.describe('Flujo de resolver problemas', () => {
 
     await page.getByRole('button', { name: 'Pizarra 1' }).click();
     await expect(page.locator('.chalk-page.active')).toContainText('linea 1');
+
+    // A peticion del usuario se ven todas juntas
+    await page.getByRole('button', { name: /ver todas/i }).click();
+    await expect(page.locator('.chalk-pages.multi')).toBeVisible();
+    await expect(page.locator('.chalk-page')).toHaveCount(2);
+  });
+
+  test('sistema de dos ecuaciones: lo resuelve la app sin el modelo', async ({ page }) => {
+    await page.locator('.problem-input').fill('x + y = 5\nx - y = 1');
+    await solveButton(page).click();
+    await expect(page.locator('.chalk-pages')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /siguiente/i }).click();
+    await expect(page.locator('.chalk-pages')).toContainText('x − y = 1');
+    const args = await page.evaluate(() => (window as any).__lastSolveArgs);
+    expect(args).toBeUndefined();
+  });
+
+  test('configuracion: la seccion de interfaz cambia a todas las pizarras juntas', async ({ page }) => {
+    await page.getByRole('button', { name: /configuracion/i }).click();
+    await page.getByRole('button', { name: /todas juntas/i }).click();
+    await page.getByRole('button', { name: /volver/i }).click();
+
+    await page.locator('.problem-input').fill('proceso largo');
+    await solveButton(page).click();
+    await expect(page.locator('.chalk-page')).toHaveCount(2, { timeout: 5000 });
+  });
+
+  test('panel de temas: un ejemplo se escribe en el cuadro', async ({ page }) => {
+    await page.getByText(/hasta dónde llega la maestra/i).click();
+    await page.getByRole('button', { name: '2x + 3y = 6' }).click();
+    await expect(page.locator('.problem-input')).toHaveValue('2x + 3y = 6');
   });
 
   test('dibujo: el boton Resolver se habilita al dibujar y envia la imagen', async ({ page }) => {
