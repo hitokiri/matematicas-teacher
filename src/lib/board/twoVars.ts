@@ -80,19 +80,6 @@ function constMinus(c: Q, k: Q, v: string): string {
   return `${txt(c)} ${value(k) > 0 ? '−' : '+'} ${abs}`
 }
 
-/** Valores de x que dan parejas faciles: x = 0 y otro que deje y entera (si se puede) */
-function pickXs(a: Q, b: Q, c: Q): Q[] {
-  const yOf = (xv: Q) => div(sub(c, mul(a, xv)), b)
-  const xs: Q[] = [ZERO]
-  const root = div(c, a)
-  if (!isZero(root) && isInt(root) && Math.abs(value(root)) <= 50) xs.push(root)
-  else {
-    const found = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, 8, 9, 10, 11, 12].find(n => isInt(yOf(q(n))))
-    xs.push(q(found ?? 1))
-  }
-  return xs
-}
-
 export function twoVarScript(e: TwoVarEquation): BoardScript {
   const { a, b, c, x, y } = e
   let n = 0
@@ -157,7 +144,87 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   // Buscar parejas: cambiar la x por un numero y hacer las cuentas una por una
   const pairs: Array<[Q, Q]> = []
   const wrap = (s: string) => (isOne ? s : `(${s}) ÷ ${txt(k)}`)
-  for (const xv of pickXs(a, b, c)) {
+  const yOf = (xv: Q) => div(sub(rc, mul(rx, xv)), k)
+  const inside = constMinus(rc, rx, x)
+  const where = isOne ? inside : `lo de adentro del paréntesis (${inside})`
+
+  // Por que se escoge cada numero: primero el 0, despues el que deja la y en 0 o una division exacta
+  const choose = (first: boolean): Q => {
+    if (first) {
+      steps.push({
+        say: `Ahora buscamos parejas. La ${x} puede valer cualquier número, así que escogemos el más fácil: el 0. ` +
+          `¿Por qué? Porque cualquier número por 0 da 0, y así la ${x} desaparece de la cuenta.`,
+        ...write(`¿Por qué ${x} = 0? Todo número × 0 = 0, es el más fácil`, 'muted'),
+      })
+      return ZERO
+    }
+    const root = div(rc, rx)
+    if (!isZero(root) && isInt(root) && Math.abs(value(root)) <= 50) {
+      const m = value(rx) < 0 ? neg(rx) : rx
+      const target = value(rx) < 0 ? neg(rc) : rc
+      steps.push({
+        say: `Para otra pareja buscamos la ${x} que hace que la ${y} valga 0, porque así las cuentas quedan muy fáciles. ` +
+          `Para eso ${where} tiene que valer 0.`,
+        ...write(`¿Qué ${x} hace ${y} = 0?  ${inside} = 0`, 'muted'),
+      })
+      steps.push({
+        say: value(rx) > 0
+          ? `Para que ${inside} dé 0, ${term(m, x)} tiene que valer lo mismo que ${txt(rc)}.`
+          : `Para que ${inside} dé 0, ${term(m, x)} tiene que valer ${txt(target)}.`,
+        ...write(`${term(m, x)} = ${txt(target)}`, 'muted'),
+      })
+      if (!eq(m, ONE)) {
+        steps.push({
+          say: `Repartimos ${txt(target)} entre ${txt(m)}: ${txt(target)} ÷ ${txt(m)} = ${txt(root)}. ¡Ya tenemos la ${x}!`,
+          ...write(`${x} = ${txt(target)} ÷ ${txt(m)} = ${txt(root)}`, 'muted'),
+        })
+      }
+      return root
+    }
+    if (isOne) {
+      steps.push({
+        say: `Para otra pareja escogemos otro número fácil para la ${x}: el 1. Como no hay que dividir, cualquier número sirve.`,
+        ...write(`Otra pareja: escogemos ${x} = 1, otro número fácil`, 'muted'),
+      })
+      return ONE
+    }
+    // Probar numeros chicos hasta que la division entre k salga exacta
+    steps.push({
+      say: `Para otra pareja queremos que la división entre ${txt(k)} salga exacta. Probamos números pequeños para la ${x}.`,
+      ...write(`Buscamos una ${x} con ${inside} que se divida exacto entre ${txt(k)}`, 'muted'),
+    })
+    const tries = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6].map(n => q(n))
+    const found = tries.find(t => isInt(yOf(t)))
+    let shown = 0
+    for (const t of tries) {
+      if (found && eq(t, found)) break
+      if (shown++ === 3) {
+        steps.push({ say: 'Seguimos probando más números...', ...write('…', 'muted') })
+        break
+      }
+      const r = sub(rc, mul(rx, t))
+      steps.push({
+        say: `Con ${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no sale exacto. Probamos otro.`,
+        ...write(`${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no es exacto ✗`, 'muted'),
+      })
+    }
+    if (!found) {
+      steps.push({
+        say: `Ningún número pequeño da una división exacta, así que usamos ${x} = 1 y la ${y} saldrá en fracción.`,
+        ...write(`Usamos ${x} = 1 (la ${y} sale en fracción)`, 'muted'),
+      })
+      return ONE
+    }
+    const r = sub(rc, mul(rx, found))
+    steps.push({
+      say: `Con ${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí sale exacto. ¡Usamos ese!`,
+      ...write(`${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí es exacto ✔`, 'muted'),
+    })
+    return found
+  }
+
+  for (const first of [true, false]) {
+    const xv = choose(first)
     const prod = mul(rx, xv)
     const rest = sub(rc, prod)
     const yv = div(rest, k)
@@ -165,7 +232,7 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
     const absRx = value(rx) < 0 ? neg(rx) : rx
     const absProd = value(rx) < 0 ? neg(prod) : prod
     steps.push({
-      say: `Probamos con ${x} = ${txt(xv)}: cambiamos la ${x} por ${txt(xv)} en la regla.`,
+      say: `Cambiamos la ${x} por ${txt(xv)} en la regla ${formula}. Donde decía ${term(absRx, x)} ahora dice ${txt(absRx)} × ${inner(xv)}.`,
       ...write(`Si ${x} = ${txt(xv)}:  ${y} = ${wrap(`${txt(rc)} ${op} ${txt(absRx)} × ${inner(xv)}`)}`),
     })
     steps.push({
@@ -180,8 +247,8 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
       steps.push({ say: `Y ${txt(rest)} ÷ ${txt(k)} = ${txt(yv)}.`, ...write(`${y} = ${txt(yv)}`, 'result') })
     }
     steps.push({
-      say: `Comprobamos en la ecuación del principio: ${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}. ` +
-        `¡Se cumple! Una pareja es ${x} = ${txt(xv)}, ${y} = ${txt(yv)}. ✔`,
+      say: `Comprobamos: en la ecuación del principio cambiamos la ${x} por ${txt(xv)} y la ${y} por ${txt(yv)}. ` +
+        `${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}. ¡Se cumple! Una pareja es ${x} = ${txt(xv)}, ${y} = ${txt(yv)}. ✔`,
       ...write(`${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}  ✔`, 'muted'),
     })
     pairs.push([xv, yv])

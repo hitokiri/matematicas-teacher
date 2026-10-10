@@ -17,11 +17,15 @@ describe('ecuaciones con dos incognitas', () => {
       '2x + 3y − 2x = 6 − 2x',
       '3y = 6 − 2x',
       'y = (6 − 2x) ÷ 3',
+      '¿Por qué x = 0? Todo número × 0 = 0, es el más fácil',
       'Si x = 0:  y = (6 − 2 × 0) ÷ 3',
       'y = (6 − 0) ÷ 3',
       'y = 6 ÷ 3',
       'y = 2',
       '2 × 0 + 3 × 2 = 6  ✔',
+      '¿Qué x hace y = 0?  6 − 2x = 0',
+      '2x = 6',
+      'x = 6 ÷ 2 = 3',
       'Si x = 3:  y = (6 − 2 × 3) ÷ 3',
       'y = (6 − 6) ÷ 3',
       'y = 0 ÷ 3',
@@ -29,6 +33,19 @@ describe('ecuaciones con dos incognitas', () => {
       '2 × 3 + 3 × 0 = 6  ✔',
       '✔ y = (6 − 2x) ÷ 3 (por ejemplo x = 0, y = 2 o x = 3, y = 0)',
     ])
+  })
+
+  it('explica de donde sale cada numero que escoge', () => {
+    const s = solve('2x+3y=6')
+    expect(s.steps.some(st => st.say.includes('cualquier número por 0 da 0'))).toBe(true)
+    expect(s.steps.some(st => st.say.includes('hace que la y valga 0'))).toBe(true)
+  })
+
+  it('si la y no puede valer 0 con x entera, prueba numeros hasta que la division sea exacta', () => {
+    const s = solve('2x + 3y = 1')
+    expect(lines(s)).toContain('x = 1: −1 ÷ 3 no es exacto ✗')
+    expect(lines(s)).toContain('x = −1: 3 ÷ 3 sí es exacto ✔')
+    expect(s.answer).toContain('x = −1, y = 1')
   })
 
   it('coeficiente negativo en la y: cambia el signo de todo', () => {
