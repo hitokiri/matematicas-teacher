@@ -4,16 +4,70 @@
 
 A desktop app (Tauri v2 + React/TypeScript) that teaches kids to solve math problems step by step on an animated chalkboard, with a balance scale, pizzas, and a chat to ask questions about each step. The AI runs **inside the app**, with no internet and no servers: models are downloaded once and used on the own computer.
 
+![A system of two equations solved step by step on the chalkboard](docs/capturas/sistema.png)
+
 ## Features
 
 - **Animated chalkboard** with step-by-step explanations and numbered steps.
-- **Own symbolic solver** (no model needed): arithmetic, first-degree equations, fractions, roots of any index, and order of operations — in `src/lib/board/`.
+- **Own symbolic solver** (no model needed): arithmetic, order of operations, roots of any index, fractions, first-degree equations, equations with two letters, and systems of two equations — in `src/lib/board/`.
+- **"How far can the teacher go?" panel**: shows which topics the app explains on its own, which go to the model, and what comes next.
+- **One board at a time**: long solutions are split across several boards and you see one at a time (or all together, if you ask).
 - **Visuals**: balance scale for equations, pizzas and rectangles for fractions.
 - **Question chat** about each step (`StepChat`).
 - **Drawing canvas**: reads what the child writes/draws using vision models (mtmd) and lets them correct it.
 - **Local AI with llama.cpp** embedded in the app (like Handy with whisper): no server, no ports; CPU/CUDA/Vulkan backends are loaded at runtime depending on the hardware.
 - **Model manager** (Llama, Qwen, Phi, Gemma, Mistral): download from HuggingFace, select the active model, and delete.
 - **Installers**: `.deb` and AppImage (NVIDIA GPU and CPU-only builds) in `instaladores/`.
+
+## What it can explain
+
+The app solves **on its own** (no model, always correct, no skipped steps) up to **systems of two first-degree
+equations**. Anything beyond that is explained by the local model, and the steps are worth checking. The same list
+is shown inside the app in the *¿Hasta dónde llega la maestra?* panel (`src/lib/capabilities.ts`); when a new topic
+is added, both places are updated.
+
+| # | Topic | Examples | How it explains it | Solved by |
+|---|---|---|---|---|
+| 1 | Arithmetic | `47 + 38`, `156 entre 12`, `34 x 444` | Column method, with carrying and borrowing | ✔ The app |
+| 2 | Order of operations | `3 + 4 × 2`, `(8 − 3)²`, `√50` | Step by step; non-exact roots by trial | ✔ The app |
+| 3 | Fractions | `1/2 + 1/4`, `2/3 × 3/5`, `6/8` | With pizzas | ✔ The app |
+| 4 | Equations with one letter | `2x + 4 = 10`, `2(x + 3) = 14` | With a balance scale, then checks the answer | ✔ The app |
+| 5 | One equation with two letters | `2x + 3y = 6` | Solves for y and finds pairs, explaining why each number is chosen | ✔ The app |
+| 6 | Systems of two equations | `x + y = 5` and `x − y = 1` (one per line) | Substitution when a letter stands alone; otherwise elimination | ✔ The app |
+| 7 | Quadratic equations | `x² = 9`, `x² + 5x + 6 = 0` | — | 🤖 Model |
+| 8 | Inequalities, letter in the denominator | `2x + 1 < 7`, `6/x = 2` | — | 🤖 Model |
+| 9 | Word problems | "Ana tiene 3 dulces…" | — | 🤖 Model |
+
+Systems are written with one equation per line (`;` or `, ` also work).
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Topics panel](docs/capturas/temas.png) | ![Equation with a balance scale](docs/capturas/balanza.png) |
+| **How far can the teacher go?** Clicking an example types it into the box. | **One-letter equation**: the scale shows what is removed from each side. |
+| ![One board at a time](docs/capturas/pizarras.png) | ![Interface settings](docs/capturas/configuracion.png) |
+| **One board at a time**: the *Pizarra N* buttons switch boards and *Ver todas* shows them together. | **Settings › Interface**: boards, autoplay, topics panel, and theme. |
+
+Screenshots are generated with `npm run capturas` (Playwright with the e2e mocked backend) and saved to
+`docs/capturas/`.
+
+## Interface settings
+
+In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
+
+- **Boards for long solutions**: *Una a la vez* (one at a time, the default, saves space) or *Todas juntas* (all
+  together). On the board, the *Ver todas* / *Una a la vez* button changes it just for that problem.
+- **Autoplay the board** when solving.
+- **Show "¿Hasta dónde llega la maestra?"** on the main screen.
+- **Light or dark theme.**
+
+## Coming soon
+
+- **Quadratic equations** on the board (first `x² = 9`, then factoring and the quadratic formula).
+- **Problem history saved as fixtures**: each solved problem will be saved as a file (the text and the board
+  script) to view it again later without solving it again. The same files will be used as fixtures in the tests,
+  to check that an explanation does not change by accident.
 
 ## Requirements
 
@@ -112,6 +166,7 @@ npm run dev           # frontend only (Vite, http://localhost:5173)
 | `npm run build` | `tsc` + `vite build` |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run test:run` | Unit tests once |
+| `npm run capturas` | UI screenshots for the README (`docs/capturas/`) |
 | `npm run test:e2e` | E2E tests (Playwright) |
 | `npm run tauri:dev` | Tauri app in dev mode |
 | `npm run tauri:build` | Build the app |
@@ -122,15 +177,18 @@ npm run dev           # frontend only (Vite, http://localhost:5173)
 
 ```
 src/                  React frontend (Vite + TypeScript)
-  lib/board/          Symbolic solver: rational, fractions, equations, expressions
-  components/         Chalkboard, BoardVisual, DrawingCanvas, StepChat, ModelBrowser, SolutionDisplay
+  lib/board/          Symbolic solver: rational, fractions, equations, two letters, systems, expressions
+  lib/capabilities.ts Topics the app explains ("¿Hasta dónde llega la maestra?" panel)
+  lib/uiPrefs.ts      Interface preferences
+  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, ModelBrowser
   pages/              MainApp, Settings
 src-tauri/            Rust backend (Tauri v2)
   src/ai/             AI engine (llama.cpp, mtmd vision)
   src/models/         ModelManager: download/select/delete from HuggingFace
-scripts/              GPU/CPU library staging and bundling
+scripts/              GPU/CPU library staging and bundling; capturas/ generates the screenshots
 e2e/                  Playwright tests
 docs/INSTALACION.md   Installation and build guide (Spanish)
+docs/capturas/        UI screenshots
 BITACORA.md           Project log (Spanish)
 ```
 

@@ -471,3 +471,28 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - `Could not create GBM EGL display: EGL_NOT_INITIALIZED. Aborting...` con la RTX 5070 Ti: WebKitGTK 4.1
   intenta el renderizador DMA-BUF y no inicializa EGL. En `src-tauri/src/main.rs` se pone
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` al arrancar (si el usuario no lo definió ya). Probado: abre la ventana.
+
+### Ecuaciones con dos letras y sistemas de dos ecuaciones (2026-10-09)
+- `src/lib/board/twoVars.ts`: una ecuación con dos letras (`2x + 3y = 6`) ya no va al modelo (se saltaba pasos).
+  Despeja la y, prueba x = 0 (explica por qué: todo número × 0 = 0) y la x que deja y = 0 (o prueba números
+  hasta que la división sea exacta), con cada cuenta en su propio renglón y comprobación.
+- `src/lib/board/system.ts`: sistemas de dos ecuaciones (una por renglón, `;` o `, `). Sustitución si alguna
+  letra tiene coeficiente 1 o −1 (porque no hay que dividir); si no, reducción con el mcm. Detecta sistemas sin
+  solución o con infinitas. La lectura de ecuaciones lineales (`normalizeLinear`, `parseLinear`) se comparte.
+- Se resuelven con fracciones exactas; si no hay letra sola y los coeficientes no son enteros, va al modelo.
+
+### Interfaz: pizarras de una en una, configuración y panel de temas (2026-10-09)
+- Las pizarras de un proceso largo se ven de una en una; *Ver todas* las junta (prop `showAllPages` de `Chalkboard`).
+- Arreglo: un paso final sin renglones (el "¡Listo!") regresaba a la pizarra 1; ahora se queda en la última escrita.
+- **Configuración › Interfaz** (`UiPrefsSection`, `src/lib/uiPrefs.ts`, en localStorage `ui-prefs`): pizarras una
+  a la vez / todas juntas, reproducir sola, mostrar el panel de temas y tema claro/oscuro.
+- Panel **¿Hasta dónde llega la maestra?** (`LevelsPanel`, datos en `src/lib/capabilities.ts`): temas que explica
+  la app, los que van al modelo y lo que viene. Una prueba verifica que los ejemplos de la app se resuelven sin
+  modelo y que los del modelo de verdad van al modelo. Al agregar un tema: actualizar `capabilities.ts` y el README.
+- `npm run capturas` (`playwright.capturas.config.ts`, `scripts/capturas/`) genera las capturas del README en
+  `docs/capturas/`.
+
+### Pendiente
+- Ecuaciones de segundo grado en la pizarra (`x² = 9`, factorización, fórmula general).
+- Historial de problemas guardado como fixture: cada problema resuelto en un archivo (texto + guion de la
+  pizarra) para volver a verlo sin resolverlo de nuevo, y usar esos archivos como fixtures en las pruebas.

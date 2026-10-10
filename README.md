@@ -4,16 +4,70 @@
 
 Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a resolver problemas de matemáticas paso a paso en una pizarra animada, con balanza, pizzas y un chat para preguntar sobre cada paso. La inteligencia artificial corre **dentro de la app**, sin internet y sin servidores: los modelos se descargan una vez y se usan en la propia computadora.
 
+![Sistema de dos ecuaciones resuelto paso a paso en la pizarra](docs/capturas/sistema.png)
+
 ## Características
 
 - **Pizarra animada** con explicaciones paso a paso y pasos numerados.
-- **Resolución simbólica propia** (sin modelo): cuentas, ecuaciones de primer grado, fracciones, raíces de cualquier índice y orden de operaciones — en `src/lib/board/`.
+- **Resolución simbólica propia** (sin modelo): cuentas, orden de operaciones, raíces de cualquier índice, fracciones, ecuaciones de primer grado, ecuaciones con dos letras y sistemas de dos ecuaciones — en `src/lib/board/`.
+- **Panel "¿Hasta dónde llega la maestra?"**: muestra qué temas explica la app sola, cuáles van al modelo y qué viene después.
+- **Pizarras de una en una**: los procesos largos se reparten en varias pizarras y se ve una a la vez (o todas juntas, si se pide).
 - **Visuales**: balanza para ecuaciones, pizzas y rectángulos para fracciones.
 - **Chat de preguntas** sobre cada paso (`StepChat`).
 - **Lienzo de dibujo**: lee lo que el niño escribe/dibuja con modelos con visión (mtmd) y permite corregirlo.
 - **IA local con llama.cpp** integrado en la app (como Handy con whisper): sin servidor ni puertos; backends CPU/CUDA/Vulkan se cargan en tiempo de ejecución según el hardware.
 - **Gestor de modelos** (Llama, Qwen, Phi, Gemma, Mistral): descarga desde HuggingFace, selección del modelo activo y eliminación.
 - **Instaladores** `.deb` y AppImage (versiones con GPU NVIDIA y solo CPU) en `instaladores/`.
+
+## Qué sabe explicar
+
+La app resuelve **por su cuenta** (sin modelo, siempre correcto y sin saltarse pasos) hasta **sistemas de dos
+ecuaciones de primer grado**. Lo que pasa de ahí lo explica el modelo local, y conviene revisar los pasos.
+La misma lista aparece dentro de la app en el panel *¿Hasta dónde llega la maestra?*
+(`src/lib/capabilities.ts`); al agregar un tema nuevo se actualizan los dos lugares.
+
+| # | Tema | Ejemplos | Cómo lo explica | Quién lo resuelve |
+|---|---|---|---|---|
+| 1 | Cuentas | `47 + 38`, `156 entre 12`, `34 x 444` | En columna, con llevadas y préstamos | ✔ La app |
+| 2 | Operaciones combinadas | `3 + 4 × 2`, `(8 − 3)²`, `√50` | Orden de operaciones; raíces no exactas por tanteo | ✔ La app |
+| 3 | Fracciones | `1/2 + 1/4`, `2/3 × 3/5`, `6/8` | Con pizzas | ✔ La app |
+| 4 | Ecuaciones con una letra | `2x + 4 = 10`, `2(x + 3) = 14` | Con una balanza y comprobación | ✔ La app |
+| 5 | Ecuación con dos letras | `2x + 3y = 6` | Despeja la y y busca parejas, explicando por qué escoge cada número | ✔ La app |
+| 6 | Sistemas de dos ecuaciones | `x + y = 5` y `x − y = 1` (una por renglón) | Sustitución si alguna letra está sola; si no, reducción | ✔ La app |
+| 7 | Ecuaciones de segundo grado | `x² = 9`, `x² + 5x + 6 = 0` | — | 🤖 Modelo |
+| 8 | Desigualdades, letra en el denominador | `2x + 1 < 7`, `6/x = 2` | — | 🤖 Modelo |
+| 9 | Problemas con palabras | "Ana tiene 3 dulces…" | — | 🤖 Modelo |
+
+Los sistemas se escriben con una ecuación por renglón (también sirven `;` o `, `).
+
+## Capturas
+
+| | |
+|---|---|
+| ![Panel de temas](docs/capturas/temas.png) | ![Ecuación con balanza](docs/capturas/balanza.png) |
+| **¿Hasta dónde llega la maestra?** Los ejemplos se escriben en el cuadro al pulsarlos. | **Ecuación con una letra**: la balanza muestra lo que se quita de cada lado. |
+| ![Pizarras de una en una](docs/capturas/pizarras.png) | ![Configuración de la interfaz](docs/capturas/configuracion.png) |
+| **Pizarras de una en una**: los botones *Pizarra N* cambian de pizarra y *Ver todas* las junta. | **Configuración › Interfaz**: pizarras, reproducción automática, panel de temas y tema. |
+
+Las capturas se generan con `npm run capturas` (Playwright con el backend simulado de los e2e) y se guardan en
+`docs/capturas/`.
+
+## Configuración de la interfaz
+
+En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
+
+- **Pizarras de un proceso largo**: *Una a la vez* (por defecto, ahorra espacio) o *Todas juntas*. En la pizarra,
+  el botón *Ver todas* / *Una a la vez* cambia solo ese problema.
+- **Reproducir la pizarra sola** al resolver.
+- **Mostrar "¿Hasta dónde llega la maestra?"** en la pantalla principal.
+- **Tema** claro u oscuro.
+
+## Próximamente
+
+- **Ecuaciones de segundo grado** en la pizarra (primero `x² = 9`, después factorización y fórmula general).
+- **Historial de problemas guardado como fixture**: cada problema resuelto se guardará como un archivo (el texto
+  y el guion de la pizarra) para volver a verlo después sin resolverlo de nuevo. Esos mismos archivos servirán como
+  fixtures en las pruebas, para comprobar que una explicación no cambia sin querer.
 
 ## Requisitos
 
@@ -113,6 +167,7 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 | `npm run test` | Tests unitarios (Vitest) |
 | `npm run test:run` | Tests unitarios una vez |
 | `npm run test:e2e` | Tests E2E (Playwright) |
+| `npm run capturas` | Capturas de la interfaz para el README (`docs/capturas/`) |
 | `npm run tauri:dev` | App Tauri en modo desarrollo |
 | `npm run tauri:build` | Compilar la app |
 | `npm run package:gpu` | Generar instaladores (.deb/AppImage) con backends GPU |
@@ -122,15 +177,18 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 
 ```
 src/                  Frontend React (Vite + TypeScript)
-  lib/board/          Solver simbólico: racional, fracciones, ecuaciones, expresiones
-  components/         Chalkboard, BoardVisual, DrawingCanvas, StepChat, ModelBrowser, SolutionDisplay
+  lib/board/          Solver simbólico: racional, fracciones, ecuaciones, dos letras, sistemas, expresiones
+  lib/capabilities.ts Temas que explica la app (panel "¿Hasta dónde llega la maestra?")
+  lib/uiPrefs.ts      Preferencias de la interfaz
+  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, ModelBrowser
   pages/              MainApp, Settings
 src-tauri/            Backend Rust (Tauri v2)
   src/ai/             Motor de IA (llama.cpp, visión mtmd)
   src/models/         ModelManager: descarga/Selección/eliminación desde HuggingFace
-scripts/              Empaquetado de librerías GPU/CPU y bundles
+scripts/              Empaquetado de librerías GPU/CPU y bundles; capturas/ genera las capturas
 e2e/                  Tests Playwright
 docs/INSTALACION.md   Guía de instalación y compilación
+docs/capturas/        Capturas de la interfaz
 BITACORA.md           Bitácora del proyecto
 ```
 
