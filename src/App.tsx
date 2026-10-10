@@ -63,7 +63,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>📐 Matematicas Teacher</h1>
+        <h1><img className="header-logo" src="/icon.svg" alt="" /> Matematicas Teacher</h1>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => setShowSettings(true)}>
             ⚙️ Configuracion

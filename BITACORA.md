@@ -500,6 +500,12 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Tamaño de letra (`fontScale`: 0.85 / 1 / 1.2 / 1.4) en Configuración › Interfaz y con A− / A+ junto a la
   pizarra; también agranda la explicación de la maestra.
 
+### Ícono de la app (2026-10-09)
+- El ícono era un cuadro azul liso. Ahora es una pizarra con marco de madera y los signos + − × ÷ en tiza de
+  colores, sobre el degradado rosa-morado de la app. La fuente es `src-tauri/icons/icon.svg`; `npm run icono`
+  genera los PNG, `.ico` e `.icns` con `tauri icon` (borra las carpetas android/ios, que no se usan) y copia el SVG
+  a `public/icon.svg`, que se usa como favicon y en el encabezado (en lugar del emoji 📐).
+
 ### Pendiente
 - Ecuaciones de segundo grado en la pizarra (`x² = 9`, factorización, fórmula general).
 - Voz natural de la maestra, sin internet. Hoy el botón 🔈 usa speechSynthesis (en Linux suena a espeak o no

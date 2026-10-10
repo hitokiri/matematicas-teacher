@@ -173,6 +173,7 @@ npm run dev           # frontend only (Vite, http://localhost:5173)
 | `npm run test` | Unit tests (Vitest) |
 | `npm run test:run` | Unit tests once |
 | `npm run capturas` | UI screenshots for the README (`docs/capturas/`) |
+| `npm run icono` | Generates every icon (PNG, .ico, .icns, and favicon) from `src-tauri/icons/icon.svg` |
 | `npm run test:e2e` | E2E tests (Playwright) |
 | `npm run tauri:dev` | Tauri app in dev mode |
 | `npm run tauri:build` | Build the app |

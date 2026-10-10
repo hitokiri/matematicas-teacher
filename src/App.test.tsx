@@ -21,7 +21,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('📐 Matematicas Teacher')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Matematicas Teacher' })).toBeInTheDocument()
     })
   })
 
@@ -116,7 +116,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('📐 Matematicas Teacher')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Matematicas Teacher' })).toBeInTheDocument()
     })
 
     console.error = consoleError

@@ -175,6 +175,7 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 | `npm run test:run` | Tests unitarios una vez |
 | `npm run test:e2e` | Tests E2E (Playwright) |
 | `npm run capturas` | Capturas de la interfaz para el README (`docs/capturas/`) |
+| `npm run icono` | Genera todos los íconos (PNG, .ico, .icns y favicon) desde `src-tauri/icons/icon.svg` |
 | `npm run tauri:dev` | App Tauri en modo desarrollo |
 | `npm run tauri:build` | Compilar la app |
 | `npm run package:gpu` | Generar instaladores (.deb/AppImage) con backends GPU |

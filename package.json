@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "capturas": "playwright test -c playwright.capturas.config.ts",
+    "icono": "tauri icon src-tauri/icons/icon.svg && rm -rf src-tauri/icons/android src-tauri/icons/ios && cp src-tauri/icons/icon.svg public/icon.svg",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
