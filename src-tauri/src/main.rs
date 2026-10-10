@@ -19,7 +19,15 @@ struct AppState {
 
 fn main() {
     env_logger::init();
-    
+
+    // WebKitGTK 4.1 con GPU NVIDIA aborta con "Could not create GBM EGL display: EGL_NOT_INITIALIZED".
+    // Sin el renderizador DMA-BUF la ventana usa el camino normal de EGL. Se puede seguir
+    // controlando con la variable de entorno si alguien la pone a mano.
+    #[cfg(target_os = "linux")]
+    if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
