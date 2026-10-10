@@ -9,6 +9,7 @@ import { buildArithmetic } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
 import { expressionScript, parseExpression } from '../lib/board/expression'
 import { equationScript, parseEquation } from '../lib/board/equation'
+import { parseTwoVarEquation, twoVarScript } from '../lib/board/twoVars'
 import { fractionScript, parseFractions } from '../lib/board/fraction'
 import type { BoardScript } from '../lib/board/types'
 
@@ -40,6 +41,8 @@ function boardFor(text: string): BoardScript | null {
   if (expression) return expressionScript(expression, text.trim())
   const equation = parseEquation(text)
   if (equation) return equationScript(equation)
+  const twoVars = parseTwoVarEquation(text)
+  if (twoVars) return twoVarScript(twoVars)
   const fractions = parseFractions(text)
   return fractions ? fractionScript(fractions) : null
 }
