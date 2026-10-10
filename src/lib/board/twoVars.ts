@@ -26,14 +26,17 @@ const ZERO = q(0)
 const ONE = q(1)
 const TERM = /^([+-])?(\d+(?:\.\d+)?)?(?:\/(\d+))?\*?([a-z])?/
 
-export function parseTwoVarEquation(input: string): TwoVarEquation | null {
-  let s = fromLatex(input).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+/** Limpia el texto como lo escribe un nino: acentos, signos raros, comas decimales, espacios */
+export function normalizeLinear(input: string): string {
+  let s = fromLatex(input).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
   s = s.replace(/^(resuelve|calcula)\s*:?\s*/, '')
-  s = s.replace(/[−–—]/g, '-').replace(/[×·]/g, '*').replace(/(\d),(\d)/g, '$1.$2').replace(/\s+/g, '')
+  return s.replace(/[−–—]/g, '-').replace(/[×·]/g, '*').replace(/(\d),(\d)/g, '$1.$2').replace(/\s+/g, '')
+}
+
+/** Ecuacion lineal ya normalizada -> coeficientes de cada letra (todo pasado a la izquierda) y numero de la derecha */
+export function parseLinear(s: string): { coef: Record<string, Q>; c: Q } | null {
   const sides = s.split('=')
   if (sides.length !== 2) return null
-  const letters = [...new Set(s.match(/[a-z]/g) ?? [])].sort()
-  if (letters.length !== 2) return null
 
   const parseSide = (t: string): Side | null => {
     const side: Side = { coef: {}, num: ZERO }
@@ -59,19 +62,31 @@ export function parseTwoVarEquation(input: string): TwoVarEquation | null {
   const l = parseSide(sides[0])
   const r = parseSide(sides[1])
   if (!l || !r) return null
-  const [x, y] = letters
-  const coef = (v: string) => sub(l.coef[v] ?? ZERO, r.coef[v] ?? ZERO)
-  const a = coef(x)
-  const b = coef(y)
-  if (isZero(a) || isZero(b)) return null
-  return { a, b, c: sub(r.num, l.num), x, y, text: input.trim() }
+  const coef: Record<string, Q> = {}
+  for (const v of new Set([...Object.keys(l.coef), ...Object.keys(r.coef)])) {
+    coef[v] = sub(l.coef[v] ?? ZERO, r.coef[v] ?? ZERO)
+  }
+  return { coef, c: sub(r.num, l.num) }
 }
 
-const txt = (n: Q) => show(n).replace('-', '−')
+export function parseTwoVarEquation(input: string): TwoVarEquation | null {
+  const s = normalizeLinear(input)
+  const letters = [...new Set(s.match(/[a-z]/g) ?? [])].sort()
+  if (letters.length !== 2) return null
+  const p = parseLinear(s)
+  if (!p) return null
+  const [x, y] = letters
+  const a = p.coef[x] ?? ZERO
+  const b = p.coef[y] ?? ZERO
+  if (isZero(a) || isZero(b)) return null
+  return { a, b, c: p.c, x, y, text: input.trim() }
+}
+
+export const txt = (n: Q) => show(n).replace('-', '−')
 /** Numero dentro de una cuenta: los negativos van entre parentesis */
-const inner = (n: Q) => (value(n) < 0 ? `(${txt(n)})` : txt(n))
+export const inner = (n: Q) => (value(n) < 0 ? `(${txt(n)})` : txt(n))
 /** "2x", "x", "−x", "3/2y" */
-const term = (k: Q, v: string) => (eq(k, ONE) ? v : eq(k, neg(ONE)) ? `−${v}` : `${txt(k)}${v}`)
+export const term = (k: Q, v: string) => (eq(k, ONE) ? v : eq(k, neg(ONE)) ? `−${v}` : `${txt(k)}${v}`)
 
 /** "6 − 2x", "−6 + 2x", "−2x" (primero el numero, como se lee al despejar) */
 function constMinus(c: Q, k: Q, v: string): string {

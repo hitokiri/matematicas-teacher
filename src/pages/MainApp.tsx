@@ -10,6 +10,7 @@ import { solutionScript } from '../lib/board/fromSolution'
 import { expressionScript, parseExpression } from '../lib/board/expression'
 import { equationScript, parseEquation } from '../lib/board/equation'
 import { parseTwoVarEquation, twoVarScript } from '../lib/board/twoVars'
+import { parseSystem, systemScript } from '../lib/board/system'
 import { fractionScript, parseFractions } from '../lib/board/fraction'
 import type { BoardScript } from '../lib/board/types'
 
@@ -33,12 +34,14 @@ interface MainAppProps {
 }
 
 /** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
- *  ecuaciones de primer grado con balanza y fracciones con pizzas */
+ *  ecuaciones de primer grado con balanza, sistemas de dos ecuaciones y fracciones con pizzas */
 function boardFor(text: string): BoardScript | null {
   const arithmetic = parseArithmetic(text)
   if (arithmetic) return buildArithmetic(arithmetic)
   const expression = parseExpression(text)
   if (expression) return expressionScript(expression, text.trim())
+  const system = parseSystem(text)
+  if (system) return systemScript(system)
   const equation = parseEquation(text)
   if (equation) return equationScript(equation)
   const twoVars = parseTwoVarEquation(text)
@@ -166,7 +169,7 @@ function MainApp({ settings }: MainAppProps) {
         {inputMode === 'text' ? (
           <textarea
             className="problem-input"
-            placeholder="Ejemplo: 2 + 2 = ?&#10;o&#10;x + 5 = 12&#10;o&#10;1/2 + 1/4 = ?"
+            placeholder="Ejemplo: 2 + 2 = ?&#10;o&#10;x + 5 = 12&#10;o un sistema, una ecuación por renglón:&#10;x + y = 5&#10;x - y = 1"
             value={problemText}
             onChange={(e) => { setProblemText(e.target.value); setError('') }}
           />
