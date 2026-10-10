@@ -21,7 +21,7 @@ test.describe('Flujo de resolver problemas', () => {
     await page.locator('.problem-input').fill('10 x 20');
     await solveButton(page).click();
 
-    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-pages')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.chalk-narration')).toContainText('Escribimos 10 arriba y 20 abajo');
     await page.getByRole('button', { name: /pausa/i }).click();
 
@@ -53,7 +53,7 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(page.locator('.pan-item.removed')).toHaveCount(8);
     while (await next.isEnabled()) await next.click();
     await expect(page.locator('.chalk-answer')).toContainText('x = 3');
-    await expect(page.locator('.chalkboard')).toContainText('2 × 3 + 4 = 10');
+    await expect(page.locator('.chalk-pages')).toContainText('2 × 3 + 4 = 10');
     expect(await page.evaluate(() => (window as any).__lastSolveArgs)).toBeUndefined();
   });
 
@@ -106,7 +106,7 @@ test.describe('Flujo de resolver problemas', () => {
     await page.locator('.problem-input').fill('1/2+1/4+*10');
     await solveButton(page).click();
     await expect(page.locator('.error-message')).toContainText('dos signos seguidos');
-    await expect(page.locator('.chalkboard')).toHaveCount(0);
+    await expect(page.locator('.chalk-pages')).toHaveCount(0);
 
     await page.locator('.problem-input').fill('1/2+1/4+10');
     await solveButton(page).click();
@@ -120,12 +120,12 @@ test.describe('Flujo de resolver problemas', () => {
     await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();
 
-    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.chalkboard')).toContainText('Ana tiene 3 dulces y le dan 6');
+    await expect(page.locator('.chalk-pages')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-pages')).toContainText('Ana tiene 3 dulces y le dan 6');
     await page.getByRole('button', { name: /pausa/i }).click();
     const next = page.getByRole('button', { name: /siguiente/i });
     while (await next.isEnabled()) await next.click();
-    await expect(page.locator('.chalkboard')).toContainText('3 x 6 = 18');
+    await expect(page.locator('.chalk-pages')).toContainText('3 x 6 = 18');
     await expect(page.locator('.chalk-answer')).toContainText('18');
 
     // La explicacion en texto sigue disponible
@@ -134,6 +134,22 @@ test.describe('Flujo de resolver problemas', () => {
 
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
     expect(args.problemText).toBe('Ana tiene 3 dulces y le dan 6');
+  });
+
+  test('proceso largo: la pizarra se divide en varias pizarras', async ({ page }) => {
+    await page.locator('.problem-input').fill('proceso largo');
+    await solveButton(page).click();
+
+    await expect(page.locator('.chalk-pages.multi')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-page')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Pizarra 2' })).toBeVisible();
+
+    const next = page.getByRole('button', { name: /siguiente/i });
+    for (let i = 0; i < 8; i++) await next.click();
+    await expect(page.locator('.chalk-page.active')).toContainText('linea 8');
+
+    await page.getByRole('button', { name: 'Pizarra 1' }).click();
+    await expect(page.locator('.chalk-page.active')).toContainText('linea 1');
   });
 
   test('dibujo: el boton Resolver se habilita al dibujar y envia la imagen', async ({ page }) => {
@@ -151,7 +167,7 @@ test.describe('Flujo de resolver problemas', () => {
     await solveButton(page).click();
 
     await expect(page.locator('.read-input')).toHaveValue('⁵√32', { timeout: 5000 });
-    await expect(page.locator('.chalkboard')).toBeVisible();
+    await expect(page.locator('.chalk-pages')).toBeVisible();
     const read = await page.evaluate(() => (window as any).__lastReadArgs);
     expect(read.problemImage).toMatch(/^data:image\/png;base64,/);
     // La app hizo la raiz: no hizo falta pedirle la explicacion al modelo
@@ -170,7 +186,7 @@ test.describe('Flujo de resolver problemas', () => {
 
     // El modelo leyo una x donde habia un 7: no es una cuenta, asi que lo explica el modelo
     await expect(page.locator('.read-input')).toHaveValue('√(3 × x × 6 + 12)', { timeout: 5000 });
-    await expect(page.locator('.chalkboard')).toBeVisible();
+    await expect(page.locator('.chalk-pages')).toBeVisible();
     const solved = await page.evaluate(() => (window as any).__lastSolveArgs);
     expect(solved.problemText).toBe('√(3 × x × 6 + 12)');
     expect(solved.problemImage).toBeNull();
@@ -178,11 +194,11 @@ test.describe('Flujo de resolver problemas', () => {
     // Corregir la x por 7 y resolver: ahora lo hace la app con todo el procedimiento
     await page.locator('.read-input').fill('√(3 × 7 × 6 + 12)');
     await page.getByRole('button', { name: /resolver esto/i }).click();
-    await expect(page.locator('.chalkboard')).toContainText('√(3 × 7 × 6 + 12)');
+    await expect(page.locator('.chalk-pages')).toContainText('√(3 × 7 × 6 + 12)');
     await page.getByRole('button', { name: /pausa/i }).click();
     const next = page.getByRole('button', { name: /siguiente/i });
     while (await next.isEnabled()) await next.click();
-    await expect(page.locator('.chalkboard')).toContainText('≈ 11.75');
+    await expect(page.locator('.chalk-pages')).toContainText('≈ 11.75');
   });
 
   test('un fallo del backend se muestra como error y no como solucion', async ({ page }) => {
@@ -214,7 +230,7 @@ test.describe('Flujo de resolver problemas', () => {
 
     await page.locator('.problem-input').fill('Ana tiene 3 dulces y le dan 6');
     await solveButton(page).click();
-    await expect(page.locator('.chalkboard')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.chalk-pages')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.error-message')).toHaveCount(0);
     const args = await page.evaluate(() => (window as any).__lastSolveArgs);
     expect(args.problemImage).toBeNull();

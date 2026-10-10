@@ -456,3 +456,18 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   artifacts y Release con etiquetas v*).
 - Probado en esta PC: .deb y AppImage con GPU cargan el modelo en la RTX 5070 Ti con las libs del paquete;
   solo CPU no carga nada de CUDA.
+
+### Pizarra en varias pizarras (2026-10-09)
+- Antes la pizarra crecia hacia abajo sin limite y se aplastaba; ahora caben 8 renglones por pizarra
+  y la maestra sigue escribiendo en la siguiente (la otra parte), con las pizarras lado a lado.
+- `src/lib/board/paginate.ts`: `MAX_ROWS_PER_PAGE`, `pageOf`, `rowOnPage`, `pageCount`, `pagesOf`.
+  La paginacion se hace al dibujar, no al generar el guion: los generadores no cambian.
+- `src/components/Chalkboard.tsx`: sigue automaticamente la pizarra donde se esta escribiendo;
+  los botones "Pizarra N" dejan ver una pizarra anterior. El contador dice "Paso N de M · pizarra X de Y".
+- Pruebas: `src/lib/board/paginate.test.ts` y en `Chalkboard.test.tsx`; el e2e `proceso largo`
+  (con `proceso largo` en el mock) y los selectores de pizarra pasaron a `.chalk-pages`.
+
+### Arreglo: la ventana abortaba con WebKitGTK (2026-10-09)
+- `Could not create GBM EGL display: EGL_NOT_INITIALIZED. Aborting...` con la RTX 5070 Ti: WebKitGTK 4.1
+  intenta el renderizador DMA-BUF y no inicializa EGL. En `src-tauri/src/main.rs` se pone
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` al arrancar (si el usuario no lo definió ya). Probado: abre la ventana.

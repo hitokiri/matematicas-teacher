@@ -117,6 +117,17 @@ const mockInvoke = (cmd, args) => {
       window.__lastSolveArgs = args;
       const text = args.problemText || '';
       if (text.trim() === 'fallo') return Promise.reject('No se pudo conectar al modelo local');
+      if (text.trim() === 'proceso largo') {
+        return Promise.resolve({
+          problem: text,
+          steps: Array.from({ length: 12 }, (_, i) => ({
+            step: i + 1,
+            explanation: `Explicacion del paso ${i + 1}`,
+            calculation: `linea ${i + 1}`,
+          })),
+          final_answer: 'x = 1',
+        });
+      }
       return Promise.resolve({
         problem: text || 'Problema dibujado',
         steps: [

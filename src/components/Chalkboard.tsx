@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import '@fontsource/patrick-hand'
 import type { BoardItem, BoardScript } from '../lib/board/types'
+import { MAX_ROWS_PER_PAGE, pageOf, rowOnPage } from '../lib/board/paginate'
 import BoardVisual from './BoardVisual'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
@@ -18,6 +19,8 @@ interface ChalkboardProps {
   onStepChange?: (step: number) => void
   /** Al pulsar el numero de un paso (para preguntar por el en el chat) */
   onAskStep?: (step: number) => void
+  /** Renglones que caben en una pizarra antes de pasar a la siguiente */
+  maxRowsPerPage?: number
 }
 
 /** Ancho de la columna de numeros de paso en los problemas de renglones */
@@ -31,16 +34,21 @@ function stepDuration(script: BoardScript, step: number): number {
 
 const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
 
-export default function Chalkboard({ script, autoPlay = true, onStepChange, onAskStep }: ChalkboardProps) {
+export default function Chalkboard({
+  script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE,
+}: ChalkboardProps) {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(false)
+  /** Pizarra que el usuario eligio ver; si no, se sigue a la que se esta escribiendo */
+  const [pinned, setPinned] = useState<number | null>(null)
   const last = script.steps.length - 1
 
   // Reiniciar cuando cambia el problema
   useEffect(() => {
     setStep(0)
     setPlaying(autoPlay)
+    setPinned(null)
   }, [script, autoPlay])
 
   useEffect(() => {
@@ -93,9 +101,19 @@ export default function Chalkboard({ script, autoPlay = true, onStepChange, onAs
   }, [script])
   const gutter = lined ? GUTTER : 0
 
-  const width = PAD * 2 + gutter + script.cols * CW
-  const height = PAD * 2 + script.rows * CH
+  // Pizarras: la maestra usa la otra parte cuando se llenan los renglones
+  const pages = Math.max(1, Math.ceil(script.rows / maxRowsPerPage))
   const current = script.steps[Math.min(step, last)]
+  const writeRow = current.focus?.[0]?.[0] ?? current.add.find(i => i.kind === 'text')?.row ?? 0
+  const activePage = pageOf(writeRow, maxRowsPerPage)
+  const viewPage = pinned ?? activePage
+  const byPage = useMemo(() => {
+    const groups: BoardItem[][] = Array.from({ length: pages }, () => [] as BoardItem[])
+    for (const item of visible) groups[pageOf(item.row, maxRowsPerPage)].push(item)
+    return groups
+  }, [visible, pages, maxRowsPerPage])
+
+  const width = PAD * 2 + gutter + script.cols * CW
   const rowIsText = (r: number) => visible.some(i => i.kind === 'text' && i.row === r && i.align === 'start')
 
   const go = (s: number) => {
@@ -106,64 +124,93 @@ export default function Chalkboard({ script, autoPlay = true, onStepChange, onAs
   return (
     <div className="chalkboard-section">
       <div className="chalkboard-frame">
-        <svg
-          className="chalkboard"
-          viewBox={`0 0 ${width} ${height}`}
-          role="img"
-          aria-label={`Pizarra: ${script.title}`}
-        >
-          {lined && visible.map(item => {
-            const n = stepOf.get(item.id)
-            if (n === undefined || item.kind !== 'text') return null
+        {pages > 1 && (
+          <div className="chalk-pages-nav">
+            {Array.from({ length: pages }, (_, p) => (
+              <button
+                key={p}
+                className={`page-chip ${p === viewPage ? 'active' : ''}`}
+                onClick={() => setPinned(p)}
+                aria-current={p === viewPage ? 'true' : undefined}
+              >
+                Pizarra {p + 1}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className={`chalk-pages ${pages > 1 ? 'multi' : ''}`}>
+          {Array.from({ length: pages }, (_, p) => {
+            const rowsHere = Math.min(maxRowsPerPage, script.rows - p * maxRowsPerPage)
+            const items = byPage[p]
+            const isView = p === viewPage
             return (
-              <StepBadge
-                key={`b${item.id}`}
-                n={n + 1}
-                x={PAD + 22}
-                y={PAD + item.row * CH + CH / 2}
-                active={n === Math.min(step, last)}
-                onClick={onAskStep ? () => onAskStep(n) : undefined}
-              />
+              <div key={p} className={`chalk-page ${isView ? 'active' : ''}`}>
+                {pages > 1 && <div className="chalk-page-label">Pizarra {p + 1}</div>}
+                <svg
+                  className="chalkboard"
+                  viewBox={`0 0 ${width} ${PAD * 2 + rowsHere * CH}`}
+                  role="img"
+                  aria-label={pages > 1 ? `Pizarra ${p + 1}: ${script.title}` : `Pizarra: ${script.title}`}
+                >
+                  {lined && items.map(item => {
+                    const n = stepOf.get(item.id)
+                    if (n === undefined || item.kind !== 'text') return null
+                    return (
+                      <StepBadge
+                        key={`b${item.id}`}
+                        n={n + 1}
+                        x={PAD + 22}
+                        y={PAD + rowOnPage(item.row, maxRowsPerPage) * CH + CH / 2}
+                        active={n === Math.min(step, last)}
+                        onClick={onAskStep ? () => onAskStep(n) : undefined}
+                      />
+                    )
+                  })}
+                  <g transform={`translate(${gutter} 0)`}>
+                    {isView && current.focus?.map(([r, c], k) => {
+                      if (pageOf(r, maxRowsPerPage) !== p) return null
+                      const wide = rowIsText(r)
+                      return (
+                        <rect
+                          key={`f${step}-${k}`}
+                          className="chalk-focus"
+                          x={PAD + (wide ? 0 : c * CW) + 2}
+                          y={PAD + rowOnPage(r, maxRowsPerPage) * CH + 4}
+                          width={(wide ? script.cols : 1) * CW - 4}
+                          height={CH - 8}
+                          rx={12}
+                        />
+                      )
+                    })}
+                    {items.map(item => {
+                      const order = fresh.get(item.id)
+                      const isNew = order !== undefined
+                      const style = isNew ? ({ '--d': `${order * STAGGER}s` } as CSSProperties) : undefined
+                      return (
+                        <g key={isNew ? `${item.id}-${step}` : item.id} className={isNew ? 'chalk-new' : undefined} style={style}>
+                          {renderItem(item, rowOnPage(item.row, maxRowsPerPage), rowsHere)}
+                        </g>
+                      )
+                    })}
+                    {/* Cuentas en columna: el numero del paso junto a lo que se escribe ahora */}
+                    {!lined && isView && step > 0 && current.focus?.[0] && pageOf(current.focus[0][0], maxRowsPerPage) === p && (
+                      <StepBadge
+                        n={Math.min(step, last) + 1}
+                        x={PAD + (current.focus[current.focus.length - 1][1] + 1) * CW + 4}
+                        y={PAD + rowOnPage(current.focus[current.focus.length - 1][0], maxRowsPerPage) * CH + 14}
+                        active
+                        small
+                        onClick={onAskStep ? () => onAskStep(Math.min(step, last)) : undefined}
+                      />
+                    )}
+                  </g>
+                </svg>
+              </div>
             )
           })}
-          <g transform={`translate(${gutter} 0)`}>
-          {current.focus?.map(([r, c], k) => {
-            const wide = rowIsText(r)
-            return (
-              <rect
-                key={`f${step}-${k}`}
-                className="chalk-focus"
-                x={PAD + (wide ? 0 : c * CW) + 2}
-                y={PAD + r * CH + 4}
-                width={(wide ? script.cols : 1) * CW - 4}
-                height={CH - 8}
-                rx={12}
-              />
-            )
-          })}
-          {visible.map(item => {
-            const order = fresh.get(item.id)
-            const isNew = order !== undefined
-            const style = isNew ? ({ '--d': `${order * STAGGER}s` } as CSSProperties) : undefined
-            return (
-              <g key={isNew ? `${item.id}-${step}` : item.id} className={isNew ? 'chalk-new' : undefined} style={style}>
-                {renderItem(item)}
-              </g>
-            )
-          })}
-          {/* Cuentas en columna: el numero del paso junto a lo que se escribe ahora */}
-          {!lined && current.focus?.[0] && step > 0 && (
-            <StepBadge
-              n={Math.min(step, last) + 1}
-              x={PAD + (current.focus[current.focus.length - 1][1] + 1) * CW + 4}
-              y={PAD + current.focus[current.focus.length - 1][0] * CH + 14}
-              active
-              small
-              onClick={onAskStep ? () => onAskStep(Math.min(step, last)) : undefined}
-            />
-          )}
-          </g>
-        </svg>
+        </div>
+
         {visual && (
           <div className="board-visual-wrap" key={visualStep}>
             <BoardVisual visual={visual} />
@@ -174,7 +221,10 @@ export default function Chalkboard({ script, autoPlay = true, onStepChange, onAs
       <div className="chalk-narration" aria-live="polite">
         <span className="chalk-teacher" aria-hidden="true">👩‍🏫</span>
         <div>
-          <div className="chalk-step-count">Paso {step + 1} de {script.steps.length}</div>
+          <div className="chalk-step-count">
+            Paso {step + 1} de {script.steps.length}
+            {pages > 1 && ` · pizarra ${viewPage + 1} de ${pages}`}
+          </div>
           <p>{current.say}</p>
         </div>
       </div>
@@ -224,7 +274,8 @@ function StepBadge({ n, x, y, active, small, onClick }: {
   )
 }
 
-function renderItem(item: BoardItem) {
+/** `row` es el renglon dentro de la pizarra donde se dibuja el trazo */
+function renderItem(item: BoardItem, row: number, lastRow = MAX_ROWS_PER_PAGE) {
   const x0 = (c: number) => PAD + c * CW
   const y0 = (r: number) => PAD + r * CH
   switch (item.kind) {
@@ -235,7 +286,7 @@ function renderItem(item: BoardItem) {
         <text
           className={`chalk-text tone-${item.tone ?? 'normal'}`}
           x={start ? x0(item.col) + 8 : x0(item.col) + CW / 2}
-          y={y0(item.row) + (item.small ? CH * 0.75 : CH * 0.7)}
+          y={y0(row) + (item.small ? CH * 0.75 : CH * 0.7)}
           fontSize={size}
           textAnchor={start ? 'start' : 'middle'}
         >
@@ -253,8 +304,8 @@ function renderItem(item: BoardItem) {
           className="chalk-line"
           x1={x0(item.from) + 4}
           x2={x0(item.to + 1) - 4}
-          y1={y0(item.row + 1) - 4}
-          y2={y0(item.row + 1) - 2}
+          y1={y0(Math.min(row + 1, lastRow)) - 4}
+          y2={y0(Math.min(row + 1, lastRow)) - 2}
         />
       )
     case 'strike':
@@ -262,9 +313,9 @@ function renderItem(item: BoardItem) {
         <line
           className="chalk-line chalk-strike"
           x1={x0(item.col) + 12}
-          y1={y0(item.row) + CH - 12}
+          y1={y0(row) + CH - 12}
           x2={x0(item.col) + CW - 12}
-          y2={y0(item.row) + 14}
+          y2={y0(row) + 14}
         />
       )
     case 'bracket':
@@ -272,7 +323,7 @@ function renderItem(item: BoardItem) {
         <path
           className="chalk-line"
           fill="none"
-          d={`M ${x0(item.col) - 6} ${y0(item.row) + CH - 4} L ${x0(item.col) - 6} ${y0(item.row) + 4} L ${x0(item.col + item.width) + 4} ${y0(item.row) + 4}`}
+          d={`M ${x0(item.col) - 6} ${y0(row) + CH - 4} L ${x0(item.col) - 6} ${y0(row) + 4} L ${x0(item.col + item.width) + 4} ${y0(row) + 4}`}
         />
       )
   }

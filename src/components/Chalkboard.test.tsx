@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import Chalkboard from './Chalkboard'
 import { multiplicationScript } from '../lib/board/arithmetic'
+import { solutionScript } from '../lib/board/fromSolution'
 
 describe('Chalkboard', () => {
   afterEach(() => vi.useRealTimers())
@@ -41,5 +42,55 @@ describe('Chalkboard', () => {
     const texts = [...container.querySelectorAll('text')].map(t => t.textContent)
     expect(texts).toEqual(expect.arrayContaining(['1', '0', '2', '×']))
     expect(container.querySelectorAll('line').length).toBeGreaterThan(0)
+  })
+
+  it('una cuenta corta sigue en una sola pizarra', () => {
+    const script = multiplicationScript('10', '20')
+    const { container } = render(<Chalkboard script={script} autoPlay={false} />)
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(1)
+    expect(screen.queryByRole('button', { name: /pizarra \d/i })).not.toBeInTheDocument()
+  })
+
+  it('usa la otra parte de la pizarra cuando el proceso es largo', () => {
+    const script = solutionScript({
+      problem: '2x + 3 = 7',
+      steps: Array.from({ length: 12 }, (_, i) => ({
+        step: i + 1,
+        title: `paso ${i + 1}`,
+        explanation: `explicacion ${i + 1}`,
+        calculation: `linea ${i + 1}`,
+      })),
+      final_answer: 'x = 1',
+    })
+    const { container } = render(<Chalkboard script={script} autoPlay={false} />)
+    expect(container.querySelectorAll('svg.chalkboard').length).toBe(2)
+    expect(screen.getByRole('button', { name: 'Pizarra 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pizarra 2' })).toBeInTheDocument()
+
+    const next = screen.getByRole('button', { name: /siguiente/i })
+    for (let i = 0; i < 8; i++) fireEvent.click(next)
+    const active = container.querySelector('.chalk-page.active')
+    expect(active?.textContent).toContain('Pizarra 2')
+    expect(active?.textContent).toContain('linea 8')
+  })
+
+  it('puede volver a ver una pizarra anterior', () => {
+    const script = solutionScript({
+      problem: '2x + 3 = 7',
+      steps: Array.from({ length: 12 }, (_, i) => ({
+        step: i + 1,
+        title: `paso ${i + 1}`,
+        explanation: `explicacion ${i + 1}`,
+        calculation: `linea ${i + 1}`,
+      })),
+      final_answer: 'x = 1',
+    })
+    const { container } = render(<Chalkboard script={script} autoPlay={false} />)
+    const next = screen.getByRole('button', { name: /siguiente/i })
+    for (let i = 0; i < 9; i++) fireEvent.click(next)
+    fireEvent.click(screen.getByRole('button', { name: 'Pizarra 1' }))
+    const active = container.querySelector('.chalk-page.active')
+    expect(active?.textContent).toContain('Pizarra 1')
+    expect(active?.textContent).toContain('linea 1')
   })
 })
