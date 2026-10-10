@@ -153,7 +153,7 @@ La app funciona igual, solo con CPU.
 
 ```bash
 npm run test:run          # pruebas unitarias (vitest)
-npm run test:e2e          # pruebas de la interfaz (Playwright, usa el puerto 5173)
+npm run test:e2e          # pruebas de la interfaz (Playwright, usa su propio puerto, el 5174)
 cd src-tauri && cargo test   # pruebas de Rust
 ```
 
@@ -176,7 +176,7 @@ LOCAL_GGUF=$M/Qwen3VL-4B-Instruct-Q4_K_M.gguf LOCAL_MMPROJ=$M/mmproj-Qwen3VL-4B-
 | La app dice "CPU" aunque tengas GPU | Revisa que `nvidia-smi` funcione. Si el modelo no cabe en la VRAM libre, la app usa CPU o reparte el modelo entre GPU y CPU; prueba un modelo más chico. |
 | "Falta el archivo del modelo" | El archivo se borró o quedó incompleto: bórralo en Configuración y vuelve a descargarlo. |
 | "El modelo activo no puede leer dibujos" | Selecciona un modelo de la lista actual (todos leen dibujos). |
-| `npm run test:e2e`: "localhost:5173 is already used" | Tienes `npm run tauri dev` abierto en ese puerto; ciérralo antes de las pruebas. |
+| `npm run test:e2e`: "localhost:5174 is already used" | Quedó abierto un servidor de pruebas anterior; ciérralo. Las pruebas ya no chocan con `npm run dev` / `npm run tauri dev` (puerto 5173). |
 | La primera compilación es muy lenta | Es normal: compila llama.cpp y CUDA. Se hace una sola vez. |
 
 ## 9. Instaladores de escritorio

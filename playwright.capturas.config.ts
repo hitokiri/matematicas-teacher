@@ -8,13 +8,14 @@ export default defineConfig({
   reporter: 'list',
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     viewport: { width: 1400, height: 1000 },
     deviceScaleFactor: 1,
   },
+  // Puerto propio (5174) para no reutilizar un `npm run dev` normal, que no tiene el backend simulado
   webServer: {
-    command: 'VITE_E2E_TEST=true npm run dev',
-    port: 5173,
+    command: 'VITE_E2E_TEST=true npm run dev -- --port 5174 --strictPort',
+    port: 5174,
     reuseExistingServer: true,
     stdout: 'pipe',
     stderr: 'pipe',

@@ -13,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     actionTimeout: 0,
     trace: 'on-first-retry',
   },
@@ -23,10 +23,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
+  // Puerto propio (5174) para no reutilizar un `npm run dev` normal, que no tiene el backend simulado
   webServer: {
-    command: 'VITE_E2E_TEST=true npm run dev',
-    port: 5173,
-    reuseExisting: !process.env.CI,
+    command: 'VITE_E2E_TEST=true npm run dev -- --port 5174 --strictPort',
+    port: 5174,
+    reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',
   },
