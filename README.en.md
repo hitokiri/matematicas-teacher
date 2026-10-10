@@ -68,6 +68,9 @@ In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
 ## Coming soon
 
 - **Quadratic equations** on the board (first `x² = 9`, then factoring and the quadratic formula).
+- **Natural teacher voice** (offline): local neural voices instead of the robotic system voice. Users will pick a
+  voice by size: Piper (~60 MB, fast on CPU) or Kokoro (~300 MB, more expressive). It will read math properly
+  ("2x + 3y = 6" → "dos equis más tres ye igual a seis") and advance the board when each audio clip ends.
 - **Problem history saved as fixtures**: each solved problem will be saved as a file (the text and the board
   script) to view it again later without solving it again. The same files will be used as fixtures in the tests,
   to check that an explanation does not change by accident.

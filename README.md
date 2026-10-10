@@ -68,6 +68,10 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 ## Próximamente
 
 - **Ecuaciones de segundo grado** en la pizarra (primero `x² = 9`, después factorización y fórmula general).
+- **Voz natural de la maestra** (sin internet): voces neuronales locales en lugar de la voz robótica del sistema. El
+  usuario escogerá la voz según el tamaño: Piper (~60 MB, rápida en CPU) o Kokoro (~300 MB, más expresiva). Incluirá
+  leer bien las matemáticas ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y avanzar la pizarra al
+  terminar cada audio.
 - **Historial de problemas guardado como fixture**: cada problema resuelto se guardará como un archivo (el texto
   y el guion de la pizarra) para volver a verlo después sin resolverlo de nuevo. Esos mismos archivos servirán como
   fixtures en las pruebas, para comprobar que una explicación no cambia sin querer.

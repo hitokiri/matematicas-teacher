@@ -502,5 +502,11 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 
 ### Pendiente
 - Ecuaciones de segundo grado en la pizarra (`x² = 9`, factorización, fórmula general).
+- Voz natural de la maestra, sin internet. Hoy el botón 🔈 usa speechSynthesis (en Linux suena a espeak o no
+  funciona). Plan: sherpa-onnx desde Rust con Piper (~60 MB, voces es_MX/es_ES) o Kokoro (~300 MB); que el usuario
+  escoja la voz por tamaño en Configuración (descarga como los modelos). Falta: comando `speak(texto)`,
+  empaquetar onnxruntime en .deb/AppImage, convertir las matemáticas a palabras ("÷", "−", "√", "1/2" → "un
+  medio") y sincronizar la pizarra con el final del audio (prepara el siguiente mientras suena). Antes de integrar:
+  generar audios de prueba para comparar voces y revisar la licencia de Piper (piper1 es GPL; la app es LGPL).
 - Historial de problemas guardado como fixture: cada problema resuelto en un archivo (texto + guion de la
   pizarra) para volver a verlo sin resolverlo de nuevo, y usar esos archivos como fixtures en las pruebas.

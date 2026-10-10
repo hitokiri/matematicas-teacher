@@ -69,6 +69,12 @@ export const TOPICS: Topic[] = [
     support: 'model',
   },
   {
+    title: 'Voz natural de la maestra',
+    examples: [],
+    how: 'Voces sin internet que suenan naturales; se escoge la voz según el tamaño de descarga.',
+    support: 'soon',
+  },
+  {
     title: 'Historial de problemas',
     examples: [],
     how: 'Guardar los problemas resueltos como fixtures para volver a verlos (y usarlos en las pruebas).',
