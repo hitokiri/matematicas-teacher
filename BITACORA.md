@@ -492,6 +492,14 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - `npm run capturas` (`playwright.capturas.config.ts`, `scripts/capturas/`) genera las capturas del README en
   `docs/capturas/`.
 
+### Tamaño de letra de la pizarra (2026-10-09)
+- Antes la pizarra se escalaba al ancho: un renglón largo encogía toda la letra (en `2x + 3y = 6` quedaba ~14 px).
+  Ahora las pizarras de renglones tienen letra de tamaño fijo (`TEXT_PX` = 32 px × tamaño elegido) y llenan el ancho;
+  si un renglón no cabe, la pizarra se desplaza de lado. El ancho se calcula con el texto real (`CHAR_UNITS`), no con
+  `script.cols` (que sobreestima el texto: es para las cuentas en columna, que siguen ajustándose al ancho).
+- Tamaño de letra (`fontScale`: 0.85 / 1 / 1.2 / 1.4) en Configuración › Interfaz y con A− / A+ junto a la
+  pizarra; también agranda la explicación de la maestra.
+
 ### Pendiente
 - Ecuaciones de segundo grado en la pizarra (`x² = 9`, factorización, fórmula general).
 - Historial de problemas guardado como fixture: cada problema resuelto en un archivo (texto + guion de la

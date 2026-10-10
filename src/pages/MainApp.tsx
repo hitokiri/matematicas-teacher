@@ -34,6 +34,7 @@ interface Solution {
 interface MainAppProps {
   settings: AppSettings
   uiPrefs?: UiPrefs
+  onUiPrefsChange?: (prefs: UiPrefs) => void
 }
 
 /** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
@@ -60,7 +61,7 @@ export function typoHint(text: string): string | null {
   return `Hay dos signos seguidos ("${m[1]}${m[2]}"). Revisa qué querías escribir y quita uno.`
 }
 
-function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS }: MainAppProps) {
+function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: MainAppProps) {
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
   const [board, setBoard] = useState<BoardScript | null>(null)
@@ -239,6 +240,8 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS }: MainAppProps) {
           script={board}
           autoPlay={uiPrefs.autoPlay}
           showAllPages={uiPrefs.boards === 'all'}
+          fontScale={uiPrefs.fontScale}
+          onFontScaleChange={onUiPrefsChange ? f => onUiPrefsChange({ ...uiPrefs, fontScale: f }) : undefined}
           onStepChange={setViewStep}
           onAskStep={askStep}
         />

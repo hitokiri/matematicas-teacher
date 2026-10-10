@@ -1,4 +1,6 @@
-import type { UiPrefs } from '../lib/uiPrefs'
+import { FONT_SCALES, type UiPrefs } from '../lib/uiPrefs'
+
+const FONT_LABELS = ['Chica', 'Normal', 'Grande', 'Muy grande']
 
 interface UiPrefsSectionProps {
   prefs: UiPrefs
@@ -26,6 +28,26 @@ export default function UiPrefsSection({ prefs, onChange, theme, onThemeChange }
           <div className="segmented" role="group" aria-label="Pizarras de un proceso largo">
             <button type="button" aria-pressed={prefs.boards === 'one'} onClick={() => set('boards', 'one')}>📄 Una a la vez</button>
             <button type="button" aria-pressed={prefs.boards === 'all'} onClick={() => set('boards', 'all')}>🗂 Todas juntas</button>
+          </div>
+        </div>
+
+        <div className="ui-pref">
+          <div className="ui-pref-text">
+            <strong>Tamaño de letra</strong>
+            <small>De la pizarra y de lo que explica la maestra. También con A− / A+ junto a la pizarra.</small>
+          </div>
+          <div className="segmented" role="group" aria-label="Tamaño de letra">
+            {FONT_SCALES.map((f, i) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={prefs.fontScale === f}
+                onClick={() => set('fontScale', f)}
+                style={{ fontSize: `${0.8 * f}rem` }}
+              >
+                {FONT_LABELS[i]}
+              </button>
+            ))}
           </div>
         </div>
 

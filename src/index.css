@@ -1068,6 +1068,22 @@ body {
   max-height: 46vh;
 }
 
+/* La letra tiene tamano fijo: si un renglon no cabe, la pizarra se desplaza de lado */
+.chalk-page {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.font-size-controls {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.font-size-controls .btn {
+  min-width: 46px;
+  font-weight: 700;
+}
+
 .chalk-page.active .chalkboard {
   outline: 2px solid rgba(255, 224, 102, 0.45);
   outline-offset: -2px;
@@ -1181,7 +1197,7 @@ body {
 
 .chalk-narration p {
   margin: 4px 0 0;
-  font-size: 1.15rem;
+  font-size: calc(1.25rem * var(--font-scale, 1));
   line-height: 1.5;
   color: var(--text);
 }

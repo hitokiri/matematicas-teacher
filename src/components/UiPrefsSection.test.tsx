@@ -22,6 +22,14 @@ describe('configuracion de la interfaz', () => {
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_UI_PREFS, showLevels: false })
   })
 
+  it('cambia el tamaño de letra', () => {
+    const onChange = vi.fn()
+    render(<UiPrefsSection prefs={DEFAULT_UI_PREFS} onChange={onChange} />)
+    expect(screen.getByRole('button', { name: 'Normal' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Grande' }))
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_UI_PREFS, fontScale: 1.2 })
+  })
+
   it('cambia el tema si se le pasa', () => {
     const onTheme = vi.fn()
     render(<UiPrefsSection prefs={DEFAULT_UI_PREFS} onChange={vi.fn()} theme="light" onThemeChange={onTheme} />)

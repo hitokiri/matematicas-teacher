@@ -58,6 +58,9 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 
 - **Pizarras de un proceso largo**: *Una a la vez* (por defecto, ahorra espacio) o *Todas juntas*. En la pizarra,
   el botón *Ver todas* / *Una a la vez* cambia solo ese problema.
+- **Tamaño de letra** de la pizarra y de la explicación: chica, normal, grande o muy grande. También se cambia con
+  los botones **A−** / **A+** junto a la pizarra. La letra no se encoge cuando un renglón es largo: si no cabe, la
+  pizarra se desplaza de lado.
 - **Reproducir la pizarra sola** al resolver.
 - **Mostrar "¿Hasta dónde llega la maestra?"** en la pantalla principal.
 - **Tema** claro u oscuro.

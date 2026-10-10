@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import '@fontsource/patrick-hand'
 import type { BoardItem, BoardScript } from '../lib/board/types'
 import { MAX_ROWS_PER_PAGE, pageOf, rowOnPage } from '../lib/board/paginate'
 import BoardVisual from './BoardVisual'
+import { FONT_SCALES } from '../lib/uiPrefs'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
 const CW = 52
@@ -10,6 +11,12 @@ const CH = 60
 const PAD = 24
 /** Retraso entre trazos de un mismo paso (segundos) */
 const STAGGER = 0.35
+/** Tamano en pantalla (px) de la letra de los renglones con tamano de letra 1 */
+const TEXT_PX = 32
+/** Tamano de letra de los renglones en unidades del viewBox (ver renderItem) */
+const TEXT_UNITS = 36
+/** Ancho de una letra de tiza (Patrick Hand) en unidades del viewBox, un poco de sobra */
+const CHAR_UNITS = 16
 
 interface ChalkboardProps {
   script: BoardScript
@@ -23,6 +30,10 @@ interface ChalkboardProps {
   maxRowsPerPage?: number
   /** Ver todas las pizarras juntas; si no, solo la que se esta viendo (el usuario puede cambiarlo) */
   showAllPages?: boolean
+  /** Tamano de la letra de la pizarra y de la explicacion (1 = normal) */
+  fontScale?: number
+  /** Al cambiar el tamano de letra desde la pizarra (para guardarlo) */
+  onFontScaleChange?: (scale: number) => void
 }
 
 /** Ancho de la columna de numeros de paso en los problemas de renglones */
@@ -38,6 +49,7 @@ const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
 
 export default function Chalkboard({
   script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
+  fontScale = 1, onFontScaleChange,
 }: ChalkboardProps) {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
@@ -124,6 +136,41 @@ export default function Chalkboard({
   }, [visible, pages, maxRowsPerPage])
 
   const width = PAD * 2 + gutter + script.cols * CW
+
+  // Renglones de texto: la letra tiene un tamano fijo en pantalla (no se encoge si un renglon es largo)
+  // y la pizarra llena el ancho disponible. Si un renglon no cabe, la pizarra se desplaza de lado.
+  const pagesRef = useRef<HTMLDivElement>(null)
+  const [avail, setAvail] = useState(0)
+  useEffect(() => {
+    const el = pagesRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([e]) => setAvail(e.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const zoom = (TEXT_PX / TEXT_UNITS) * fontScale
+  const together = pages > 1 && allPages
+  const pageAvail = together ? Math.max(300, (avail - 12 * (pages - 1)) / pages) : avail
+  // Ancho que de verdad ocupan los renglones (script.cols sobreestima el texto: es para cuentas en columna)
+  const textW = useMemo(() => {
+    let units = 0
+    for (const st of script.steps) {
+      for (const it of st.add) {
+        if (it.kind === 'text' && it.align === 'start') {
+          const chars = it.parts ? it.parts.reduce((n, p) => n + p.text.length, 0) : it.text.length
+          units = Math.max(units, it.col * CW + 8 + chars * CHAR_UNITS * (it.small ? 26 / TEXT_UNITS : 1))
+        } else if (it.kind === 'line') units = Math.max(units, (it.to + 1) * CW)
+        else units = Math.max(units, (it.col + 1) * CW)
+      }
+    }
+    return PAD * 2 + gutter + units
+  }, [script, gutter])
+  const boardW = lined ? Math.max(textW, pageAvail / zoom) : width
+  const boardStyle = (rowsHere: number): CSSProperties | undefined => lined
+    ? { width: boardW * zoom, height: (PAD * 2 + rowsHere * CH) * zoom, maxWidth: 'none', maxHeight: 'none' }
+    : { maxHeight: `${(together ? 46 : 62) * fontScale}vh` }
+  const scaleIdx = FONT_SCALES.findIndex(f => f >= fontScale - 0.001)
+  const setScale = (i: number) => onFontScaleChange?.(FONT_SCALES[Math.max(0, Math.min(FONT_SCALES.length - 1, i))])
   const rowIsText = (r: number) => visible.some(i => i.kind === 'text' && i.row === r && i.align === 'start')
 
   const go = (s: number) => {
@@ -132,7 +179,7 @@ export default function Chalkboard({
   }
 
   return (
-    <div className="chalkboard-section">
+    <div className="chalkboard-section" style={{ '--font-scale': fontScale } as CSSProperties}>
       <div className="chalkboard-frame">
         {pages > 1 && (
           <div className="chalk-pages-nav">
@@ -157,7 +204,7 @@ export default function Chalkboard({
           </div>
         )}
 
-        <div className={`chalk-pages ${pages > 1 && allPages ? 'multi' : ''}`}>
+        <div ref={pagesRef} className={`chalk-pages ${together ? 'multi' : ''}`}>
           {Array.from({ length: pages }, (_, p) => {
             // Una a la vez: solo se dibuja la pizarra que se esta viendo (ahorra espacio)
             if (!allPages && p !== viewPage) return null
@@ -169,7 +216,8 @@ export default function Chalkboard({
                 {pages > 1 && allPages && <div className="chalk-page-label">Pizarra {p + 1}</div>}
                 <svg
                   className="chalkboard"
-                  viewBox={`0 0 ${width} ${PAD * 2 + rowsHere * CH}`}
+                  viewBox={`0 0 ${boardW} ${PAD * 2 + rowsHere * CH}`}
+                  style={boardStyle(rowsHere)}
                   role="img"
                   aria-label={pages > 1 ? `Pizarra ${p + 1}: ${script.title}` : `Pizarra: ${script.title}`}
                 >
@@ -197,7 +245,7 @@ export default function Chalkboard({
                           className="chalk-focus"
                           x={PAD + (wide ? 0 : c * CW) + 2}
                           y={PAD + rowOnPage(r, maxRowsPerPage) * CH + 4}
-                          width={(wide ? script.cols : 1) * CW - 4}
+                          width={(wide ? (boardW - PAD * 2 - gutter) / CW : 1) * CW - 4}
                           height={CH - 8}
                           rx={12}
                         />
@@ -264,6 +312,28 @@ export default function Chalkboard({
           >
             {voice ? '🔊' : '🔈'}
           </button>
+        )}
+        {onFontScaleChange && (
+          <div className="font-size-controls" role="group" aria-label="Tamaño de letra">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setScale(scaleIdx - 1)}
+              disabled={scaleIdx <= 0}
+              aria-label="Letra más chica"
+              title="Letra más chica"
+            >
+              A−
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setScale(scaleIdx + 1)}
+              disabled={scaleIdx >= FONT_SCALES.length - 1}
+              aria-label="Letra más grande"
+              title="Letra más grande"
+            >
+              A+
+            </button>
+          </div>
         )}
       </div>
 

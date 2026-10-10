@@ -89,6 +89,23 @@ describe('Chalkboard', () => {
     expect(container.querySelector('.chalk-page.active')?.textContent).toContain('x = 1')
   })
 
+  it('la letra se agranda y achica desde la pizarra', () => {
+    const script = solutionScript({ problem: '2x + 3 = 7', steps: [{ step: 1, explanation: 'e', calculation: '2x = 4' }], final_answer: 'x = 2' })
+    const onFont = vi.fn()
+    const { container, rerender } = render(<Chalkboard script={script} autoPlay={false} fontScale={1} onFontScaleChange={onFont} />)
+    const width1 = parseFloat((container.querySelector('svg.chalkboard') as SVGElement).style.width)
+    fireEvent.click(screen.getByRole('button', { name: /letra más grande/i }))
+    expect(onFont).toHaveBeenCalledWith(1.2)
+    fireEvent.click(screen.getByRole('button', { name: /letra más chica/i }))
+    expect(onFont).toHaveBeenCalledWith(0.85)
+
+    // Con letra mas grande la pizarra de renglones se dibuja mas grande (no se encoge al ancho)
+    rerender(<Chalkboard script={script} autoPlay={false} fontScale={1.4} onFontScaleChange={onFont} />)
+    const width2 = parseFloat((container.querySelector('svg.chalkboard') as SVGElement).style.width)
+    expect(width2).toBeCloseTo(width1 * 1.4)
+    expect(screen.getByRole('button', { name: /letra más grande/i })).toBeDisabled()
+  })
+
   it('muestra todas las pizarras juntas si se pide', () => {
     const script = solutionScript({
       problem: '2x + 3 = 7',

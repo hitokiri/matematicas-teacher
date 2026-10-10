@@ -58,6 +58,9 @@ In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
 
 - **Boards for long solutions**: *Una a la vez* (one at a time, the default, saves space) or *Todas juntas* (all
   together). On the board, the *Ver todas* / *Una a la vez* button changes it just for that problem.
+- **Font size** of the board and the explanation: small, normal, large, or extra large. It can also be changed with
+  the **A−** / **A+** buttons next to the board. Text no longer shrinks when a line is long: if it doesn't fit, the
+  board scrolls sideways.
 - **Autoplay the board** when solving.
 - **Show "¿Hasta dónde llega la maestra?"** on the main screen.
 - **Light or dark theme.**

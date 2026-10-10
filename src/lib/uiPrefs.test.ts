@@ -10,14 +10,14 @@ describe('preferencias de la interfaz', () => {
   })
 
   it('se guardan y se vuelven a cargar', () => {
-    saveUiPrefs({ boards: 'all', autoPlay: false, showLevels: false })
-    expect(loadUiPrefs()).toEqual({ boards: 'all', autoPlay: false, showLevels: false })
+    saveUiPrefs({ boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4 })
+    expect(loadUiPrefs()).toEqual({ boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4 })
   })
 
   it('ignora valores rotos', () => {
     localStorage.setItem('ui-prefs', '{no es json')
     expect(loadUiPrefs()).toEqual(DEFAULT_UI_PREFS)
-    localStorage.setItem('ui-prefs', JSON.stringify({ boards: 'muchas', autoPlay: 'si' }))
+    localStorage.setItem('ui-prefs', JSON.stringify({ boards: 'muchas', autoPlay: 'si', fontScale: 7 }))
     expect(loadUiPrefs()).toEqual(DEFAULT_UI_PREFS)
   })
 })

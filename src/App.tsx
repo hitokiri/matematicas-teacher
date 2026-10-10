@@ -73,7 +73,7 @@ function App() {
       
       <main className="main-content">
         <div className="main-container">
-          <MainApp settings={settings} uiPrefs={uiPrefs} />
+          <MainApp settings={settings} uiPrefs={uiPrefs} onUiPrefsChange={setUiPrefs} />
         </div>
       </main>
 
