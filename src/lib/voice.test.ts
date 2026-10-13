@@ -50,9 +50,7 @@ describe('voz neuronal', () => {
 
 describe('voz del sistema', () => {
   it('falla sin speechSynthesis', async () => {
-    const saved = (window as any).speechSynthesis
     delete (window as any).speechSynthesis
     await expect(speak('Hola', SYSTEM_VOICE)).resolves.toBe('failed')
-    ;(window as any).speechSynthesis = saved
   })
 })

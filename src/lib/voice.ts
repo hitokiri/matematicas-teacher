@@ -22,7 +22,7 @@ export interface VoiceInfo {
 /** Como termino una lectura: completa, cortada por el usuario o con un error */
 export type SpeakResult = 'done' | 'stopped' | 'failed'
 
-export const systemVoiceAvailable = (): boolean => typeof window !== 'undefined' && 'speechSynthesis' in window
+export const systemVoiceAvailable = (): boolean => typeof window !== 'undefined' && 'speechSynthesis' in window && !!window.speechSynthesis
 
 // Audios ya generados (el del paso siguiente se prepara mientras suena el actual)
 const MAX_CACHE = 8

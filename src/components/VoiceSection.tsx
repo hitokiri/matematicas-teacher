@@ -21,6 +21,8 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
   const [error, setError] = useState('')
   const [testing, setTesting] = useState<string | null>(null)
   const [status, setStatus] = useState('')
+  // Voz que el usuario eligio sin tenerla descargada: se activa sola al terminar la descarga
+  const [pending, setPending] = useState<string | null>(null)
   const loaded = useRef(false)
 
   const load = useCallback(async () => {
@@ -45,6 +47,7 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
     void on('voice-download-progress', () => void load())
     void on('voice-download-error', p => {
       setError(t('voice.errDownload', { message: p?.message ?? t('voice.errUnknown') }))
+      setPending(null)
       void load()
     })
     return () => {
@@ -53,6 +56,28 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
       stopSpeaking()
     }
   }, [load])
+
+  // Mientras algo se descarga se refresca solo (por si algun evento no llega)
+  const anyDownloading = voices.some(v => v.is_downloading)
+  useEffect(() => {
+    if (!anyDownloading) return
+    const timer = window.setInterval(() => void load(), 1000)
+    return () => window.clearInterval(timer)
+  }, [anyDownloading, load])
+
+  // La voz pedida ya se descargo: se activa
+  useEffect(() => {
+    if (!pending) return
+    const v = voices.find(x => x.id === pending)
+    if (v?.is_downloaded) {
+      onChange(pending)
+      setPending(null)
+    } else if (v && !v.is_downloading && loaded.current) {
+      // Ya no se esta descargando y tampoco esta lista (se cancelo o fallo)
+      const t = window.setTimeout(() => setPending(p => (p === pending ? null : p)), 1500)
+      return () => window.clearTimeout(t)
+    }
+  }, [voices, pending, onChange])
 
   // Si la voz elegida ya no esta (se borro), se vuelve a la del sistema
   useEffect(() => {
@@ -63,6 +88,19 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
 
   const nameOf = (id: string) => t(`voice.${id}.name` as MessageKey)
   const descOf = (id: string) => t(`voice.${id}.desc` as MessageKey)
+
+  /** Elegir una voz: si ya esta descargada se usa; si no, se descarga y se activa al terminar */
+  const choose = async (v: VoiceInfo) => {
+    if (v.is_downloaded) {
+      setPending(null)
+      onChange(v.id)
+    } else if (!v.is_downloading) {
+      setPending(v.id)
+      await run('download_voice', v.id)
+    } else {
+      setPending(v.id)
+    }
+  }
 
   const run = async (cmd: string, voiceId: string) => {
     setError('')
@@ -112,6 +150,7 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
           selected={voice === SYSTEM_VOICE}
           available={systemVoiceAvailable()}
           unavailableText={t('voice.systemMissing')}
+          pickable={systemVoiceAvailable()}
           testing={testing === SYSTEM_VOICE}
           onSelect={() => onChange(SYSTEM_VOICE)}
           onTest={() => void test(SYSTEM_VOICE, t('voice.systemShort'))}
@@ -123,15 +162,16 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
             name={nameOf(v.id)}
             description={descOf(v.id)}
             sizeMb={v.size_mb}
-            selected={voice === v.id}
+            selected={pending ? pending === v.id : voice === v.id}
             available={v.is_downloaded}
+            pickable
             downloading={v.is_downloading}
             progress={v.download_progress}
             testing={testing === v.id}
-            onSelect={() => onChange(v.id)}
+            onSelect={() => void choose(v)}
             onTest={() => void test(v.id, nameOf(v.id))}
             onDownload={() => void run('download_voice', v.id)}
-            onCancel={() => void run('cancel_voice_download', v.id)}
+            onCancel={() => { setPending(null); void run('cancel_voice_download', v.id) }}
             onDelete={() => void remove(v)}
           />
         ))}
@@ -150,6 +190,8 @@ interface RowProps {
   sizeMb?: number
   selected: boolean
   available: boolean
+  /** Se puede elegir (aunque falte descargarla) */
+  pickable: boolean
   unavailableText?: string
   downloading?: boolean
   progress?: number
@@ -167,13 +209,16 @@ function VoiceRow(p: RowProps) {
   const descId = `voice-${p.id}-desc`
   const pct = Math.round(p.progress ?? 0)
   return (
-    <div className={`voice-row ${p.selected ? 'selected' : ''}`}>
+    <div
+      className={`voice-row ${p.selected ? 'selected' : ''} ${p.pickable ? 'pickable' : 'unavailable'}`}
+      onClick={e => { if (p.pickable && !(e.target as HTMLElement).closest('button, input, label')) p.onSelect() }}
+    >
       <input
         type="radio"
         name="voice"
         id={`voice-${p.id}`}
         checked={p.selected}
-        disabled={!p.available}
+        disabled={!p.pickable}
         onChange={p.onSelect}
         aria-labelledby={labelId}
         aria-describedby={descId}
@@ -183,8 +228,8 @@ function VoiceRow(p: RowProps) {
         <small id={descId}>
           {p.description}
           {p.sizeMb !== undefined && !p.available && !p.downloading && ` ${t('voice.size', { mb: p.sizeMb })}`}
-          {!p.available && p.unavailableText && ` ${p.unavailableText}`}
         </small>
+        {!p.pickable && p.unavailableText && <small className="voice-unavailable">{p.unavailableText}</small>}
         {p.downloading && (
           <div className="voice-progress">
             <progress max={100} value={pct} aria-label={t('voice.downloading', { name: p.name })} />

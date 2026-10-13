@@ -1826,3 +1826,8 @@ body {
 .lang-switch button:hover:not([aria-pressed='true']) { background: var(--surface-hover); color: var(--text); }
 .lang-switch button[aria-pressed='true'] { background: var(--primary); color: #fff; }
 .header-actions { align-items: center; }
+
+.voice-row.pickable { cursor: pointer; }
+.voice-row.pickable:hover { border-color: var(--accent); }
+.voice-row.unavailable { opacity: 0.85; }
+.voice-unavailable { color: var(--text); font-weight: 600; margin-top: 4px; }
