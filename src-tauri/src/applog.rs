@@ -184,6 +184,9 @@ pub fn clear_logs() {
 mod tests {
     use super::*;
 
+    /// El registro es global: las pruebas que lo usan van de una en una
+    static SERIAL: Mutex<()> = Mutex::new(());
+
     #[test]
     fn limpia_saltos_de_linea_y_acota_el_largo() {
         assert_eq!(clean("uno\ndos\t tres\u{7}", 100), "uno dos tres");
@@ -201,6 +204,7 @@ mod tests {
 
     #[test]
     fn el_buffer_no_pasa_de_su_capacidad_y_conserva_lo_ultimo() {
+        let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         clear();
         for i in 0..(CAPACITY + 20) {
             push(Level::Info, "matematicas_teacher", &format!("mensaje {i}"));
@@ -214,6 +218,7 @@ mod tests {
 
     #[test]
     fn la_pantalla_puede_registrar_con_su_propio_origen() {
+        let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         clear();
         log_from_ui("error".into(), "voz".into(), "No se pudo\nreproducir".into());
         let e = snapshot().entries.pop().unwrap();
