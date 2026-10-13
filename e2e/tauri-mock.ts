@@ -112,6 +112,9 @@ const mockInvoke = (cmd, args) => {
       return Promise.resolve(undefined);
     }
 
+    case 'get_system_voice':
+      return Promise.resolve(window.__systemVoice ?? { available: false, engine: null, os: 'Ubuntu 24.04.5 LTS', install_command: 'sudo apt install espeak-ng' });
+
     case 'list_voices':
       return Promise.resolve(Object.entries(VOICE_INFO).map(([id, v]) => ({
         id, ...v, is_downloaded: !!state.voices[id], is_downloading: false, download_progress: state.voices[id] ? 100 : 0,

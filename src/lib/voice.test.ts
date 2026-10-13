@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockInvoke } from './../test-setup'
-import { prefetch, speak, stopSpeaking, SYSTEM_VOICE } from './voice'
+import { getSystemVoice, prefetch, speak, stopSpeaking, SYSTEM_VOICE } from './voice'
 
 class FakeAudio extends EventTarget {
   static last: FakeAudio | null = null
@@ -50,6 +50,22 @@ describe('voz neuronal', () => {
 
 describe('voz del sistema', () => {
   it('falla sin speechSynthesis', async () => {
+    delete (window as any).speechSynthesis
+    await expect(speak('Hola', SYSTEM_VOICE)).resolves.toBe('failed')
+  })
+
+  it('con espeak-ng en el sistema la voz del sistema se pide al backend (no al navegador)', async () => {
+    mockInvoke.mockImplementation(async (cmd: string) => (cmd === 'get_system_voice'
+      ? { available: true, engine: 'espeak-ng', os: 'Ubuntu', install_command: null }
+      : new ArrayBuffer(8)))
+    await getSystemVoice(true)
+    await expect(speak('Hola', SYSTEM_VOICE)).resolves.toBe('done')
+    expect(mockInvoke).toHaveBeenCalledWith('synthesize_speech', { voiceId: 'system', text: 'Hola' })
+  })
+
+  it('sin espeak-ng ni navegador con voz falla sin lanzar', async () => {
+    mockInvoke.mockImplementation(async () => ({ available: false, engine: null, os: '', install_command: null }))
+    await getSystemVoice(true)
     delete (window as any).speechSynthesis
     await expect(speak('Hola', SYSTEM_VOICE)).resolves.toBe('failed')
   })

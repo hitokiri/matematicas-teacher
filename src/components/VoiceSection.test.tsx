@@ -85,10 +85,44 @@ describe('VoiceSection', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('kokoro-dora'))
   })
 
-  it('la voz del sistema no disponible explica por que', async () => {
-    delete (window as any).speechSynthesis // jsdom no trae voz del sistema
+  it('la voz del sistema que falta explica que instalar, con el comando de la distribucion', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    mockInvoke.mockImplementation(async (cmd: string) => {
+      if (cmd === 'list_voices') return voices
+      if (cmd === 'get_system_voice') return { available: false, engine: null, os: 'Ubuntu 24.04.5 LTS', install_command: 'sudo apt install espeak-ng' }
+      return undefined
+    })
     render(<VoiceSection voice="piper-claude" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
-    expect(await screen.findByText(/No disponible: la app no encuentra una voz/)).toBeInTheDocument()
+    expect(await screen.findByText(/Todavía no disponible en tu computadora/)).toBeInTheDocument()
+    expect(screen.getByText(/Ubuntu 24\.04\.5 LTS/)).toBeInTheDocument()
+    expect(screen.getByText('sudo apt install espeak-ng')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Voz del sistema/ })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: /copiar comando/i }))
+    expect(writeText).toHaveBeenCalledWith('sudo apt install espeak-ng')
+  })
+
+  it('«Volver a comprobar» detecta lo recien instalado y habilita la voz del sistema', async () => {
+    let installed = false
+    mockInvoke.mockImplementation(async (cmd: string) => {
+      if (cmd === 'list_voices') return voices
+      if (cmd === 'get_system_voice') {
+        return installed
+          ? { available: true, engine: 'espeak-ng', os: 'Ubuntu', install_command: null }
+          : { available: false, engine: null, os: 'Ubuntu', install_command: 'sudo apt install espeak-ng' }
+      }
+      return undefined
+    })
+    const onChange = vi.fn()
+    render(<VoiceSection voice="piper-claude" onChange={onChange} readAloud={false} onReadAloudChange={() => {}} />)
+    await screen.findByText('sudo apt install espeak-ng')
+    installed = true
+    await userEvent.click(screen.getByRole('button', { name: /volver a comprobar/i }))
+    const radio = await screen.findByRole('radio', { name: /Voz del sistema/ })
+    await waitFor(() => expect(radio).toBeEnabled())
+    expect(screen.queryByText('sudo apt install espeak-ng')).not.toBeInTheDocument()
+    expect(screen.getByText('Usa espeak-ng.')).toBeInTheDocument()
+    await userEvent.click(radio)
+    expect(onChange).toHaveBeenCalledWith('system')
   })
 })

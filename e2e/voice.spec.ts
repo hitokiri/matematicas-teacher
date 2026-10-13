@@ -25,11 +25,20 @@ test.describe('Voz de la maestra', () => {
     await expect(radio).not.toBeChecked()
   })
 
-  test('la voz del sistema que no existe explica por qué no se puede elegir', async ({ page }) => {
+  test('la voz del sistema que falta explica qué instalar y se puede volver a comprobar', async ({ page }) => {
     await page.addInitScript(() => Object.defineProperty(window, 'speechSynthesis', { value: undefined }))
     await page.reload()
     await page.getByRole('button', { name: /configuraci[oó]n/i }).first().click()
-    await expect(page.getByRole('radio', { name: /Voz del sistema/ })).toBeDisabled()
-    await expect(page.getByText(/No disponible: la app no encuentra una voz/)).toBeVisible()
+    const radio = page.getByRole('radio', { name: /Voz del sistema/ })
+    await expect(radio).toBeDisabled()
+    await expect(page.getByText('sudo apt install espeak-ng')).toBeVisible()
+    await expect(page.getByText(/Ubuntu 24\.04\.5 LTS/)).toBeVisible()
+
+    // Se instala (simulado) y se vuelve a comprobar
+    await page.evaluate(() => { (window as any).__systemVoice = { available: true, engine: 'espeak-ng', os: 'Ubuntu', install_command: null } })
+    await page.getByRole('button', { name: 'Volver a comprobar' }).click()
+    await expect(radio).toBeEnabled()
+    await radio.check()
+    await expect(radio).toBeChecked()
   })
 })

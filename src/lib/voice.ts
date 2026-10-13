@@ -22,6 +22,30 @@ export interface VoiceInfo {
 /** Como termino una lectura: completa, cortada por el usuario o con un error */
 export type SpeakResult = 'done' | 'stopped' | 'failed'
 
+/** Lo que hay (o falta) en esta computadora para la voz del sistema */
+export interface SystemVoiceInfo {
+  available: boolean
+  engine: string | null
+  os: string
+  install_command: string | null
+}
+
+const NO_SYSTEM_VOICE: SystemVoiceInfo = { available: false, engine: null, os: '', install_command: null }
+let systemInfo: SystemVoiceInfo | null = null
+
+/** Pregunta al backend si hay un programa de voz (espeak-ng); `fresh` vuelve a comprobar */
+export async function getSystemVoice(fresh = false): Promise<SystemVoiceInfo> {
+  if (systemInfo && !fresh) return systemInfo
+  try {
+    const res = await invoke<SystemVoiceInfo>('get_system_voice')
+    systemInfo = res && typeof res.available === 'boolean' ? res : NO_SYSTEM_VOICE
+  } catch {
+    systemInfo = NO_SYSTEM_VOICE
+  }
+  return systemInfo
+}
+
+/** El navegador de la ventana trae voz (speechSynthesis). En varias distribuciones de Linux no. */
 export const systemVoiceAvailable = (): boolean => typeof window !== 'undefined' && 'speechSynthesis' in window && !!window.speechSynthesis
 
 // Audios ya generados (el del paso siguiente se prepara mientras suena el actual)
@@ -43,7 +67,7 @@ function fetchAudio(voiceId: string, text: string): Promise<Blob> {
 
 /** Prepara el audio de un texto sin reproducirlo (solo voces neuronales) */
 export function prefetch(text: string, voiceId: string): void {
-  if (voiceId === SYSTEM_VOICE) return
+  if (voiceId === SYSTEM_VOICE && !systemInfo?.available) return
   fetchAudio(voiceId, spokenMath(text)).catch(() => {})
 }
 
@@ -63,7 +87,9 @@ export function speak(text: string, voiceId: string): Promise<SpeakResult> {
   stopSpeaking()
   const spoken = spokenMath(text)
   if (!spoken) return Promise.resolve('done')
-  return voiceId === SYSTEM_VOICE ? speakWithSystem(spoken) : speakWithNeural(spoken, voiceId)
+  if (voiceId !== SYSTEM_VOICE) return speakWithNeural(spoken, voiceId)
+  // Voz del sistema: primero el programa del sistema (espeak-ng); si no, la del navegador
+  return getSystemVoice().then(info => (info.available ? speakWithNeural(spoken, SYSTEM_VOICE) : speakWithSystem(spoken)))
 }
 
 function speakWithSystem(spoken: string): Promise<SpeakResult> {

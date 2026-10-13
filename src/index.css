@@ -1831,3 +1831,19 @@ body {
 .voice-row.pickable:hover { border-color: var(--accent); }
 .voice-row.unavailable { opacity: 0.85; }
 .voice-unavailable { color: var(--text); font-weight: 600; margin-top: 4px; }
+
+.voice-help { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.voice-help small { color: var(--text-secondary); }
+.voice-command {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.voice-help-actions { display: flex; flex-wrap: wrap; gap: 8px; }

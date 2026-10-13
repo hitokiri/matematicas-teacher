@@ -54,3 +54,41 @@ fn voz_real_genera_audio_con_piper_y_kokoro() {
         std::fs::write(dir.join(format!("{id}.wav")), wav).unwrap();
     }
 }
+
+#[test]
+fn lee_la_distribucion_de_os_release() {
+    let ubuntu = "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nID=ubuntu\nID_LIKE=debian\n";
+    let (id, like, pretty) = system::parse_os_release(ubuntu);
+    assert_eq!((id.as_str(), like.as_slice(), pretty.as_str()), ("ubuntu", &["debian".to_string()][..], "Ubuntu 24.04.5 LTS"));
+    assert_eq!(system::install_command(&id, &like).as_deref(), Some("sudo apt install espeak-ng"));
+}
+
+#[test]
+fn comando_de_instalacion_segun_la_distribucion() {
+    let like = |s: &str| s.split_whitespace().map(String::from).collect::<Vec<_>>();
+    assert_eq!(system::install_command("fedora", &[]).as_deref(), Some("sudo dnf install espeak-ng"));
+    assert_eq!(system::install_command("endeavouros", &like("arch")).as_deref(), Some("sudo pacman -S espeak-ng"));
+    assert_eq!(system::install_command("linuxmint", &like("ubuntu debian")).as_deref(), Some("sudo apt install espeak-ng"));
+    assert_eq!(system::install_command("opensuse-tumbleweed", &like("opensuse suse")).as_deref(), Some("sudo zypper install espeak-ng"));
+    assert_eq!(system::install_command("raro", &[]), None);
+}
+
+#[test]
+fn la_voz_del_sistema_rechaza_texto_vacio_o_enorme() {
+    assert!(system::synthesize("  ").is_err());
+    assert!(system::synthesize(&"a".repeat(MAX_TEXT_CHARS + 1)).is_err());
+}
+
+#[test]
+fn la_voz_del_sistema_genera_un_wav_valido_si_espeak_esta_instalado() {
+    if system::find_engine().is_none() {
+        eprintln!("espeak-ng no está instalado: se omite");
+        return;
+    }
+    // un texto que empieza con "-" no debe tomarse como opcion
+    let wav = system::synthesize("-hola, dos equis más tres").unwrap();
+    assert_eq!(&wav[0..4], b"RIFF");
+    let data_len = u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize;
+    assert_eq!(data_len, wav.len() - 44, "la cabecera debe tener el tamaño real");
+    assert!(wav.len() > 10_000);
+}

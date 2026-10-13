@@ -52,9 +52,28 @@ pub fn delete_voice(app: tauri::AppHandle, voice_id: String) -> Result<(), Strin
     Ok(())
 }
 
+/// Lo que hay (o falta) para usar la voz del sistema en esta computadora
+#[tauri::command]
+pub async fn get_system_voice() -> Result<super::system::SystemVoiceInfo, String> {
+    tauri::async_runtime::spawn_blocking(super::system::info).await.map_err(|e| e.to_string())
+}
+
 /// Audio (WAV) de lo que dice la maestra, como bytes crudos (sin pasar por JSON)
 #[tauri::command]
 pub async fn synthesize_speech(app: tauri::AppHandle, voice_id: String, text: String) -> Result<tauri::ipc::Response, String> {
+    if voice_id == "system" {
+        if text.chars().count() > MAX_TEXT_CHARS {
+            return Err("El texto es demasiado largo para leerlo".into());
+        }
+        let wav = tauri::async_runtime::spawn_blocking(move || super::system::synthesize(&text))
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| {
+                log::warn!("No se pudo generar la voz del sistema: {}", e);
+                e.to_string()
+            })?;
+        return Ok(tauri::ipc::Response::new(wav));
+    }
     let voice = find_voice(&voice_id).ok_or("Voz desconocida")?;
     if text.chars().count() > MAX_TEXT_CHARS {
         return Err("El texto es demasiado largo para leerlo".into());

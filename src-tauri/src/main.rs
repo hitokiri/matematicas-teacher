@@ -108,6 +108,7 @@ fn main() {
             voice::commands::cancel_voice_download,
             voice::commands::delete_voice,
             voice::commands::synthesize_speech,
+            voice::commands::get_system_voice,
             // Registro
             applog::get_logs,
             applog::clear_logs,

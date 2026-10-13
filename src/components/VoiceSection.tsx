@@ -4,7 +4,8 @@ import { listen } from '@tauri-apps/api/event'
 import Switch from './Switch'
 import { logUi } from '../lib/applog'
 import { useT, type MessageKey } from '../lib/i18n'
-import { SYSTEM_VOICE, speak, stopSpeaking, systemVoiceAvailable, type VoiceInfo } from '../lib/voice'
+import { SYSTEM_VOICE, speak, stopSpeaking, type VoiceInfo } from '../lib/voice'
+import { useSystemVoice } from '../lib/useSystemVoice'
 
 interface VoiceSectionProps {
   /** Voz elegida: 'system' o el id de una voz descargada */
@@ -17,6 +18,7 @@ interface VoiceSectionProps {
 
 export default function VoiceSection({ voice, onChange, readAloud, onReadAloudChange }: VoiceSectionProps) {
   const t = useT()
+  const system = useSystemVoice()
   const [voices, setVoices] = useState<VoiceInfo[]>([])
   const [error, setError] = useState('')
   const [testing, setTesting] = useState<string | null>(null)
@@ -148,9 +150,12 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
           name={t('voice.system')}
           description={t('voice.systemDesc')}
           selected={voice === SYSTEM_VOICE}
-          available={systemVoiceAvailable()}
+          available={system.available}
           unavailableText={t('voice.systemMissing')}
-          pickable={systemVoiceAvailable()}
+          pickable={system.available}
+          extra={system.available
+            ? (system.info?.engine ? <small>{t('voice.systemEngine', { engine: system.info.engine })}</small> : null)
+            : <SystemVoiceHelp info={system.info} checking={system.checking} onCheck={() => void system.check()} />}
           testing={testing === SYSTEM_VOICE}
           onSelect={() => onChange(SYSTEM_VOICE)}
           onTest={() => void test(SYSTEM_VOICE, t('voice.systemShort'))}
@@ -193,6 +198,8 @@ interface RowProps {
   /** Se puede elegir (aunque falte descargarla) */
   pickable: boolean
   unavailableText?: string
+  /** Contenido extra bajo la descripcion (p. ej. como instalar lo que falta) */
+  extra?: React.ReactNode
   downloading?: boolean
   progress?: number
   testing: boolean
@@ -230,6 +237,7 @@ function VoiceRow(p: RowProps) {
           {p.sizeMb !== undefined && !p.available && !p.downloading && ` ${t('voice.size', { mb: p.sizeMb })}`}
         </small>
         {!p.pickable && p.unavailableText && <small className="voice-unavailable">{p.unavailableText}</small>}
+        {p.extra}
         {p.downloading && (
           <div className="voice-progress">
             <progress max={100} value={pct} aria-label={t('voice.downloading', { name: p.name })} />
@@ -259,6 +267,39 @@ function VoiceRow(p: RowProps) {
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Que le falta a esta computadora para la voz del sistema y como instalarlo */
+function SystemVoiceHelp({ info, checking, onCheck }: { info: ReturnType<typeof useSystemVoice>['info']; checking: boolean; onCheck: () => void }) {
+  const t = useT()
+  const [copied, setCopied] = useState('')
+  if (!info) return null
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(info.install_command ?? '')
+      setCopied(t('voice.systemCopied'))
+    } catch {
+      setCopied('')
+    }
+  }
+  return (
+    <div className="voice-help">
+      <small>{t('voice.systemNeeds', { os: info.os })}</small>
+      <small>{info.install_command ? t('voice.systemInstall') : t('voice.systemNoCommand')}</small>
+      {info.install_command && <code className="voice-command">{info.install_command}</code>}
+      <div className="voice-help-actions">
+        {info.install_command && (
+          <button type="button" className="btn btn-secondary" onClick={() => void copy()}>
+            <span aria-hidden="true">📋</span> {t('voice.systemCopy')}
+          </button>
+        )}
+        <button type="button" className="btn btn-secondary" onClick={onCheck} disabled={checking}>
+          <span aria-hidden="true">🔄</span> {checking ? t('voice.systemChecking') : t('voice.systemRecheck')}
+        </button>
+      </div>
+      <span className="visually-hidden" role="status" aria-live="polite">{copied}</span>
     </div>
   )
 }

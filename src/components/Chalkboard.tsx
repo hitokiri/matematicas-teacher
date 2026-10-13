@@ -6,7 +6,8 @@ import BoardVisual from './BoardVisual'
 import { FONT_SCALES } from '../lib/uiPrefs'
 import { logUi } from '../lib/applog'
 import { useT } from '../lib/i18n'
-import { SYSTEM_VOICE, prefetch, speak, stopSpeaking, systemVoiceAvailable } from '../lib/voice'
+import { SYSTEM_VOICE, prefetch, speak, stopSpeaking } from '../lib/voice'
+import { useSystemVoice } from '../lib/useSystemVoice'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
 const CW = 52
@@ -64,7 +65,10 @@ export default function Chalkboard({
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(readAloud)
   const [voiceError, setVoiceError] = useState('')
-  const canSpeak = voiceId !== SYSTEM_VOICE || systemVoiceAvailable()
+  // La preferencia puede cambiar desde Configuración con la pizarra ya en pantalla
+  useEffect(() => setVoice(readAloud), [readAloud])
+  const systemVoice = useSystemVoice()
+  const canSpeak = voiceId !== SYSTEM_VOICE || systemVoice.available
   // Para que al terminar el audio se sepa si el usuario pauso mientras tanto
   const playingRef = useRef(playing)
   playingRef.current = playing
@@ -108,6 +112,7 @@ export default function Chalkboard({
       if (result === 'failed') {
         logUi('warn', 'voz', `No se pudo leer en voz alta con la voz «${voiceId}»`)
         setVoice(false)
+        onReadAloudChange?.(false)
         setVoiceError(t('board.voiceError'))
       } else if (result === 'done' && playingRef.current) {
         if (at >= last) setPlaying(false)

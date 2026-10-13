@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { speak, prefetch, type SpeakResult } from '../lib/voice'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import Chalkboard from './Chalkboard'
 import { multiplicationScript } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
@@ -177,6 +177,18 @@ describe('Chalkboard', () => {
       vi.mocked(speak).mockResolvedValue('failed')
       render(<Chalkboard script={multiplicationScript('10', '20')} readAloud voiceId="kokoro-dora" />)
       expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo leer en voz alta')
+      expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('si la lectura se enciende desde fuera (Configuración) con la pizarra ya abierta, empieza a leer', async () => {
+      vi.mocked(speak).mockResolvedValue('stopped')
+      const script = multiplicationScript('10', '20')
+      const { rerender } = render(<Chalkboard script={script} autoPlay={false} readAloud={false} voiceId="piper-claude" />)
+      expect(vi.mocked(speak)).not.toHaveBeenCalled()
+      rerender(<Chalkboard script={script} autoPlay={false} readAloud voiceId="piper-claude" />)
+      await waitFor(() => expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude'))
+      expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'true')
+      rerender(<Chalkboard script={script} autoPlay={false} readAloud={false} voiceId="piper-claude" />)
       expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')
     })
 

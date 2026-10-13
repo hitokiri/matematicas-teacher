@@ -4,6 +4,7 @@
 pub mod commands;
 pub mod download;
 pub mod engine;
+pub mod system;
 
 #[cfg(test)]
 mod tests;
