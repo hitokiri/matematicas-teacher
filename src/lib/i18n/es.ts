@@ -12,7 +12,7 @@ export const es = {
   'app.loading': 'Cargando...',
   'app.themeToDark': 'Cambiar a modo oscuro',
   'app.themeToLight': 'Cambiar a modo claro',
-  'app.langSwitch': 'Cambiar el idioma a {language}',
+  'app.langGroup': 'Idioma de la app',
 
   // Pantalla principal
   'main.heading': 'Escribe o dibuja tu problema matemático',

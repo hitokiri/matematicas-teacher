@@ -13,7 +13,7 @@ export const en: Record<MessageKey, string> = {
   'app.loading': 'Loading...',
   'app.themeToDark': 'Switch to dark mode',
   'app.themeToLight': 'Switch to light mode',
-  'app.langSwitch': 'Change the language to {language}',
+  'app.langGroup': 'App language',
 
   'main.heading': 'Type or draw your math problem',
   'main.modeGroup': 'How to enter the problem',

@@ -4,7 +4,7 @@ import MainApp from './pages/MainApp'
 import Settings from './pages/Settings'
 import Modal from './components/Modal'
 import { loadUiPrefs, saveUiPrefs, type UiPrefs } from './lib/uiPrefs'
-import { useI18n } from './lib/i18n'
+import { LANGS, useI18n } from './lib/i18n'
 
 export interface AppSettings {
   active_model_id: string | null
@@ -71,8 +71,6 @@ function App() {
     return <div className="loading" role="status"><div className="spinner" aria-hidden="true"></div>{t('app.loading')}</div>
   }
 
-  const other = lang === 'es' ? 'en' : 'es'
-
   return (
     <div className="app">
       <a className="skip-link" href="#contenido" onClick={e => { e.preventDefault(); document.getElementById('contenido')?.focus() }}>
@@ -81,15 +79,21 @@ function App() {
       <header className="header">
         <h1><img className="header-logo" src="/icon.svg" alt="" /> {t('app.title')}</h1>
         <div className="header-actions">
-          <button
-            className="btn btn-secondary lang-switch"
-            onClick={() => setLang(other)}
-            aria-label={t('app.langSwitch', { language: t(`lang.${other}`) })}
-            title={t(`lang.${other}`)}
-            lang={other}
-          >
-            <span aria-hidden="true">🌐</span> {other.toUpperCase()}
-          </button>
+          <div className="lang-switch" role="group" aria-label={t('app.langGroup')}>
+            {LANGS.map(l => (
+              <button
+                key={l}
+                type="button"
+                lang={l}
+                aria-pressed={lang === l}
+                aria-label={t(`lang.${l}`)}
+                title={t(`lang.${l}`)}
+                onClick={() => setLang(l)}
+              >
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <button className="btn btn-secondary" onClick={() => setShowSettings(true)}>
             <span aria-hidden="true">⚙️</span> {t('app.settings')}
           </button>

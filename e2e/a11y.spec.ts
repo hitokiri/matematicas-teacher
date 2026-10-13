@@ -112,7 +112,7 @@ test.describe('Idioma', () => {
     await page.waitForSelector('.input-section')
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
 
-    await page.getByRole('button', { name: 'Cambiar el idioma a English' }).click()
+    await page.getByRole('group', { name: 'Idioma de la app' }).getByRole('button', { name: 'English' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await expect(page.getByRole('heading', { name: 'Type or draw your math problem' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
@@ -123,7 +123,7 @@ test.describe('Idioma', () => {
 
     // Desde Configuración también se escoge
     await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Español' }).click()
+    await page.getByRole('dialog').getByRole('group', { name: 'Language' }).getByRole('button', { name: 'Español' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
   })
 
