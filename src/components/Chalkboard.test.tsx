@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { speak, prefetch, type SpeakResult } from '../lib/voice'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import Chalkboard from './Chalkboard'
 import { multiplicationScript } from '../lib/board/arithmetic'
 import { solutionScript } from '../lib/board/fromSolution'
+
+vi.mock('../lib/voice', async importOriginal => ({
+  ...(await importOriginal<typeof import('../lib/voice')>()),
+  speak: vi.fn(),
+  prefetch: vi.fn(),
+}))
 
 describe('Chalkboard', () => {
   afterEach(() => vi.useRealTimers())
@@ -143,5 +150,45 @@ describe('Chalkboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pizarra 1' }))
     expect(screen.getByRole('button', { name: 'Pizarra 1' })).toHaveAttribute('aria-current', 'true')
     expect(container.querySelector('.chalk-page.active')?.textContent).toContain('linea 1')
+  })
+
+  describe('lectura en voz alta', () => {
+    // Cada prueba fija lo que devuelve speak; no se reinicia aqui para no pisar a la pizarra aun montada
+    it('al terminar cada audio pasa sola al siguiente paso, sin esperar el reloj', async () => {
+      vi.mocked(speak).mockResolvedValue('done')
+      const script = multiplicationScript('10', '20')
+      render(<Chalkboard script={script} readAloud voiceId="piper-claude" />)
+      await screen.findByText(`Paso 3 de ${script.steps.length}`)
+      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude')
+      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[1].say, 'piper-claude')
+    })
+
+    it('si el usuario pausa, el audio termina pero la pizarra no avanza', async () => {
+      let finish!: (r: SpeakResult) => void
+      vi.mocked(speak).mockReturnValue(new Promise(r => { finish = r }))
+      const script = multiplicationScript('10', '20')
+      render(<Chalkboard script={script} readAloud voiceId="piper-claude" />)
+      fireEvent.click(screen.getByRole('button', { name: /pausa/i }))
+      await act(async () => { finish('done') })
+      expect(screen.getByText(`Paso 1 de ${script.steps.length}`)).toBeInTheDocument()
+    })
+
+    it('si la voz falla apaga la lectura y avisa', async () => {
+      vi.mocked(speak).mockResolvedValue('failed')
+      render(<Chalkboard script={multiplicationScript('10', '20')} readAloud voiceId="kokoro-dora" />)
+      expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo leer en voz alta')
+      expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('el boton de lectura avisa su estado y guarda la eleccion', () => {
+      const onReadAloudChange = vi.fn()
+      vi.mocked(speak).mockResolvedValue('stopped')
+      render(<Chalkboard script={multiplicationScript('10', '20')} autoPlay={false} voiceId="piper-claude" onReadAloudChange={onReadAloudChange} />)
+      const btn = screen.getByRole('button', { name: 'Leer en voz alta' })
+      expect(btn).toHaveAttribute('aria-pressed', 'false')
+      fireEvent.click(btn)
+      expect(btn).toHaveAttribute('aria-pressed', 'true')
+      expect(onReadAloudChange).toHaveBeenCalledWith(true)
+    })
   })
 })

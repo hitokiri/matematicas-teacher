@@ -10,8 +10,9 @@ describe('preferencias de la interfaz', () => {
   })
 
   it('se guardan y se vuelven a cargar', () => {
-    saveUiPrefs({ boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4 })
-    expect(loadUiPrefs()).toEqual({ boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4 })
+    const prefs = { boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4, voice: 'kokoro-dora', readAloud: true } as const
+    saveUiPrefs(prefs)
+    expect(loadUiPrefs()).toEqual(prefs)
   })
 
   it('ignora valores rotos', () => {
@@ -19,5 +20,10 @@ describe('preferencias de la interfaz', () => {
     expect(loadUiPrefs()).toEqual(DEFAULT_UI_PREFS)
     localStorage.setItem('ui-prefs', JSON.stringify({ boards: 'muchas', autoPlay: 'si', fontScale: 7 }))
     expect(loadUiPrefs()).toEqual(DEFAULT_UI_PREFS)
+  })
+
+  it('una voz guardada con un id raro se descarta', () => {
+    localStorage.setItem('ui-prefs', JSON.stringify({ voice: '../../etc/passwd' }))
+    expect(loadUiPrefs().voice).toBe('system')
   })
 })

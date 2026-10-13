@@ -2,6 +2,7 @@
 // Reune las librerias que necesita la app instalada y genera la configuracion de Tauri que las
 // incluye en el .deb y la AppImage, en /usr/lib/matematicas-teacher/:
 //   - llama.cpp: libllama, libggml*, libmtmd (compartidas, porque los backends son dinamicos)
+//   - voz de la maestra: libsherpa-onnx-c-api y libonnxruntime (sin versiones en el nombre)
 //   - backends/: modulos de CPU (todas las variantes) y, en la version con GPU, el de CUDA
 //   - version con GPU: las librerias de CUDA que usa el modulo (libcudart, libcublas, libcublasLt),
 //     para que funcione sin instalar el CUDA Toolkit. Solo hace falta el driver de NVIDIA.
@@ -31,6 +32,12 @@ fs.mkdirSync(path.join(stage, 'backends'), { recursive: true })
 const libs = fs.readdirSync(release).filter(f => /^lib(llama|ggml|mtmd)[\w-]*\.so\.\d+$/.test(f))
 if (!libs.length) fail('No se encontraron las librerias de llama.cpp en target/release')
 for (const f of libs) fs.copyFileSync(path.join(release, f), path.join(stage, f))
+
+// 1b) Voz natural de la maestra (sherpa-onnx + onnxruntime)
+for (const f of ['libsherpa-onnx-c-api.so', 'libonnxruntime.so']) {
+  if (!fs.existsSync(path.join(release, f))) fail(`No se encontro ${f} en target/release (voz de la maestra)`)
+  fs.copyFileSync(path.join(release, f), path.join(stage, f))
+}
 
 // 2) Modulos de backend
 const backendsDir = path.join(release, 'backends')

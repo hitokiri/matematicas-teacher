@@ -4,6 +4,7 @@ import type { BoardItem, BoardScript } from '../lib/board/types'
 import { MAX_ROWS_PER_PAGE, pageOf, rowOnPage } from '../lib/board/paginate'
 import BoardVisual from './BoardVisual'
 import { FONT_SCALES } from '../lib/uiPrefs'
+import { SYSTEM_VOICE, prefetch, speak, stopSpeaking, systemVoiceAvailable } from '../lib/voice'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
 const CW = 52
@@ -34,6 +35,12 @@ interface ChalkboardProps {
   fontScale?: number
   /** Al cambiar el tamano de letra desde la pizarra (para guardarlo) */
   onFontScaleChange?: (scale: number) => void
+  /** Voz con que lee la maestra ('system' o el id de una voz descargada) */
+  voiceId?: string
+  /** Empieza leyendo en voz alta */
+  readAloud?: boolean
+  /** Al encender o apagar la lectura desde la pizarra (para guardarlo) */
+  onReadAloudChange?: (on: boolean) => void
 }
 
 /** Ancho de la columna de numeros de paso en los problemas de renglones */
@@ -45,15 +52,19 @@ function stepDuration(script: BoardScript, step: number): number {
   return Math.min(9000, 1400 + s.add.length * STAGGER * 1000 + s.say.length * 45)
 }
 
-const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
 
 export default function Chalkboard({
   script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
-  fontScale = 1, onFontScaleChange,
+  fontScale = 1, onFontScaleChange, voiceId = SYSTEM_VOICE, readAloud = false, onReadAloudChange,
 }: ChalkboardProps) {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
-  const [voice, setVoice] = useState(false)
+  const [voice, setVoice] = useState(readAloud)
+  const [voiceError, setVoiceError] = useState('')
+  const canSpeak = voiceId !== SYSTEM_VOICE || systemVoiceAvailable()
+  // Para que al terminar el audio se sepa si el usuario pauso mientras tanto
+  const playingRef = useRef(playing)
+  playingRef.current = playing
   /** Pizarra que el usuario eligio ver; si no, se sigue a la que se esta escribiendo */
   const [pinned, setPinned] = useState<number | null>(null)
   const [allPages, setAllPages] = useState(showAllPages)
@@ -69,26 +80,43 @@ export default function Chalkboard({
 
   useEffect(() => {
     if (!playing) return
+    // Con la lectura encendida, el avance lo marca el final del audio de cada paso
+    if (voice && canSpeak) return
     if (step >= last) {
       setPlaying(false)
       return
     }
     const t = window.setTimeout(() => setStep(s => Math.min(s + 1, last)), stepDuration(script, step))
     return () => window.clearTimeout(t)
-  }, [playing, step, last, script])
+  }, [playing, step, last, script, voice, canSpeak])
 
   useEffect(() => {
     onStepChange?.(Math.min(step, last))
   }, [step, last, onStepChange])
 
-  // Lectura en voz alta (si el sistema la soporta)
+  // Lectura en voz alta: al terminar cada audio la pizarra pasa sola al siguiente paso
   useEffect(() => {
     if (!voice || !canSpeak) return
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(script.steps[Math.min(step, last)].say.replace(/[🎉✔]/gu, ''))
-    u.lang = 'es-MX'
-    window.speechSynthesis.speak(u)
-  }, [voice, step, script, last])
+    const at = Math.min(step, last)
+    let cancelled = false
+    setVoiceError('')
+    void speak(script.steps[at].say, voiceId).then(result => {
+      if (cancelled) return
+      if (result === 'failed') {
+        setVoice(false)
+        setVoiceError('No se pudo leer en voz alta. Revisa la voz en Configuración.')
+      } else if (result === 'done' && playingRef.current) {
+        if (at >= last) setPlaying(false)
+        else setStep(at + 1)
+      }
+    })
+    // El audio del paso siguiente se prepara mientras suena este
+    if (at < last) prefetch(script.steps[at + 1].say, voiceId)
+    return () => {
+      cancelled = true
+      stopSpeaking()
+    }
+  }, [voice, voiceId, step, script, last, canSpeak])
 
   // Trazos visibles hasta el paso actual; los del paso actual se animan
   const { visible, fresh } = useMemo(() => {
@@ -294,6 +322,7 @@ export default function Chalkboard({
             {pages > 1 && ` · pizarra ${viewPage + 1} de ${pages}`}
           </div>
           <p>{current.say}</p>
+          {voiceError && <p className="chalk-voice-error" role="alert">{voiceError}</p>}
         </div>
       </div>
 
@@ -307,10 +336,12 @@ export default function Chalkboard({
         {canSpeak && (
           <button
             className={`btn btn-secondary ${voice ? 'active' : ''}`}
-            onClick={() => setVoice(v => { if (v) window.speechSynthesis.cancel(); return !v })}
+            onClick={() => { const on = !voice; setVoice(on); onReadAloudChange?.(on) }}
+            aria-pressed={voice}
+            aria-label="Leer en voz alta"
             title="Leer en voz alta"
           >
-            {voice ? '🔊' : '🔈'}
+            <span aria-hidden="true">{voice ? '🔊' : '🔈'}</span>
           </button>
         )}
         {onFontScaleChange && (

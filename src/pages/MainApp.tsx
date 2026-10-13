@@ -242,6 +242,9 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           showAllPages={uiPrefs.boards === 'all'}
           fontScale={uiPrefs.fontScale}
           onFontScaleChange={onUiPrefsChange ? f => onUiPrefsChange({ ...uiPrefs, fontScale: f }) : undefined}
+          voiceId={uiPrefs.voice}
+          readAloud={uiPrefs.readAloud}
+          onReadAloudChange={onUiPrefsChange ? on => onUiPrefsChange({ ...uiPrefs, readAloud: on }) : undefined}
           onStepChange={setViewStep}
           onAskStep={askStep}
         />

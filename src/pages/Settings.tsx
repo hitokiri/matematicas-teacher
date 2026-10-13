@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import ModelBrowser from '../components/ModelBrowser';
 import UiPrefsSection from '../components/UiPrefsSection';
+import VoiceSection from '../components/VoiceSection';
 import type { UiPrefs } from '../lib/uiPrefs';
 
 interface ModelInfo {
@@ -164,6 +165,10 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
 
       {uiPrefs && onUiPrefsChange && (
         <UiPrefsSection prefs={uiPrefs} onChange={onUiPrefsChange} theme={theme} onThemeChange={onThemeChange} />
+      )}
+
+      {uiPrefs && onUiPrefsChange && (
+        <VoiceSection voice={uiPrefs.voice} onChange={voice => onUiPrefsChange({ ...uiPrefs, voice })} />
       )}
 
       <div className="provider-section">

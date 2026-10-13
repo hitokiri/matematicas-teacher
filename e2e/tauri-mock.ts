@@ -37,6 +37,14 @@ setInterval(() => {
   }
 }, 300);
 
+// Voces de la maestra: id -> descargada (la descarga se simula al instante)
+state.voices = state.voices || { 'piper-claude': false, 'kokoro-dora': false, 'kokoro-alex': false };
+const VOICE_INFO = {
+  'piper-claude': { name: 'Piper · Claude (México)', description: 'Ligera y rápida.', size_mb: 64 },
+  'kokoro-dora': { name: 'Kokoro · Dora (mujer)', description: 'Más expresiva.', size_mb: 334 },
+  'kokoro-alex': { name: 'Kokoro · Alex (hombre)', description: 'Más expresiva.', size_mb: 334 },
+};
+
 const toInfo = (m) => {
   const d = downloads[m.id];
   const downloading = !!d && d.progress < 100 && !m.downloaded;
@@ -103,6 +111,28 @@ const mockInvoke = (cmd, args) => {
       persist();
       return Promise.resolve(undefined);
     }
+
+    case 'list_voices':
+      return Promise.resolve(Object.entries(VOICE_INFO).map(([id, v]) => ({
+        id, ...v, is_downloaded: !!state.voices[id], is_downloading: false, download_progress: state.voices[id] ? 100 : 0,
+      })));
+
+    case 'download_voice':
+      if (!VOICE_INFO[args.voiceId]) return Promise.reject('Voz desconocida');
+      state.voices[args.voiceId] = true;
+      persist();
+      return Promise.resolve(undefined);
+
+    case 'delete_voice':
+      state.voices[args.voiceId] = false;
+      persist();
+      return Promise.resolve(undefined);
+
+    case 'cancel_voice_download':
+      return Promise.resolve(undefined);
+
+    case 'synthesize_speech':
+      return Promise.reject('Sin motor de voz en las pruebas');
 
     case 'ask_about_steps':
       window.__lastAskArgs = args;

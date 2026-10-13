@@ -3,6 +3,7 @@
 mod ai;
 mod models;
 mod types;
+mod voice;
 
 use ai::AIEngine;
 use models::ModelManager;
@@ -90,6 +91,12 @@ fn main() {
             models::commands::get_download_progress,
             models::commands::select_model,
             models::commands::delete_model,
+            // Voice
+            voice::commands::list_voices,
+            voice::commands::download_voice,
+            voice::commands::cancel_voice_download,
+            voice::commands::delete_voice,
+            voice::commands::synthesize_speech,
             // Settings
             ai::commands::get_settings,
             ai::commands::get_compute_device,

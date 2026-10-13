@@ -64,14 +64,14 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 - **Reproducir la pizarra sola** al resolver.
 - **Mostrar "¿Hasta dónde llega la maestra?"** en la pantalla principal.
 - **Tema** claro u oscuro.
+- **Voz de la maestra** (sin internet): en Configuración se descarga una voz natural, Piper (~64 MB, rápida) o
+  Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), o se queda la voz del sistema. La maestra lee las
+  matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada
+  audio. El botón 🔈 junto a la pizarra enciende la lectura.
 
 ## Próximamente
 
 - **Ecuaciones de segundo grado** en la pizarra (primero `x² = 9`, después factorización y fórmula general).
-- **Voz natural de la maestra** (sin internet): voces neuronales locales en lugar de la voz robótica del sistema. El
-  usuario escogerá la voz según el tamaño: Piper (~60 MB, rápida en CPU) o Kokoro (~300 MB, más expresiva). Incluirá
-  leer bien las matemáticas ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y avanzar la pizarra al
-  terminar cada audio.
 - **Historial de problemas guardado como fixture**: cada problema resuelto se guardará como un archivo (el texto
   y el guion de la pizarra) para volver a verlo después sin resolverlo de nuevo. Esos mismos archivos servirán como
   fixtures en las pruebas, para comprobar que una explicación no cambia sin querer.

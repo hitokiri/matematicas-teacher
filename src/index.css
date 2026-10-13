@@ -1644,3 +1644,46 @@ body {
 
 .switch[aria-checked='true'] { background: var(--primary); }
 .switch[aria-checked='true']::after { transform: translateX(20px); }
+
+/* Voz de la maestra (Configuración) */
+.section-hint { color: var(--text-secondary); margin-bottom: 12px; }
+
+.voice-list { display: flex; flex-direction: column; gap: 8px; }
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.voice-row.selected { border-color: var(--primary); }
+
+.voice-row input[type='radio'] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--primary); }
+
+.voice-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.voice-text small { color: var(--text-secondary); }
+
+.voice-progress { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.voice-progress progress { flex: 1; height: 10px; accent-color: var(--primary); }
+
+.voice-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.chalk-voice-error { color: var(--error); font-size: 0.9rem; }
+
+.form-error { color: var(--error); margin-top: 8px; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

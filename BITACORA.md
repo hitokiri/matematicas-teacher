@@ -508,11 +508,18 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 
 ### Pendiente
 - Ecuaciones de segundo grado en la pizarra (`x² = 9`, factorización, fórmula general).
-- Voz natural de la maestra, sin internet. Hoy el botón 🔈 usa speechSynthesis (en Linux suena a espeak o no
-  funciona). Plan: sherpa-onnx desde Rust con Piper (~60 MB, voces es_MX/es_ES) o Kokoro (~300 MB); que el usuario
-  escoja la voz por tamaño en Configuración (descarga como los modelos). Falta: comando `speak(texto)`,
-  empaquetar onnxruntime en .deb/AppImage, convertir las matemáticas a palabras ("÷", "−", "√", "1/2" → "un
-  medio") y sincronizar la pizarra con el final del audio (prepara el siguiente mientras suena). Antes de integrar:
-  generar audios de prueba para comparar voces y revisar la licencia de Piper (piper1 es GPL; la app es LGPL).
 - Historial de problemas guardado como fixture: cada problema resuelto en un archivo (texto + guion de la
   pizarra) para volver a verlo sin resolverlo de nuevo, y usar esos archivos como fixtures en las pruebas.
+
+### Voz natural de la maestra (2026-10-13)
+- `src-tauri/src/voice/`: sherpa-onnx (crate oficial `sherpa-onnx`, variante `shared`: la estática rompe la carga de
+  `libllama.so` con un `bad_alloc` al iniciar). Dos paquetes: Piper `es_MX-claude-high` (64 MB) y Kokoro multi-lang
+  v1.0 (334 MB; voces `ef_dora` = sid 28 y `em_alex` = sid 29, verificados en los metadatos del modelo).
+- Descarga a `<app_data>/voices/` con SHA-256 fijado en el codigo, extraccion en carpeta temporal y renombrado al
+  final (un paquete a medias nunca cuenta como instalado). Comandos: `list_voices`, `download_voice`,
+  `cancel_voice_download`, `delete_voice`, `synthesize_speech` (devuelve el WAV como bytes crudos).
+- `src/lib/spokenMath.ts` convierte las matematicas a palabras; `src/lib/voice.ts` pide el audio, prepara el del
+  paso siguiente y cae a `speechSynthesis` si no hay voz descargada. La pizarra avanza al terminar cada audio.
+- Empaquetado: `scripts/stage-libs.mjs` incluye `libsherpa-onnx-c-api.so` y `libonnxruntime.so`.
+- Licencias (decision pendiente): espeak-ng (GPL-3) queda enlazado en sherpa-onnx; ver conversacion del 2026-10-13.
+- Prueba con modelos reales: `VOICE_TEST_DIR=<carpeta voices> cargo test voz_real -- --ignored`.
