@@ -2,28 +2,41 @@ import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import MainApp from './pages/MainApp'
 import Settings from './pages/Settings'
+import Modal from './components/Modal'
 import { loadUiPrefs, saveUiPrefs, type UiPrefs } from './lib/uiPrefs'
+import { useI18n } from './lib/i18n'
 
 export interface AppSettings {
   active_model_id: string | null
 }
 
+type Theme = 'light' | 'dark'
+
+/** Tema guardado; si nunca se ha escogido, el del sistema */
+function initialTheme(): Theme {
+  const saved = localStorage.getItem('theme')
+  if (saved === 'dark' || saved === 'light') return saved
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 function App() {
+  const { lang, setLang, t } = useI18n()
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<AppSettings>({
     active_model_id: null,
   })
   const [isLoaded, setIsLoaded] = useState(false)
   const [uiPrefs, setUiPrefs] = useState<UiPrefs>(loadUiPrefs)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme')
-    return (saved === 'dark' ? 'dark' : 'light') as 'light' | 'dark'
-  })
+  const [theme, setTheme] = useState<Theme>(initialTheme)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    document.title = t('app.title')
+  }, [t])
 
   useEffect(() => {
     saveUiPrefs(uiPrefs)
@@ -35,9 +48,7 @@ function App() {
 
   async function loadSettings() {
     try {
-      console.log('[App] Calling get_settings...');
       const s = await invoke<AppSettings>('get_settings')
-      console.log('[App] Settings loaded:', s);
       setSettings(s)
       setIsLoaded(true)
     } catch (e) {
@@ -57,46 +68,59 @@ function App() {
   }
 
   if (!isLoaded) {
-    return <div className="loading"><div className="spinner"></div>Cargando...</div>
+    return <div className="loading" role="status"><div className="spinner" aria-hidden="true"></div>{t('app.loading')}</div>
   }
+
+  const other = lang === 'es' ? 'en' : 'es'
 
   return (
     <div className="app">
+      <a className="skip-link" href="#contenido" onClick={e => { e.preventDefault(); document.getElementById('contenido')?.focus() }}>
+        {t('app.skip')}
+      </a>
       <header className="header">
-        <h1><img className="header-logo" src="/icon.svg" alt="" /> Matematicas Teacher</h1>
+        <h1><img className="header-logo" src="/icon.svg" alt="" /> {t('app.title')}</h1>
         <div className="header-actions">
+          <button
+            className="btn btn-secondary lang-switch"
+            onClick={() => setLang(other)}
+            aria-label={t('app.langSwitch', { language: t(`lang.${other}`) })}
+            title={t(`lang.${other}`)}
+            lang={other}
+          >
+            <span aria-hidden="true">🌐</span> {other.toUpperCase()}
+          </button>
           <button className="btn btn-secondary" onClick={() => setShowSettings(true)}>
-            ⚙️ Configuracion
+            <span aria-hidden="true">⚙️</span> {t('app.settings')}
           </button>
         </div>
       </header>
-      
-      <main className="main-content">
+
+      <main className="main-content" id="contenido" tabIndex={-1}>
         <div className="main-container">
           <MainApp settings={settings} uiPrefs={uiPrefs} onUiPrefsChange={setUiPrefs} />
         </div>
       </main>
 
-      <button 
-        className="theme-toggle" 
+      <button
+        className="theme-toggle"
         onClick={toggleTheme}
-        title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+        title={theme === 'light' ? t('app.themeToDark') : t('app.themeToLight')}
+        aria-label={theme === 'light' ? t('app.themeToDark') : t('app.themeToLight')}
       >
-        {theme === 'light' ? '🌙' : '☀️'}
+        <span aria-hidden="true">{theme === 'light' ? '🌙' : '☀️'}</span>
       </button>
 
       {showSettings && (
-        <div className="modal-overlay" onClick={closeSettings}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <Settings
-              onCancel={closeSettings}
-              uiPrefs={uiPrefs}
-              onUiPrefsChange={setUiPrefs}
-              theme={theme}
-              onThemeChange={setTheme}
-            />
-          </div>
-        </div>
+        <Modal labelledBy="settings-title" onClose={closeSettings}>
+          <Settings
+            onCancel={closeSettings}
+            uiPrefs={uiPrefs}
+            onUiPrefsChange={setUiPrefs}
+            theme={theme}
+            onThemeChange={setTheme}
+          />
+        </Modal>
       )}
     </div>
   )

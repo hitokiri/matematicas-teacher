@@ -42,6 +42,7 @@ pub fn cancel_voice_download(voice_id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn delete_voice(app: tauri::AppHandle, voice_id: String) -> Result<(), String> {
     let voice = find_voice(&voice_id).ok_or("Voz desconocida")?;
+    log::info!("Se elimina la voz «{}»", voice.pack.id);
     engine::unload(); // soltar los archivos antes de borrarlos
     let path = super::pack_path(&voices_dir(&app)?, voice.pack);
     if path.exists() {
@@ -62,6 +63,9 @@ pub async fn synthesize_speech(app: tauri::AppHandle, voice_id: String, text: St
     let wav = tauri::async_runtime::spawn_blocking(move || engine::synthesize(&dir, voice, &text))
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::warn!("No se pudo generar la voz «{}»: {}", voice.id, e);
+            e.to_string()
+        })?;
     Ok(tauri::ipc::Response::new(wav))
 }

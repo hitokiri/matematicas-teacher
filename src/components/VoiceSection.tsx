@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { logUi } from '../lib/applog'
+import { useT, type MessageKey } from '../lib/i18n'
 import { SYSTEM_VOICE, speak, stopSpeaking, systemVoiceAvailable, type VoiceInfo } from '../lib/voice'
 
 interface VoiceSectionProps {
@@ -9,9 +11,8 @@ interface VoiceSectionProps {
   onChange: (voiceId: string) => void
 }
 
-const SAMPLE = 'Hola, soy tu maestra. Dos equis más tres igual a siete. ¡Vamos a resolverlo juntos!'
-
 export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
+  const t = useT()
   const [voices, setVoices] = useState<VoiceInfo[]>([])
   const [error, setError] = useState('')
   const [testing, setTesting] = useState<string | null>(null)
@@ -39,7 +40,7 @@ export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
     void on('voices-updated', () => void load())
     void on('voice-download-progress', () => void load())
     void on('voice-download-error', p => {
-      setError(`No se pudo descargar la voz: ${p?.message ?? 'error desconocido'}`)
+      setError(t('voice.errDownload', { message: p?.message ?? t('voice.errUnknown') }))
       void load()
     })
     return () => {
@@ -56,55 +57,59 @@ export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
     }
   }, [voices, voice, onChange])
 
+  const nameOf = (id: string) => t(`voice.${id}.name` as MessageKey)
+  const descOf = (id: string) => t(`voice.${id}.desc` as MessageKey)
+
   const run = async (cmd: string, voiceId: string) => {
     setError('')
     try {
       await invoke(cmd, { voiceId })
     } catch (e) {
-      setError(typeof e === 'string' ? e : 'No se pudo completar la acción')
+      setError(typeof e === 'string' ? e : t('voice.errAction'))
     }
     await load()
   }
 
   const test = async (voiceId: string, name: string) => {
     setTesting(voiceId)
-    setStatus(`Probando la voz ${name}`)
-    const result = await speak(SAMPLE, voiceId)
+    setStatus(t('voice.statusTesting', { name }))
+    const result = await speak(t('voice.sample'), voiceId)
     setTesting(null)
-    setStatus(result === 'failed' ? `No se pudo reproducir la voz ${name}` : '')
-    if (result === 'failed') setError(`No se pudo reproducir la voz ${name}.`)
+    setStatus(result === 'failed' ? t('voice.errPlay', { name }) : '')
+    if (result === 'failed') {
+      setError(t('voice.errPlay', { name }))
+      logUi('warn', 'voz', `La prueba de la voz «${voiceId}» falló`)
+    }
   }
 
   const remove = async (v: VoiceInfo) => {
-    if (!confirm(`¿Eliminar la voz "${v.name}"? Podrás descargarla otra vez.`)) return
+    if (!confirm(t('voice.deleteConfirm', { name: nameOf(v.id) }))) return
     await run('delete_voice', v.id)
   }
 
   return (
     <div className="provider-section">
-      <h2>🗣️ Voz de la maestra</h2>
-      <p className="section-hint" id="voice-hint">
-        Elige con qué voz lee la maestra. Las voces naturales se descargan una vez y funcionan sin internet.
-      </p>
+      <h2><span aria-hidden="true">🗣️</span> {t('voice.title')}</h2>
+      <p className="section-hint" id="voice-hint">{t('voice.hint')}</p>
 
       <div role="radiogroup" aria-labelledby="voice-hint" className="voice-list">
         <VoiceRow
           id={SYSTEM_VOICE}
-          name="Voz del sistema"
-          description="La que trae tu computadora; suena más robótica."
+          name={t('voice.system')}
+          description={t('voice.systemDesc')}
           selected={voice === SYSTEM_VOICE}
           available={systemVoiceAvailable()}
-          unavailableText="Tu sistema no tiene voz instalada."
+          unavailableText={t('voice.systemMissing')}
           testing={testing === SYSTEM_VOICE}
           onSelect={() => onChange(SYSTEM_VOICE)}
-          onTest={() => void test(SYSTEM_VOICE, 'del sistema')}
+          onTest={() => void test(SYSTEM_VOICE, t('voice.systemShort'))}
         />
         {voices.map(v => (
           <VoiceRow
             key={v.id}
             id={v.id}
-            name={v.name}
-            description={v.description}
+            name={nameOf(v.id)}
+            description={descOf(v.id)}
             sizeMb={v.size_mb}
             selected={voice === v.id}
             available={v.is_downloaded}
@@ -112,7 +117,7 @@ export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
             progress={v.download_progress}
             testing={testing === v.id}
             onSelect={() => onChange(v.id)}
-            onTest={() => void test(v.id, v.name)}
+            onTest={() => void test(v.id, nameOf(v.id))}
             onDownload={() => void run('download_voice', v.id)}
             onCancel={() => void run('cancel_voice_download', v.id)}
             onDelete={() => void remove(v)}
@@ -145,6 +150,7 @@ interface RowProps {
 }
 
 function VoiceRow(p: RowProps) {
+  const t = useT()
   const labelId = `voice-${p.id}-name`
   const descId = `voice-${p.id}-desc`
   const pct = Math.round(p.progress ?? 0)
@@ -164,35 +170,35 @@ function VoiceRow(p: RowProps) {
         <label id={labelId} htmlFor={`voice-${p.id}`}><strong>{p.name}</strong></label>
         <small id={descId}>
           {p.description}
-          {p.sizeMb !== undefined && !p.available && !p.downloading && ` Descarga de ${p.sizeMb} MB.`}
+          {p.sizeMb !== undefined && !p.available && !p.downloading && ` ${t('voice.size', { mb: p.sizeMb })}`}
           {!p.available && p.unavailableText && ` ${p.unavailableText}`}
         </small>
         {p.downloading && (
           <div className="voice-progress">
-            <progress max={100} value={pct} aria-label={`Descargando ${p.name}`} />
-            <span aria-hidden="true">{pct < 95 ? `${pct} %` : 'Preparando…'}</span>
+            <progress max={100} value={pct} aria-label={t('voice.downloading', { name: p.name })} />
+            <span aria-hidden="true">{pct < 95 ? `${pct} %` : t('voice.preparing')}</span>
           </div>
         )}
       </div>
       <div className="voice-actions">
         {p.available && (
-          <button type="button" className="btn btn-secondary" onClick={p.onTest} disabled={p.testing} aria-label={`Probar la voz ${p.name}`}>
-            {p.testing ? 'Sonando…' : '▶ Probar'}
+          <button type="button" className="btn btn-secondary" onClick={p.onTest} disabled={p.testing} aria-label={t('voice.testAria', { name: p.name })}>
+            {p.testing ? t('voice.testing') : <><span aria-hidden="true">▶</span> {t('voice.test')}</>}
           </button>
         )}
         {!p.available && p.onDownload && !p.downloading && (
-          <button type="button" className="btn btn-primary" onClick={p.onDownload} aria-label={`Descargar la voz ${p.name}`}>
-            ⬇ Descargar
+          <button type="button" className="btn btn-primary" onClick={p.onDownload} aria-label={t('voice.downloadAria', { name: p.name })}>
+            <span aria-hidden="true">⬇</span> {t('voice.download')}
           </button>
         )}
         {p.downloading && p.onCancel && (
-          <button type="button" className="btn btn-secondary" onClick={p.onCancel} aria-label={`Cancelar la descarga de ${p.name}`}>
-            Cancelar
+          <button type="button" className="btn btn-secondary" onClick={p.onCancel} aria-label={t('voice.cancelAria', { name: p.name })}>
+            {t('voice.cancel')}
           </button>
         )}
         {p.available && p.onDelete && (
-          <button type="button" className="btn btn-secondary" onClick={p.onDelete} aria-label={`Eliminar la voz ${p.name}`}>
-            🗑
+          <button type="button" className="btn btn-secondary" onClick={p.onDelete} aria-label={t('voice.deleteAria', { name: p.name })}>
+            <span aria-hidden="true">🗑</span>
           </button>
         )}
       </div>

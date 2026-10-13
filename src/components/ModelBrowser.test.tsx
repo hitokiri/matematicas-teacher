@@ -69,8 +69,8 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText('Math Models')).toBeInTheDocument()
-    expect(screen.getByText(/select a math model/i)).toBeInTheDocument()
+    expect(screen.getByText('Modelos de matemáticas')).toBeInTheDocument()
+    expect(screen.getByText(/elige un modelo/i)).toBeInTheDocument()
   })
 
   it('displays downloaded models section', () => {
@@ -87,7 +87,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText(/Active Model/)).toBeInTheDocument()
+    expect(screen.getByText(/Modelo activo/)).toBeInTheDocument()
     expect(screen.getByText('Llama 3.1 8B')).toBeInTheDocument()
   })
 
@@ -108,9 +108,9 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const names = screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)
+    const names = screen.getAllByRole('heading', { level: 4 }).map(h => h.textContent)
     expect(names[0]).toBe('Llama 3.1 8B')
-    expect(screen.getByText(/Downloaded Models/)).toBeInTheDocument()
+    expect(screen.getByText(/Modelos descargados/)).toBeInTheDocument()
   })
 
   it('displays available models section', () => {
@@ -127,7 +127,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText(/Available to Download/)).toBeInTheDocument()
+    expect(screen.getByText(/Disponibles para descargar/)).toBeInTheDocument()
     expect(screen.getByText('Qwen 2.5 3B')).toBeInTheDocument()
   })
 
@@ -162,7 +162,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const searchInput = screen.getByPlaceholderText(/search models/i)
+    const searchInput = screen.getByLabelText('Buscar modelos por nombre')
     fireEvent.change(searchInput, { target: { value: 'Qwen' } })
 
     expect(screen.getByText('Qwen 2.5 3B')).toBeInTheDocument()
@@ -183,7 +183,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('En uso')).toBeInTheDocument()
   })
 
   it('shows select button for downloaded non-active model', () => {
@@ -216,7 +216,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const selectButtons = screen.getAllByRole('button', { name: /select/i })
+    const selectButtons = screen.getAllByRole('button', { name: /^usar /i })
     expect(selectButtons.length).toBeGreaterThan(0)
   })
 
@@ -252,7 +252,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const selectButtons = screen.getAllByRole('button', { name: /select/i })
+    const selectButtons = screen.getAllByRole('button', { name: /^usar /i })
     fireEvent.click(selectButtons[0])
 
     expect(onSelect).toHaveBeenCalledWith('model-1')
@@ -272,7 +272,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const deleteButtons = screen.getAllByText(/delete|🗑/i)
+    const deleteButtons = screen.getAllByRole('button', { name: /^eliminar /i })
     expect(deleteButtons.length).toBeGreaterThan(0)
   })
 
@@ -290,9 +290,9 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    expect(screen.getByText(/Downloading\.\.\./)).toBeInTheDocument()
-    expect(screen.getByText(/⏸ pause/i)).toBeInTheDocument()
-    expect(screen.getByText(/✕ cancel/i)).toBeInTheDocument()
+    expect(screen.getByText(/Descargando\.\.\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pausar la descarga/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancelar la descarga/i })).toBeInTheDocument()
   })
 
   it('shows progress bar for downloading model', () => {
@@ -328,7 +328,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const pauseButtons = screen.getAllByText(/pause|⏸/i)
+    const pauseButtons = screen.getAllByRole('button', { name: /pausar la descarga/i })
     fireEvent.click(pauseButtons[0])
 
     expect(onPause).toHaveBeenCalledWith('model-3')
@@ -350,7 +350,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const resumeButtons = screen.getAllByText(/resume/i)
+    const resumeButtons = screen.getAllByRole('button', { name: /reanudar la descarga/i })
     if (resumeButtons.length > 0) {
       fireEvent.click(resumeButtons[0])
       expect(onResume).toHaveBeenCalledWith('model-3')
@@ -375,7 +375,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const cancelButtons = screen.getAllByText(/cancel|✕/i)
+    const cancelButtons = screen.getAllByRole('button', { name: /cancelar la descarga/i })
     fireEvent.click(cancelButtons[0])
 
     expect(window.confirm).toHaveBeenCalled()
@@ -402,7 +402,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const cancelButtons = screen.getAllByText(/cancel|✕/i)
+    const cancelButtons = screen.getAllByRole('button', { name: /cancelar la descarga/i })
     fireEvent.click(cancelButtons[0])
 
     expect(window.confirm).toHaveBeenCalled()
@@ -481,10 +481,10 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const searchInput = screen.getByPlaceholderText(/search models/i)
+    const searchInput = screen.getByLabelText('Buscar modelos por nombre')
     fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
 
-    expect(screen.getByText('No models found')).toBeInTheDocument()
+    expect(screen.getByText('No se encontraron modelos')).toBeInTheDocument()
   })
 
   it('calls onListModels when refresh button is clicked', () => {
@@ -503,7 +503,7 @@ describe('ModelBrowser Component', () => {
       />
     )
 
-    const refreshButton = screen.getByTitle('Refresh')
+    const refreshButton = screen.getByRole('button', { name: /actualizar la lista/i })
     fireEvent.click(refreshButton)
 
     expect(onListModels).toHaveBeenCalled()

@@ -1,9 +1,14 @@
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
+use crate::ai::limits::{check_image, check_text, MAX_CONTEXT_CHARS, MAX_MESSAGE_CHARS, MAX_PROBLEM_CHARS};
 use crate::types::{AppSettings, MathProblem};
 
 #[tauri::command]
 pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_image: Option<String>) -> Result<serde_json::Value, String> {
+    check_text("El problema", &problem_text, MAX_PROBLEM_CHARS)?;
+    if let Some(image) = problem_image.as_deref().filter(|i| !i.is_empty()) {
+        check_image(image)?;
+    }
     let state = app.state::<crate::AppState>();
     
     // Clone settings to avoid holding MutexGuard across await
@@ -22,7 +27,10 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
     let problem = MathProblem { text: problem_text, image: problem_image.filter(|i| !i.is_empty()) };
     let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings, local_model)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("No se pudo resolver el problema: {}", e);
+            e.to_string()
+        })?;
 
     // Guardar la velocidad medida en esta PC para mostrarla en la lista de modelos
     if let (Some(tps), Some(model_id)) = (crate::ai::local::take_last_speed(), &settings.active_model_id) {
@@ -41,6 +49,7 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
 /// Lee un dibujo y devuelve el problema en texto (sin resolverlo)
 #[tauri::command]
 pub async fn read_problem(app: tauri::AppHandle, problem_image: String) -> Result<String, String> {
+    check_image(&problem_image)?;
     let state = app.state::<crate::AppState>();
     let active_id = state.settings.lock().map_err(|e| e.to_string())?.active_model_id.clone();
     let local_model = {
@@ -50,7 +59,10 @@ pub async fn read_problem(app: tauri::AppHandle, problem_image: String) -> Resul
     };
     crate::ai::engine::AIEngine::read_drawing(&problem_image, local_model.as_ref(), active_id.as_deref())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            log::error!("No se pudo leer el dibujo: {}", e);
+            e.to_string()
+        })
 }
 
 /// Un mensaje del chat de preguntas
@@ -64,6 +76,10 @@ pub struct ChatMessage {
 /// numerados; `messages` es la conversacion (el ultimo es la pregunta nueva).
 #[tauri::command]
 pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: Vec<ChatMessage>) -> Result<String, String> {
+    check_text("El contexto de la pizarra", &context, MAX_CONTEXT_CHARS)?;
+    for m in &messages {
+        check_text("El mensaje", &m.content, MAX_MESSAGE_CHARS)?;
+    }
     let state = app.state::<crate::AppState>();
     let active_id = state.settings.lock().map_err(|e| e.to_string())?.active_model_id.clone();
     let local_model = {
@@ -79,7 +95,10 @@ pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: V
     let turns = turns[turns.len().saturating_sub(12)..].to_vec();
     crate::ai::engine::AIEngine::answer_question(&context, turns, local_model.as_ref(), active_id.as_deref())
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            log::error!("No se pudo responder la pregunta del chat: {}", e);
+            e.to_string()
+        })
 }
 
 /// Hardware que usa el modelo local ("GPU: ..." o "CPU")

@@ -21,6 +21,9 @@ vi.mock('@tauri-apps/api/event', async () => {
   }
 })
 
+// Las pruebas corren en español (el idioma por defecto de la app)
+Object.defineProperty(navigator, 'language', { value: 'es-MX', configurable: true })
+
 // Mock localStorage
 const localStorageMock = new Map<string, string>()
 

@@ -8,6 +8,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     ...devices['Desktop Chrome'],
+    locale: 'es-MX',
     baseURL: 'http://localhost:5174',
     viewport: { width: 1400, height: 1000 },
     deviceScaleFactor: 1,

@@ -128,7 +128,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const selectButtons = await screen.findAllByRole('button', { name: /select/i })
+    const selectButtons = await screen.findAllByRole('button', { name: /^usar /i })
     if (selectButtons.length > 0) {
       fireEvent.click(selectButtons[0])
       
@@ -161,7 +161,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const deleteButtons = screen.getAllByText(/delete|🗑/i)
+    const deleteButtons = screen.getAllByRole('button', { name: /^eliminar /i })
     if (deleteButtons.length > 0) {
       fireEvent.click(deleteButtons[0])
       
@@ -190,7 +190,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const deleteButtons = screen.getAllByText(/delete|🗑/i)
+    const deleteButtons = screen.getAllByRole('button', { name: /^eliminar /i })
     if (deleteButtons.length > 0) {
       fireEvent.click(deleteButtons[0])
       
@@ -231,7 +231,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const pauseButtons = screen.getAllByText(/pause|⏸/i)
+    const pauseButtons = screen.getAllByRole('button', { name: /pausar la descarga/i })
     if (pauseButtons.length > 0) {
       fireEvent.click(pauseButtons[0])
       
@@ -271,7 +271,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const resumeButtons = screen.getAllByText(/resume/i)
+    const resumeButtons = screen.getAllByRole('button', { name: /reanudar la descarga/i })
     if (resumeButtons.length > 0) {
       fireEvent.click(resumeButtons[0])
       
@@ -314,7 +314,7 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const cancelButtons = screen.getAllByText(/cancel|✕/i)
+    const cancelButtons = screen.getAllByRole('button', { name: /cancelar la descarga/i })
     if (cancelButtons.length > 0) {
       fireEvent.click(cancelButtons[0])
       

@@ -13,6 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
+    locale: 'es-MX',
     baseURL: 'http://localhost:5174',
     actionTimeout: 0,
     trace: 'on-first-retry',

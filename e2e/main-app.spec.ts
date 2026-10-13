@@ -7,7 +7,7 @@ test.describe('MainApp - Problem Solver', () => {
   });
 
   test('renders main app with problem input', async ({ page }) => {
-    await expect(page.locator('h2', { hasText: /escribe o dibuja tu problema matematico/i })).toBeVisible();
+    await expect(page.locator('h2', { hasText: /escribe o dibuja tu problema matem[aá]tico/i })).toBeVisible();
     await expect(page.locator('.problem-input')).toBeVisible();
     await expect(page.locator('button', { hasText: /resolver problema/i })).toBeVisible();
   });

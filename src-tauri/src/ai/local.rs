@@ -201,7 +201,7 @@ pub fn preload(files: LocalModel) {
     std::thread::spawn(move || {
         let mut guard = LOADED.lock().unwrap_or_else(|e| e.into_inner());
         if let Err(e) = ensure_loaded(&mut guard, &files) {
-            eprintln!("{}", e);
+            log::error!("No se pudo cargar el modelo: {}", e);
         }
     });
 }
@@ -394,7 +394,7 @@ fn render_prompt(model: &LlamaModel, messages: &[Turn]) -> Result<String> {
         let piece = |t| String::from_utf8_lossy(&vocab.token_to_piece(t, true, None)).to_string();
         match render_jinja(&source, messages, &piece(vocab.bos()), &piece(vocab.eos())) {
             Ok(prompt) => return Ok(prompt),
-            Err(e) => eprintln!("Plantilla Jinja no soportada, se usa la de llama.cpp: {}", e),
+            Err(e) => log::warn!("Plantilla Jinja no soportada, se usa la de llama.cpp: {}", e),
         }
     }
     let tmpl = match model.chat_template(None) {

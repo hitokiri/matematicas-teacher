@@ -63,7 +63,12 @@ In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
   board scrolls sideways.
 - **Autoplay the board** when solving.
 - **Show "¿Hasta dónde llega la maestra?"** on the main screen.
-- **Light or dark theme.**
+- **Language**: Spanish or English. Until you choose, the app uses your system language; switch it with the **ES / EN**
+  button in the header or in Settings › Interface. Today the interface is translated; the board narration and the
+  model's answers are still in Spanish.
+- **Light or dark theme** (the system one until you choose).
+- **App log** (Settings › App log): what the app is doing and its errors, with a filter and copy/clear buttons. It is
+  also saved to `logs/app.log` in the app data folder, in case the app does not open.
 - **Teacher voice** (offline): in Settings, download a natural voice — Piper (~64 MB, fast) or Kokoro (~334 MB,
   more expressive, female and male voices) — or keep the system voice. The teacher reads math as words
   ("2x + 3y = 6" → "dos equis más tres ye igual a seis") and the board advances when each audio clip ends. The 🔈
@@ -203,3 +208,12 @@ BITACORA.md           Project log (Spanish)
 ## License
 
 LGPL-2.1 — see [LICENSE](LICENSE).
+
+## Accessibility and security
+
+- **Accessibility (WCAG 2.2 AA)**: usable with keyboard and screen reader (skip link, dialog with focus trap and Esc,
+  named buttons, announced states), colour contrast of at least 4.5:1, visible focus, 40 px touch targets, and it
+  honours *reduce motion*. `npx playwright test e2e/a11y.spec.ts` audits the UI with axe-core in light, dark and English.
+- **Security**: the web view has a strict CSP and only the permission to listen to events (no file, dialog or link
+  access); the backend caps the size of what it receives; voices are downloaded over HTTPS and verified against a
+  SHA-256 before being installed.

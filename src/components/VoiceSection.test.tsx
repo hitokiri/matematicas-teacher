@@ -32,16 +32,16 @@ describe('VoiceSection', () => {
 
   it('descarga con un boton que dice cual voz y cuanto pesa', async () => {
     render(<VoiceSection voice="system" onChange={() => {}} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora (mujer)' }))
     expect(mockInvoke).toHaveBeenCalledWith('download_voice', { voiceId: 'kokoro-dora' })
     expect(screen.getByText(/Descarga de 334 MB/)).toBeInTheDocument()
   })
 
   it('muestra el avance con una barra accesible y permite cancelar', async () => {
     render(<VoiceSection voice="system" onChange={() => {}} />)
-    const bar = await screen.findByRole('progressbar', { name: 'Descargando Kokoro · Alex' })
+    const bar = await screen.findByRole('progressbar', { name: 'Descargando Kokoro · Alex (hombre)' })
     expect(bar).toHaveAttribute('value', '40')
-    await userEvent.click(screen.getByRole('button', { name: 'Cancelar la descarga de Kokoro · Alex' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar la descarga de Kokoro · Alex (hombre)' }))
     expect(mockInvoke).toHaveBeenCalledWith('cancel_voice_download', { voiceId: 'kokoro-alex' })
   })
 
@@ -57,7 +57,7 @@ describe('VoiceSection', () => {
       throw 'Sin espacio en disco'
     })
     render(<VoiceSection voice="system" onChange={() => {}} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora (mujer)' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin espacio en disco')
   })
 })

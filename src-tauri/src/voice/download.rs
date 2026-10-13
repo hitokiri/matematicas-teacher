@@ -54,9 +54,15 @@ pub fn start(app: AppHandle, voices_dir: PathBuf, pack: &'static Pack) -> Result
         }
         map.insert(pack.id, dl.clone());
     }
+    log::info!("Descargando la voz «{}» ({} MB)", pack.id, pack.size_mb);
     tauri::async_runtime::spawn(async move {
         let result = run(&app, &voices_dir, pack, &dl).await;
         finish(pack);
+        match &result {
+            Ok(()) => log::info!("Voz «{}» descargada e instalada", pack.id),
+            Err(e) if dl.cancelled.load(Ordering::Relaxed) => log::info!("Descarga de la voz «{}» cancelada", pack.id),
+            Err(e) => log::error!("No se pudo descargar la voz «{}»: {}", pack.id, e),
+        }
         if let Err(e) = result {
             if !dl.cancelled.load(Ordering::Relaxed) {
                 let _ = app.emit("voice-download-error", serde_json::json!({ "pack": pack.id, "message": e.to_string() }));

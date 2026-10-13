@@ -63,7 +63,12 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
   pizarra se desplaza de lado.
 - **Reproducir la pizarra sola** al resolver.
 - **Mostrar "¿Hasta dónde llega la maestra?"** en la pantalla principal.
-- **Tema** claro u oscuro.
+- **Idioma**: español o inglés. Si nunca lo has escogido, la app usa el idioma de tu sistema; se cambia con el botón
+  **ES / EN** del encabezado o en Configuración › Interfaz. Hoy se traduce la interfaz; la narración de la pizarra y
+  las respuestas del modelo siguen en español.
+- **Tema** claro u oscuro (si no has escogido, el del sistema).
+- **Registro de la app** (Configuración › Registro de la app): lo que hace la app y sus errores, con filtro, botón
+  para copiarlo y borrarlo. También se guarda en `logs/app.log` dentro de la carpeta de datos de la app, por si no abre.
 - **Voz de la maestra** (sin internet): en Configuración se descarga una voz natural, Piper (~64 MB, rápida) o
   Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), o se queda la voz del sistema. La maestra lee las
   matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada
@@ -203,3 +208,13 @@ BITACORA.md           Bitácora del proyecto
 ## Licencia
 
 LGPL-2.1 — ver [LICENSE](LICENSE).
+
+## Accesibilidad y seguridad
+
+- **Accesibilidad (WCAG 2.2 AA)**: se usa con teclado y lector de pantalla (enlace para saltar al contenido, diálogo con
+  foco atrapado y Esc, botones con nombre, estados anunciados), contraste de color de al menos 4.5:1, foco visible,
+  objetivos táctiles de 40 px, y respeta *reducir movimiento*. `npx playwright test e2e/a11y.spec.ts` revisa la
+  interfaz con axe-core en tema claro, oscuro y en inglés.
+- **Seguridad**: la ventana web tiene un CSP estricto y solo el permiso de escuchar eventos (sin acceso a archivos,
+  diálogos ni enlaces); el backend limita el tamaño de lo que recibe; las voces se descargan por HTTPS y se
+  verifican con SHA-256 antes de instalarse.

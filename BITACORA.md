@@ -523,3 +523,24 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - Empaquetado: `scripts/stage-libs.mjs` incluye `libsherpa-onnx-c-api.so` y `libonnxruntime.so`.
 - Licencias (decision pendiente): espeak-ng (GPL-3) queda enlazado en sherpa-onnx; ver conversacion del 2026-10-13.
 - Prueba con modelos reales: `VOICE_TEST_DIR=<carpeta voices> cargo test voz_real -- --ignored`.
+
+### Idioma, registro, accesibilidad y seguridad (2026-10-13)
+- **Idioma es/en** (`src/lib/i18n/`): diccionarios `es.ts`/`en.ts` (TypeScript obliga a que tengan las mismas claves, y
+  una prueba revisa los `{parametros}`), `I18nProvider` + `useT()`. Se escoge en Configuración o con el botón del
+  encabezado; sin elección se usa `navigator.language`. Cambia `<html lang>`. **Pendiente (etapa 2)**: la narración de la
+  pizarra (`src/lib/board/*`, ~cientos de frases con `say`), las respuestas del modelo (pedirle el idioma en el prompt),
+  los textos de error del backend y las voces en inglés. Los ejemplos de los temas se quedan en español porque el
+  analizador los entiende así.
+- **Registro** (`src-tauri/src/applog.rs`): `log` + buffer de 500 entradas + `logs/app.log` (rota a 512 KB). Comandos
+  `get_logs`, `clear_logs`, `log_from_ui`. Sección en Configuración (`LogSection.tsx`). No se registran problemas ni dibujos.
+- **Accesibilidad**: `Modal.tsx` (dialogo, foco atrapado, Esc, fondo `inert`), enlace de salto, etiquetas y roles,
+  colores AA (`--primary` #c2185b, `--accent`, `--error`), `:focus-visible`, `prefers-reduced-motion`, tema del sistema.
+  `e2e/a11y.spec.ts` usa axe-core (WCAG 2.2 AA) en claro/oscuro/inglés: ya no hay violaciones.
+- **Seguridad**: `capabilities/default.json` solo con `core:event:allow-listen/unlisten` (antes no habia ninguna
+  capacidad y el frontend no podia ni escuchar eventos); CSP estricto (`script-src 'self'`, sin `unsafe-eval`);
+  quitados los plugins `fs`, `dialog`, `opener` y el protocolo `asset` (no se usaban); limites de tamaño de entrada en
+  `ai/limits.rs`; las voces se verifican con SHA-256. `npm audit`: 0 vulnerabilidades. `cargo audit` no está instalado.
+  Las descargas de modelos GGUF desde Hugging Face no verifican hash (el catálogo no lo trae).
+- Build: si `cargo` falla con `File exists` en `llama-cpp-sys-2`, hay enlaces rotos en `target/debug/deps`; se arreglan con
+  `find src-tauri/target/debug -maxdepth 2 -xtype l -delete`.
+

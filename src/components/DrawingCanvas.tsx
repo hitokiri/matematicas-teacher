@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { useT } from '../lib/i18n'
 
 interface DrawingCanvasProps {
   onDraw: (text: string) => void
@@ -7,6 +8,7 @@ interface DrawingCanvasProps {
 const HEIGHT = 300
 
 function DrawingCanvas({ onDraw }: DrawingCanvasProps) {
+  const t = useT()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
@@ -104,12 +106,14 @@ function DrawingCanvas({ onDraw }: DrawingCanvasProps) {
         onPointerMove={draw}
         onPointerUp={stopDrawing}
         onPointerCancel={stopDrawing}
+        role="img"
+        aria-label={t('draw.canvas')}
       />
       <div className="canvas-toolbar">
         <button className="btn btn-secondary" onClick={clearCanvas}>
-          🗑️ Limpiar
+          <span aria-hidden="true">🗑️</span> {t('draw.clear')}
         </button>
-        <span className="canvas-hint">Dibuja tu problema aquí</span>
+        <span className="canvas-hint">{t('draw.hint')}</span>
       </div>
     </div>
   )

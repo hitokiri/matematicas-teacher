@@ -109,7 +109,7 @@ REGLAS:
         static GRAMMAR: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
         GRAMMAR.get_or_init(|| {
             llama_cpp_2::json_schema_to_grammar(&Self::solution_schema().to_string())
-                .map_err(|e| eprintln!("No se pudo crear la gramatica JSON: {}", e))
+                .map_err(|e| log::warn!("No se pudo crear la gramatica JSON: {}", e))
                 .ok()
         }).as_deref()
     }

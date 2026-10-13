@@ -4,7 +4,9 @@ import { listen } from '@tauri-apps/api/event';
 import ModelBrowser from '../components/ModelBrowser';
 import UiPrefsSection from '../components/UiPrefsSection';
 import VoiceSection from '../components/VoiceSection';
+import LogSection from '../components/LogSection';
 import type { UiPrefs } from '../lib/uiPrefs';
+import { useT } from '../lib/i18n';
 
 interface ModelInfo {
   id: string;
@@ -34,6 +36,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, onThemeChange }: SettingsProps) {
+  const t = useT();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [computeDevice, setComputeDevice] = useState<string | null>(null);
 
@@ -124,7 +127,7 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
   };
 
   const handleDelete = async (modelId: string) => {
-    if (!confirm('¿Estas seguro de eliminar este modelo?')) return;
+    if (!confirm(t('models.confirmDelete'))) return;
     try {
       await invoke('delete_model', { modelId });
       await loadModels();
@@ -157,9 +160,9 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
   return (
     <>
       <div className="modal-header">
-        <h1>⚙️ Configuración</h1>
+        <h2 id="settings-title"><span aria-hidden="true">⚙️</span> {t('settings.title')}</h2>
         <button onClick={onCancel} className="modal-back-btn">
-          ← Volver
+          <span aria-hidden="true">←</span> {t('settings.back')}
         </button>
       </div>
 
@@ -172,9 +175,11 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
       )}
 
       <div className="provider-section">
-        <h2>💻 Hardware del modelo local</h2>
-        <p className="compute-device">{computeDevice ?? 'Detectando...'}</p>
+        <h2><span aria-hidden="true">💻</span> {t('settings.hardware')}</h2>
+        <p className="compute-device">{computeDevice ?? t('settings.detecting')}</p>
       </div>
+
+      <LogSection />
 
       <ModelBrowser
         models={models}
@@ -186,6 +191,7 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
         onResume={handleResume}
         onCancel={handleCancel}
       />
+
     </>
   );
 }

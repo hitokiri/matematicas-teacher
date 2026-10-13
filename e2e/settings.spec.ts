@@ -11,13 +11,13 @@ test.describe('Settings Modal', () => {
   });
 
   test('settings modal opens when clicking settings button', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
   });
 
   test('settings modal only offers local models', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
@@ -26,7 +26,7 @@ test.describe('Settings Modal', () => {
   });
 
   test('settings modal shows the local model hardware', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
@@ -34,7 +34,7 @@ test.describe('Settings Modal', () => {
   });
 
   test('closing settings modal hides it', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
@@ -46,7 +46,7 @@ test.describe('Settings Modal', () => {
   });
 
   test('settings modal shows active model info', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     
     await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 });
@@ -54,7 +54,7 @@ test.describe('Settings Modal', () => {
   });
 
   test('selecting a model in settings updates active_model_id', async ({ page }) => {
-    const settingsButton = page.locator('button', { hasText: /configuracion/i });
+    const settingsButton = page.locator('button', { hasText: /configuraci[oó]n/i });
     await settingsButton.click();
     
     // Wait for modal to be visible

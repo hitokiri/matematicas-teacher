@@ -344,7 +344,7 @@ impl ModelManager {
                 let _ = app.emit("models-updated", ());
             };
             let fail = |msg: String| {
-                eprintln!("{}", msg);
+                log::error!("Descarga de modelo: {}", msg);
                 finish(-1);
             };
             // 100 se reserva para cuando todos los archivos estan completos

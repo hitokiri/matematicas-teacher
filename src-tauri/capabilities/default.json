@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permisos minimos de la ventana principal: solo escuchar los eventos que emite la app (progreso de descargas). Los comandos propios (resolver, modelos, voz) no necesitan permisos extra y no se da acceso a archivos, dialogos ni enlaces.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

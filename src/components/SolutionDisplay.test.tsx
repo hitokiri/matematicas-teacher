@@ -18,7 +18,7 @@ describe('SolutionDisplay Component', () => {
     
     render(<SolutionDisplay solution={solution} />)
 
-    expect(screen.getByText(/Solucion Paso a Paso/)).toBeInTheDocument()
+    expect(screen.getByText(/Solución paso a paso/)).toBeInTheDocument()
     expect(screen.getByText('Problema:')).toBeInTheDocument()
     expect(screen.getByText('2x + 3 = 11')).toBeInTheDocument()
   })
@@ -178,7 +178,7 @@ describe('SolutionDisplay Component', () => {
     
     render(<SolutionDisplay solution={solution} />)
 
-    expect(screen.getByText(/Solucion Paso a Paso/)).toBeInTheDocument()
+    expect(screen.getByText(/Solución paso a paso/)).toBeInTheDocument()
   })
 
   it('renders solution with long explanations', () => {

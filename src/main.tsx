@@ -2,6 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import { installGlobalLogging } from './lib/applog'
+import { I18nProvider } from './lib/i18n'
+
+installGlobalLogging()
 
 // Load Tauri mock for E2E testing
 if (import.meta.env.VITE_E2E_TEST) {
@@ -15,6 +19,8 @@ if (import.meta.env.VITE_E2E_TEST) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </React.StrictMode>,
 )

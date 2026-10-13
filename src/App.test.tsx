@@ -21,7 +21,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Matematicas Teacher' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Matemáticas Teacher' })).toBeInTheDocument()
     })
   })
 
@@ -36,7 +36,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('⚙️ Configuracion')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Configuración' })).toBeInTheDocument()
     })
   })
 
@@ -51,7 +51,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByTitle('Modo oscuro')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cambiar a modo oscuro' })).toBeInTheDocument()
     })
   })
 
@@ -66,7 +66,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('Escribe o dibuja tu problema matematico')).toBeInTheDocument()
+      expect(screen.getByText('Escribe o dibuja tu problema matemático')).toBeInTheDocument()
     })
   })
 
@@ -81,10 +81,10 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('⚙️ Configuracion')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Configuración' })).toBeInTheDocument()
     })
 
-    const settingsButton = screen.getByText('⚙️ Configuracion')
+    const settingsButton = screen.getByRole('button', { name: 'Configuración' })
     fireEvent.click(settingsButton)
 
     await waitFor(() => {
@@ -116,7 +116,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Matematicas Teacher' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Matemáticas Teacher' })).toBeInTheDocument()
     })
 
     console.error = consoleError
@@ -133,10 +133,10 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByTitle('Modo oscuro')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cambiar a modo oscuro' })).toBeInTheDocument()
     })
 
-    const themeToggle = screen.getByTitle('Modo oscuro')
+    const themeToggle = screen.getByRole('button', { name: 'Cambiar a modo oscuro' })
     fireEvent.click(themeToggle)
 
     await waitFor(() => {
@@ -158,7 +158,7 @@ describe('App Component', () => {
       expect(document.documentElement.getAttribute('data-theme')).toBe('light')
     })
 
-    const themeToggle = screen.getByTitle('Modo oscuro')
+    const themeToggle = screen.getByRole('button', { name: 'Cambiar a modo oscuro' })
     fireEvent.click(themeToggle)
 
     await waitFor(() => {
@@ -185,8 +185,8 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('✏️ Texto')).toBeInTheDocument()
-      expect(screen.getByText('🎨 Dibujar')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Texto' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Dibujar' })).toBeInTheDocument()
     })
   })
 
@@ -216,7 +216,7 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('🚀 Resolver Problema')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /resolver problema/i })).toBeInTheDocument()
     })
   })
 
@@ -231,10 +231,10 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('🚀 Resolver Problema')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /resolver problema/i })).toBeInTheDocument()
     })
 
-    const solveButton = screen.getByText('🚀 Resolver Problema')
+    const solveButton = screen.getByRole('button', { name: /resolver problema/i })
     expect(solveButton).toBeDisabled()
   })
 
@@ -249,13 +249,13 @@ describe('App Component', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('🚀 Resolver Problema')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /resolver problema/i })).toBeInTheDocument()
     })
 
     const textarea = screen.getByPlaceholderText(/ejemplo/i)
     fireEvent.change(textarea, { target: { value: '2 + 2' } })
 
-    const solveButton = screen.getByText('🚀 Resolver Problema')
+    const solveButton = screen.getByRole('button', { name: /resolver problema/i })
     expect(solveButton).not.toBeDisabled()
   })
 
@@ -275,7 +275,7 @@ describe('App Component', () => {
       expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
     })
 
-    const themeToggle = screen.getByTitle('Modo claro')
+    const themeToggle = screen.getByRole('button', { name: 'Cambiar a modo claro' })
     expect(themeToggle).toBeInTheDocument()
   })
 })

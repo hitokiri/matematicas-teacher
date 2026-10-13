@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useT } from '../lib/i18n';
 
 interface ModelInfo {
   id: string;
@@ -40,6 +41,7 @@ export default function ModelBrowser({
   onResume,
   onCancel,
 }: ModelBrowserProps) {
+  const t = useT();
   const [searchQuery, setSearchQuery] = useState('');
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
   const [downloadingModels, setDownloadingModels] = useState<Set<string>>(new Set());
@@ -127,7 +129,7 @@ export default function ModelBrowser({
 
   const handleCancel = async (modelId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('¿Cancelar la descarga?')) return;
+    if (!confirm(t('models.confirmCancel'))) return;
     try {
       await onCancel(modelId);
       setDownloadProgress(prev => {
@@ -160,7 +162,7 @@ export default function ModelBrowser({
     return (
       <div className="models-section">
         <div className="section-header">
-          <h2>{icon} {title}</h2>
+          <h3 className="section-title"><span aria-hidden="true">{icon}</span> {title}</h3>
         </div>
         
         <div className="models-list">
@@ -176,31 +178,31 @@ export default function ModelBrowser({
                 <div className="model-card-main">
                   <div className="model-info">
                     <div className="model-header">
-                      <h3 className="model-name">{model.name}</h3>
+                      <h4 className="model-name">{model.name}</h4>
                       {model.is_active && (
-                        <span className="badge active-badge">✓ Active</span>
+                        <span className="badge active-badge"><span aria-hidden="true">✓</span> {t('models.badgeActive')}</span>
                       )}
                       {model.mmproj_filename && (
-                        <span className="badge recommended-badge">🖼 Lee dibujos</span>
+                        <span className="badge recommended-badge"><span aria-hidden="true">🖼</span> {t('models.badgeVision')}</span>
                       )}
                       {model.is_recommended && (
-                        <span className="badge recommended-badge">⭐ Recomendado para tu PC</span>
+                        <span className="badge recommended-badge"><span aria-hidden="true">⭐</span> {t('models.badgeRecommended')}</span>
                       )}
                     </div>
                     <p className="model-description">{model.description}</p>
                   </div>
 
                   <div className="model-metrics">
-                    <div className="metric" title="Puntaje de matematicas publicado por el autor del modelo">
-                      <span className="metric-label">🎯 Matemáticas (publicado)</span>
-                      <span className="metric-value">{model.benchmark ?? 'Sin datos'}</span>
+                    <div className="metric" title={t('models.metricMathTitle')}>
+                      <span className="metric-label"><span aria-hidden="true">🎯</span> {t('models.metricMath')}</span>
+                      <span className="metric-value">{model.benchmark ?? t('models.noData')}</span>
                     </div>
-                    <div className="metric" title="Velocidad medida en esta PC la ultima vez que se uso">
-                      <span className="metric-label">⚡ Velocidad en tu PC</span>
+                    <div className="metric" title={t('models.metricSpeedTitle')}>
+                      <span className="metric-label"><span aria-hidden="true">⚡</span> {t('models.metricSpeed')}</span>
                       <span className="metric-value">
                         {model.tokens_per_second
-                          ? `${model.tokens_per_second.toFixed(0)} tokens/s`
-                          : 'Úsalo para medirla'}
+                          ? t('models.tokensPerSecond', { n: model.tokens_per_second.toFixed(0) })
+                          : t('models.speedUnknown')}
                       </span>
                     </div>
                   </div>
@@ -213,14 +215,15 @@ export default function ModelBrowser({
                     </div>
                     
                     <div className="model-actions">
-                      <span className="model-size">💾 {model.size_mb.toFixed(0)} MB</span>
+                      <span className="model-size"><span aria-hidden="true">💾</span> {model.size_mb.toFixed(0)} MB</span>
                       
                       {!model.is_downloaded && !isDownloading && (
                         <button
                           onClick={() => onDownload(model.id)}
                           className="btn btn-download"
+                          aria-label={t('models.downloadAria', { name: model.name })}
                         >
-                          ⬇ Download
+                          <span aria-hidden="true">⬇</span> {t('models.download')}
                         </button>
                       )}
 
@@ -228,21 +231,23 @@ export default function ModelBrowser({
                         <button
                           onClick={() => onSelect(model.id)}
                           className="btn btn-select"
+                          aria-label={t('models.useAria', { name: model.name })}
                         >
-                          Select
+                          {t('models.use')}
                         </button>
                       )}
                       
                       {model.is_active && (
-                        <span className="status-active">Active</span>
+                        <span className="status-active">{t('models.inUse')}</span>
                       )}
                       
                       {model.is_downloaded && (
                         <button
                           onClick={() => onDelete(model.id)}
                           className="btn btn-delete"
+                          aria-label={t('models.deleteAria', { name: model.name })}
                         >
-                          🗑 Delete
+                          <span aria-hidden="true">🗑</span> {t('models.delete')}
                         </button>
                       )}
                     </div>
@@ -251,7 +256,14 @@ export default function ModelBrowser({
                   {isDownloading && (
                     <div className="download-progress">
                       <div className="progress-bar-container">
-                        <div className="progress-bar">
+                        <div
+                          className="progress-bar"
+                          role="progressbar"
+                          aria-label={t('models.progressAria', { name: model.name })}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={Math.round(progress)}
+                        >
                           <div 
                             className="progress-fill" 
                             style={{ width: `${progress}%` }}
@@ -259,7 +271,7 @@ export default function ModelBrowser({
                         </div>
                         <div className="progress-info">
                           <span className="progress-text">
-                            {progress < 100 ? '⬇️ Downloading...' : '✓ Download complete'}
+                            {progress < 100 ? `⬇️ ${t('models.downloading')}` : `✓ ${t('models.done')}`}
                           </span>
                           <span className="progress-percent">{progress.toFixed(0)}%</span>
                         </div>
@@ -268,20 +280,23 @@ export default function ModelBrowser({
                         <button
                           onClick={(e) => handlePause(model.id, e)}
                           className="btn btn-pause"
+                          aria-label={t('models.pauseAria', { name: model.name })}
                         >
-                          ⏸ Pause
+                          <span aria-hidden="true">⏸</span> {t('models.pause')}
                         </button>
                         <button
                           onClick={(e) => handleResume(model.id, e)}
                           className="btn btn-resume"
+                          aria-label={t('models.resumeAria', { name: model.name })}
                         >
-                          ▶ Resume
+                          <span aria-hidden="true">▶</span> {t('models.resume')}
                         </button>
                         <button
                           onClick={(e) => handleCancel(model.id, e)}
                           className="btn btn-cancel"
+                          aria-label={t('models.cancelAria', { name: model.name })}
                         >
-                          ✕ Cancel
+                          <span aria-hidden="true">✕</span> {t('models.cancel')}
                         </button>
                       </div>
                     </div>
@@ -299,19 +314,20 @@ export default function ModelBrowser({
     <div className="models-page">
       <div className="models-header">
         <div>
-          <h1>Math Models</h1>
+          <h2>{t('models.title')}</h2>
           <p className="header-description">
-            Select a math model or download additional models. Different models offer varying levels of accuracy and speed.
+            {t('models.help')}
           </p>
         </div>
       </div>
 
       <div className="models-toolbar">
         <div className="search-box">
-          <span className="search-icon">🔍</span>
+          <span className="search-icon" aria-hidden="true">🔍</span>
           <input
-            type="text"
-            placeholder="Search models by name..."
+            type="search"
+            aria-label={t('models.search')}
+            placeholder={t('models.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -322,22 +338,23 @@ export default function ModelBrowser({
           <button
             onClick={onListModels}
             className="btn btn-icon"
-            title="Refresh"
+            title={t('models.refreshTitle')}
+            aria-label={t('models.refresh')}
           >
-            🔄
+            <span aria-hidden="true">🔄</span>
           </button>
         </div>
       </div>
 
-      {renderSection('Active Model', activeModels, '✅')}
-      {renderSection('Downloading', downloadingModelsList, '⏳')}
-      {renderSection('Downloaded Models', downloadedModels, '📦')}
-      {renderSection('Available to Download', availableModels, '⬇️')}
+      {renderSection(t('models.sectionActive'), activeModels, '✅')}
+      {renderSection(t('models.sectionDownloading'), downloadingModelsList, '⏳')}
+      {renderSection(t('models.sectionDownloaded'), downloadedModels, '📦')}
+      {renderSection(t('models.sectionAvailable'), availableModels, '⬇️')}
 
       {filteredModels.length === 0 && (
         <div className="empty-state">
-          <div className="empty-icon">📭</div>
-          <p>No models found</p>
+          <div className="empty-icon" aria-hidden="true">📭</div>
+          <p>{t('models.none')}</p>
         </div>
       )}
     </div>

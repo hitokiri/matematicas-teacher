@@ -134,6 +134,23 @@ const mockInvoke = (cmd, args) => {
     case 'synthesize_speech':
       return Promise.reject('Sin motor de voz en las pruebas');
 
+    case 'get_logs':
+      return Promise.resolve({
+        header: 'Matemáticas Teacher 0.2.0 · linux x86_64',
+        file: '/home/usuario/.local/share/com.matematicas.teacher/logs/app.log',
+        entries: window.__logs ?? [
+          { time: '2026-10-13 17:20:01', level: 'INFO', source: 'app', message: 'La app arrancó (versión 0.2.0)' },
+          { time: '2026-10-13 17:20:09', level: 'ERROR', source: 'voz', message: 'No se pudo descargar la voz «kokoro»: sin conexión' },
+        ],
+      });
+
+    case 'clear_logs':
+      window.__logs = [];
+      return Promise.resolve(undefined);
+
+    case 'log_from_ui':
+      return Promise.resolve(undefined);
+
     case 'ask_about_steps':
       window.__lastAskArgs = args;
       return Promise.resolve('En ese paso **quitamos la raíz**: la raíz y el cuadrado se cancelan, como 4 × 4 = 16.');

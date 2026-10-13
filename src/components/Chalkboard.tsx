@@ -4,6 +4,8 @@ import type { BoardItem, BoardScript } from '../lib/board/types'
 import { MAX_ROWS_PER_PAGE, pageOf, rowOnPage } from '../lib/board/paginate'
 import BoardVisual from './BoardVisual'
 import { FONT_SCALES } from '../lib/uiPrefs'
+import { logUi } from '../lib/applog'
+import { useT } from '../lib/i18n'
 import { SYSTEM_VOICE, prefetch, speak, stopSpeaking, systemVoiceAvailable } from '../lib/voice'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
@@ -57,6 +59,7 @@ export default function Chalkboard({
   script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
   fontScale = 1, onFontScaleChange, voiceId = SYSTEM_VOICE, readAloud = false, onReadAloudChange,
 }: ChalkboardProps) {
+  const t = useT()
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(readAloud)
@@ -103,8 +106,9 @@ export default function Chalkboard({
     void speak(script.steps[at].say, voiceId).then(result => {
       if (cancelled) return
       if (result === 'failed') {
+        logUi('warn', 'voz', `No se pudo leer en voz alta con la voz «${voiceId}»`)
         setVoice(false)
-        setVoiceError('No se pudo leer en voz alta. Revisa la voz en Configuración.')
+        setVoiceError(t('board.voiceError'))
       } else if (result === 'done' && playingRef.current) {
         if (at >= last) setPlaying(false)
         else setStep(at + 1)
@@ -218,16 +222,16 @@ export default function Chalkboard({
                 onClick={() => setPinned(p)}
                 aria-current={p === viewPage ? 'true' : undefined}
               >
-                Pizarra {p + 1}
+                {t('board.pageButton', { n: p + 1 })}
               </button>
             ))}
             <button
               className="page-chip page-chip-toggle"
               onClick={() => setAllPages(a => !a)}
               aria-pressed={allPages}
-              title={allPages ? 'Ver solo la pizarra elegida' : 'Ver todas las pizarras juntas'}
+              title={allPages ? t('board.viewOneTitle') : t('board.viewAllTitle')}
             >
-              {allPages ? '📄 Una a la vez' : '🗂 Ver todas'}
+              <span aria-hidden="true">{allPages ? '📄' : '🗂'}</span> {allPages ? t('board.viewOne') : t('board.viewAll')}
             </button>
           </div>
         )}
@@ -241,13 +245,13 @@ export default function Chalkboard({
             const isView = p === viewPage
             return (
               <div key={p} className={`chalk-page ${isView ? 'active' : ''}`}>
-                {pages > 1 && allPages && <div className="chalk-page-label">Pizarra {p + 1}</div>}
+                {pages > 1 && allPages && <div className="chalk-page-label">{t('board.pageButton', { n: p + 1 })}</div>}
                 <svg
                   className="chalkboard"
                   viewBox={`0 0 ${boardW} ${PAD * 2 + rowsHere * CH}`}
                   style={boardStyle(rowsHere)}
                   role="img"
-                  aria-label={pages > 1 ? `Pizarra ${p + 1}: ${script.title}` : `Pizarra: ${script.title}`}
+                  aria-label={pages > 1 ? t('board.labelN', { n: p + 1, title: script.title }) : t('board.label', { title: script.title })}
                 >
                   {lined && items.map(item => {
                     const n = stepOf.get(item.id)
@@ -318,8 +322,8 @@ export default function Chalkboard({
         <span className="chalk-teacher" aria-hidden="true">👩‍🏫</span>
         <div>
           <div className="chalk-step-count">
-            Paso {step + 1} de {script.steps.length}
-            {pages > 1 && ` · pizarra ${viewPage + 1} de ${pages}`}
+            {t('board.stepOf', { n: step + 1, total: script.steps.length })}
+            {pages > 1 && ` · ${t('board.pageOf', { n: viewPage + 1, total: pages })}`}
           </div>
           <p>{current.say}</p>
           {voiceError && <p className="chalk-voice-error" role="alert">{voiceError}</p>}
@@ -327,31 +331,31 @@ export default function Chalkboard({
       </div>
 
       <div className="chalk-controls">
-        <button className="btn btn-secondary" onClick={() => { setStep(0); setPlaying(true) }} title="Empezar de nuevo">⏮ Otra vez</button>
-        <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}>◀ Anterior</button>
+        <button className="btn btn-secondary" onClick={() => { setStep(0); setPlaying(true) }} title={t('board.againTitle')}><span aria-hidden="true">⏮</span> {t('board.again')}</button>
+        <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}><span aria-hidden="true">◀</span> {t('board.prev')}</button>
         <button className="btn btn-primary" onClick={() => setPlaying(p => !p)} disabled={step === last && !playing}>
-          {playing ? '⏸ Pausa' : '▶ Reproducir'}
+          <span aria-hidden="true">{playing ? '⏸' : '▶'}</span> {playing ? t('board.pause') : t('board.play')}
         </button>
-        <button className="btn btn-secondary" onClick={() => go(step + 1)} disabled={step === last}>Siguiente ▶</button>
+        <button className="btn btn-secondary" onClick={() => go(step + 1)} disabled={step === last}>{t('board.next')} <span aria-hidden="true">▶</span></button>
         {canSpeak && (
           <button
             className={`btn btn-secondary ${voice ? 'active' : ''}`}
             onClick={() => { const on = !voice; setVoice(on); onReadAloudChange?.(on) }}
             aria-pressed={voice}
-            aria-label="Leer en voz alta"
-            title="Leer en voz alta"
+            aria-label={t('board.readAloud')}
+            title={t('board.readAloud')}
           >
             <span aria-hidden="true">{voice ? '🔊' : '🔈'}</span>
           </button>
         )}
         {onFontScaleChange && (
-          <div className="font-size-controls" role="group" aria-label="Tamaño de letra">
+          <div className="font-size-controls" role="group" aria-label={t('board.fontGroup')}>
             <button
               className="btn btn-secondary"
               onClick={() => setScale(scaleIdx - 1)}
               disabled={scaleIdx <= 0}
-              aria-label="Letra más chica"
-              title="Letra más chica"
+              aria-label={t('board.fontSmaller')}
+              title={t('board.fontSmaller')}
             >
               A−
             </button>
@@ -359,8 +363,8 @@ export default function Chalkboard({
               className="btn btn-secondary"
               onClick={() => setScale(scaleIdx + 1)}
               disabled={scaleIdx >= FONT_SCALES.length - 1}
-              aria-label="Letra más grande"
-              title="Letra más grande"
+              aria-label={t('board.fontBigger')}
+              title={t('board.fontBigger')}
             >
               A+
             </button>
@@ -370,8 +374,8 @@ export default function Chalkboard({
 
       {step === last && (
         <div className="final-answer chalk-answer">
-          <div className="chalk-answer-emoji">🎉</div>
-          <div>Resultado: <strong>{script.answer}</strong></div>
+          <div className="chalk-answer-emoji" aria-hidden="true">🎉</div>
+          <div>{t('board.result')} <strong>{script.answer}</strong></div>
         </div>
       )}
     </div>
@@ -381,13 +385,16 @@ export default function Chalkboard({
 function StepBadge({ n, x, y, active, small, onClick }: {
   n: number; x: number; y: number; active?: boolean; small?: boolean; onClick?: () => void
 }) {
+  const t = useT()
   const r = small ? 14 : 18
   return (
     <g
       className={`step-badge ${active ? 'active' : ''} ${onClick ? 'clickable' : ''}`}
       onClick={onClick}
+      onKeyDown={onClick ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
       role={onClick ? 'button' : undefined}
-      aria-label={onClick ? `Preguntar por el paso ${n}` : `Paso ${n}`}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? t('board.askStep', { n }) : t('board.stepN', { n })}
     >
       <circle cx={x} cy={y} r={r} />
       <text x={x} y={y + (small ? 6 : 7)} textAnchor="middle" fontSize={small ? 17 : 21}>{n}</text>

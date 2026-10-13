@@ -76,8 +76,9 @@ pub fn synthesize(voices_dir: &Path, voice: &Voice, text: &str) -> Result<Vec<u8
     let mut guard = ENGINE.lock().map_err(|_| anyhow!("El motor de voz fallo antes"))?;
     if guard.as_ref().map(|(pack, _)| *pack) != Some(voice.pack.id) {
         *guard = None; // soltar el anterior antes de cargar otro
+        log::info!("Cargando la voz «{}»", voice.pack.id);
         let tts = OfflineTts::create(&config_for(voices_dir, voice)?)
-            .ok_or_else(|| anyhow!("No se pudo cargar la voz"))?;
+            .ok_or_else(|| anyhow!("No se pudo cargar la voz (¿faltan archivos? prueba a descargarla otra vez)"))?;
         *guard = Some((voice.pack.id, tts));
     }
     let tts = &guard.as_ref().expect("motor cargado arriba").1;

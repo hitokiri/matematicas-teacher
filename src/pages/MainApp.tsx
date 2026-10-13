@@ -15,6 +15,7 @@ import { parseTwoVarEquation, twoVarScript } from '../lib/board/twoVars'
 import { parseSystem, systemScript } from '../lib/board/system'
 import { fractionScript, parseFractions } from '../lib/board/fraction'
 import type { BoardScript } from '../lib/board/types'
+import { detectLang, rich, translate, useT, type Lang } from '../lib/i18n'
 
 interface AppSettings {
   active_model_id: string | null
@@ -55,13 +56,15 @@ export function boardFor(text: string): BoardScript | null {
 }
 
 /** Dos signos seguidos ("+*") suelen ser un error al escribir: mejor preguntar que adivinar */
-export function typoHint(text: string): string | null {
+export function typoHint(text: string, lang: Lang = detectLang()): string | null {
   const m = text.match(/([+\-×*÷/:])\s*([+×*÷/:])/)
   if (!m) return null
-  return `Hay dos signos seguidos ("${m[1]}${m[2]}"). Revisa qué querías escribir y quita uno.`
+  return translate(lang, 'main.typo', { signs: `${m[1]}${m[2]}` })
 }
 
 function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: MainAppProps) {
+  const t = useT()
+  const lang = detectLang()
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
   const [board, setBoard] = useState<BoardScript | null>(null)
@@ -82,8 +85,8 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
   const [viewStep, setViewStep] = useState(0)
   const [draft, setDraft] = useState<{ text: string; nonce: number } | null>(null)
   const askStep = useCallback((step: number) => {
-    setDraft(d => ({ text: `Tengo una duda con el paso ${step + 1}: `, nonce: (d?.nonce ?? 0) + 1 }))
-  }, [])
+    setDraft(d => ({ text: t('chat.draft', { n: step + 1 }), nonce: (d?.nonce ?? 0) + 1 }))
+  }, [t])
 
   const hasInput = inputMode === 'draw' ? !!problemImage : !!problemText.trim()
 
@@ -93,7 +96,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     setSolution(null)
     setBoard(null)
 
-    const typo = typoHint(text)
+    const typo = typoHint(text, lang)
     if (typo) {
       setError(typo)
       return
@@ -107,14 +110,14 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     }
 
     setLoading(true)
-    setLoadingMessage('La maestra está pensando la explicación...')
+    setLoadingMessage(t('main.thinking'))
     try {
       const result = await invoke<Solution>('solve_problem', { problemText: text.trim(), problemImage: null })
       const read = boardFor(result.problem)
       showBoard(read ?? solutionScript(result))
       if (!read) setSolution(result)
     } catch (e: any) {
-      setError(typeof e === 'string' ? e : e?.message || 'Error al resolver el problema')
+      setError(typeof e === 'string' ? e : e?.message || t('main.errSolve'))
     } finally {
       setLoading(false)
     }
@@ -130,12 +133,12 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     setBoard(null)
     setReadText(null)
     setLoading(true)
-    setLoadingMessage('👀 Leyendo tu dibujo...')
+    setLoadingMessage(`👀 ${t('main.reading')}`)
     let text: string
     try {
       text = await invoke<string>('read_problem', { problemImage })
     } catch (e: any) {
-      setError(typeof e === 'string' ? e : e?.message || 'No pude leer el dibujo')
+      setError(typeof e === 'string' ? e : e?.message || t('main.errRead'))
       setLoading(false)
       return
     }
@@ -153,27 +156,31 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     <div className={`workspace ${board && !loading ? 'with-chat' : ''}`}>
     <div className="workspace-main">
       <div className="input-section">
-        <h2>Escribe o dibuja tu problema matematico</h2>
-        
-        <div className="tab-bar">
-          <button 
+        <h2>{t('main.heading')}</h2>
+
+        <div className="tab-bar" role="group" aria-label={t('main.modeGroup')}>
+          <button
             className={`tab ${inputMode === 'text' ? 'active' : ''}`}
+            aria-pressed={inputMode === 'text'}
             onClick={() => { setError(''); setInputMode('text') }}
           >
-            ✏️ Texto
+            <span aria-hidden="true">✏️</span> {t('main.modeText')}
           </button>
-          <button 
+          <button
             className={`tab ${inputMode === 'draw' ? 'active' : ''}`}
+            aria-pressed={inputMode === 'draw'}
             onClick={() => { setProblemImage(''); setReadText(null); setError(''); setInputMode('draw') }}
           >
-            🎨 Dibujar
+            <span aria-hidden="true">🎨</span> {t('main.modeDraw')}
           </button>
         </div>
 
         {inputMode === 'text' ? (
           <textarea
             className="problem-input"
-            placeholder="Ejemplo: 2 + 2 = ?&#10;o&#10;x + 5 = 12&#10;o un sistema, una ecuación por renglón:&#10;x + y = 5&#10;x - y = 1"
+            aria-label={t('main.problemLabel')}
+            maxLength={4000}
+            placeholder={t('main.placeholder')}
             value={problemText}
             onChange={(e) => { setProblemText(e.target.value); setError('') }}
           />
@@ -182,44 +189,44 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         )}
 
         <div className="solve-section">
-          <button 
+          <button
             className="btn btn-primary btn-large"
             onClick={solveProblem}
             disabled={loading || !hasInput}
           >
-            {loading ? '⏳ Resolviendo...' : '🚀 Resolver Problema'}
+            <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
           </button>
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert">
             {error}
+            <small className="error-hint">{t('main.errorHint')}</small>
           </div>
         )}
 
         {inputMode === 'draw' && readText !== null && !loading && (
           <div className="read-box">
-            <label htmlFor="read-text">👀 Leí esto en tu dibujo:</label>
+            <label htmlFor="read-text"><span aria-hidden="true">👀</span> {t('main.readLabel')}</label>
             <div className="read-row">
               <input
                 id="read-text"
                 className="read-input"
                 value={readText}
+                maxLength={4000}
                 onChange={(e) => setReadText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void solveText(readText) }}
               />
               <button className="btn btn-secondary" onClick={() => solveText(readText)} disabled={!readText.trim()}>
-                🔁 Resolver esto
+                <span aria-hidden="true">🔁</span> {t('main.readAgain')}
               </button>
             </div>
-            <small>¿Leí mal algún número? Corrígelo aquí (por ejemplo una x que era un 7) y vuelve a resolver.</small>
+            <small>{t('main.readHint')}</small>
           </div>
         )}
 
         {!settings.active_model_id && (
-          <div className="warning-message">
-            Las cuentas como <strong>10 x 20</strong> funcionan sin modelo. Para dibujos y otros problemas, ve a <strong>Configuracion</strong> y selecciona un modelo.
-          </div>
+          <div className="warning-message">{rich(t('main.noModel'))}</div>
         )}
       </div>
 
@@ -228,8 +235,8 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
       )}
 
       {loading && (
-        <div className="loading">
-          <div className="spinner"></div>
+        <div className="loading" role="status">
+          <div className="spinner" aria-hidden="true"></div>
           <p>{loadingMessage}</p>
         </div>
       )}
@@ -252,7 +259,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
 
       {solution && !loading && (
         <details className="text-explanation">
-          <summary>📄 Ver la explicación en texto</summary>
+          <summary><span aria-hidden="true">📄</span> {t('main.textExplanation')}</summary>
           <SolutionDisplay solution={solution} />
         </details>
       )}

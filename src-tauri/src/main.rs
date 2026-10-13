@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ai;
+mod applog;
 mod models;
 mod types;
 mod voice;
@@ -19,7 +20,7 @@ struct AppState {
 }
 
 fn main() {
-    env_logger::init();
+    applog::init();
 
     // WebKitGTK 4.1 con GPU NVIDIA aborta con "Could not create GBM EGL display: EGL_NOT_INITIALIZED".
     // Sin el renderizador DMA-BUF la ventana usa el camino normal de EGL. Se puede seguir
@@ -30,10 +31,7 @@ fn main() {
     }
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         .manage(AppState {
             ai: Mutex::new(AIEngine::new()),
             models: Mutex::new(ModelManager::new()),
@@ -42,10 +40,18 @@ fn main() {
         .setup(|app| {
             // Igual que Handy: los modelos viven en <app_data_dir>/models
             if let Ok(dir) = app.path().app_data_dir() {
+                applog::set_dir(dir.join("logs"));
+                applog::set_header(format!(
+                    "Matemáticas Teacher {} · {} {}",
+                    env!("CARGO_PKG_VERSION"),
+                    std::env::consts::OS,
+                    std::env::consts::ARCH
+                ));
+                log::info!("La app arrancó (versión {})", env!("CARGO_PKG_VERSION"));
                 let state = app.state::<AppState>();
                 let result = state.models.lock().unwrap().set_models_dir(dir.join("models"));
                 if let Err(e) = result {
-                    eprintln!("No se pudo crear el directorio de modelos: {}", e);
+                    log::error!("No se pudo crear el directorio de modelos: {}", e);
                 }
             }
             if let Ok(config) = app.store("settings.json") {
@@ -72,6 +78,11 @@ fn main() {
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let (gpu, ram) = ai::local::hardware_mb();
+                log::info!(
+                    "Hardware: GPU {} · RAM {:.0} MB",
+                    gpu.map(|g| format!("{g:.0} MB de VRAM")).unwrap_or_else(|| "no detectada".into()),
+                    ram
+                );
                 handle.state::<AppState>().models.lock().unwrap().set_hardware(gpu, ram);
                 let _ = tauri::Emitter::emit(&handle, "models-updated", ());
             });
@@ -97,6 +108,10 @@ fn main() {
             voice::commands::cancel_voice_download,
             voice::commands::delete_voice,
             voice::commands::synthesize_speech,
+            // Registro
+            applog::get_logs,
+            applog::clear_logs,
+            applog::log_from_ui,
             // Settings
             ai::commands::get_settings,
             ai::commands::get_compute_device,

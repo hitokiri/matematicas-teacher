@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useT } from '../lib/i18n'
 import type { BoardScript } from '../lib/board/types'
 
 interface Message {
@@ -48,6 +49,7 @@ function Rich({ text }: { text: string }) {
 }
 
 export default function StepChat({ script, currentStep, draft }: StepChatProps) {
+  const t = useT()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -80,34 +82,29 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
       })
       setMessages([...next, { role: 'assistant', content: answer }])
     } catch (e: any) {
-      setError(typeof e === 'string' ? e : e?.message || 'No pude responder')
+      setError(typeof e === 'string' ? e : e?.message || t('chat.errAnswer'))
     } finally {
       setLoading(false)
     }
   }
 
   const step = currentStep + 1
-  const quick = [
-    `No entendí el paso ${step}`,
-    `¿Por qué se hace así el paso ${step}?`,
-    'Dame otro ejemplo parecido',
-  ]
+  const quick = [t('chat.quick1', { n: step }), t('chat.quick2', { n: step }), t('chat.quick3')]
 
   return (
-    <aside className="step-chat" aria-label="Preguntas sobre los pasos">
+    <aside className="step-chat" aria-label={t('chat.label')}>
       <div className="step-chat-header">
         <span aria-hidden="true">💬</span>
         <div>
-          <h3>Preguntas</h3>
-          <small>¿Tienes una duda? Pregúntale a la maestra sobre cualquier paso.</small>
+          <h3>{t('chat.title')}</h3>
+          <small>{t('chat.subtitle')}</small>
         </div>
       </div>
 
-      <div className="step-chat-messages" ref={listRef}>
+      <div className="step-chat-messages" ref={listRef} role="log" aria-live="polite" aria-label={t('chat.title')}>
         {messages.length === 0 && (
           <div className="step-chat-empty">
-            Pulsa el número de un paso en la pizarra o escribe tu pregunta. Por ejemplo:
-            <em> “¿Qué pasó con la raíz en el paso 3?”</em>
+            {t('chat.empty')}
           </div>
         )}
         {messages.map((m, i) => (
@@ -119,10 +116,10 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
         {loading && (
           <div className="chat-msg assistant">
             <span className="chat-avatar" aria-hidden="true">👩‍🏫</span>
-            <div className="chat-bubble chat-typing">Pensando<span>.</span><span>.</span><span>.</span></div>
+            <div className="chat-bubble chat-typing" role="status">{t('chat.thinking')}</div>
           </div>
         )}
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message" role="alert">{error}</div>}
       </div>
 
       <div className="step-chat-quick">
@@ -134,9 +131,11 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
       <form className="step-chat-form" onSubmit={e => { e.preventDefault(); void ask(input) }}>
         <textarea
           ref={inputRef}
+          aria-label={t('chat.inputLabel')}
+          maxLength={2000}
           value={input}
           rows={2}
-          placeholder={`Escribe tu pregunta (por ejemplo sobre el paso ${step})...`}
+          placeholder={t('chat.placeholder', { n: step })}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -145,7 +144,7 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
             }
           }}
         />
-        <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>Enviar</button>
+        <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>{t('chat.send')}</button>
       </form>
     </aside>
   )

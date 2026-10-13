@@ -15,8 +15,12 @@ pub async fn download_model(app: tauri::AppHandle, model_id: String) -> Result<(
     let models = state.models.lock().map_err(|e| e.to_string())?;
     
     // Start async download
+    log::info!("Descargando el modelo «{}»", model_id);
     models.download_model_async(&model_id, app.clone())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            log::error!("No se pudo iniciar la descarga de «{}»: {}", model_id, e);
+            e.to_string()
+        })?;
     
     Ok(())
 }
@@ -55,7 +59,11 @@ pub fn get_download_progress(app: tauri::AppHandle, model_id: String) -> Result<
 pub fn select_model(app: tauri::AppHandle, model_id: String) -> Result<(), String> {
     let state = app.state::<crate::AppState>();
     let mut models = state.models.lock().map_err(|e| e.to_string())?;
-    models.select_model(&model_id).map_err(|e| e.to_string())?;
+    models.select_model(&model_id).map_err(|e| {
+        log::error!("No se pudo activar el modelo «{}»: {}", model_id, e);
+        e.to_string()
+    })?;
+    log::info!("Modelo activo: «{}»", model_id);
     // Como Handy: el modelo activo se carga en memoria en segundo plano
     if let Some(files) = models.get_active_local_model() {
         crate::ai::local::preload(files);

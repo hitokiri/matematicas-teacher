@@ -65,7 +65,7 @@ test('ecuacion con balanza', async ({ page }) => {
 
 test('configuracion de la interfaz', async ({ page }) => {
   await open(page);
-  await page.getByRole('button', { name: /configuracion/i }).click();
+  await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
   await page.waitForSelector('.ui-prefs');
   await page.locator('.provider-section').first().screenshot({ path: `${DIR}/configuracion.png` });
 });
