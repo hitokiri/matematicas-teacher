@@ -171,7 +171,13 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
       )}
 
       {uiPrefs && onUiPrefsChange && (
-        <VoiceSection voice={uiPrefs.voice} onChange={voice => onUiPrefsChange({ ...uiPrefs, voice })} />
+        <VoiceSection
+          voice={uiPrefs.voice}
+          // Elegir una voz natural es pedir que la maestra lea: se enciende la lectura
+          onChange={voice => onUiPrefsChange({ ...uiPrefs, voice, readAloud: uiPrefs.readAloud || voice !== 'system' })}
+          readAloud={uiPrefs.readAloud}
+          onReadAloudChange={readAloud => onUiPrefsChange({ ...uiPrefs, readAloud })}
+        />
       )}
 
       <div className="provider-section">

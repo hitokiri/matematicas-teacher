@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import Switch from './Switch'
 import { logUi } from '../lib/applog'
 import { useT, type MessageKey } from '../lib/i18n'
 import { SYSTEM_VOICE, speak, stopSpeaking, systemVoiceAvailable, type VoiceInfo } from '../lib/voice'
@@ -9,9 +10,12 @@ interface VoiceSectionProps {
   /** Voz elegida: 'system' o el id de una voz descargada */
   voice: string
   onChange: (voiceId: string) => void
+  /** Lectura en voz alta de cada paso */
+  readAloud: boolean
+  onReadAloudChange: (on: boolean) => void
 }
 
-export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
+export default function VoiceSection({ voice, onChange, readAloud, onReadAloudChange }: VoiceSectionProps) {
   const t = useT()
   const [voices, setVoices] = useState<VoiceInfo[]>([])
   const [error, setError] = useState('')
@@ -90,6 +94,14 @@ export default function VoiceSection({ voice, onChange }: VoiceSectionProps) {
   return (
     <div className="provider-section">
       <h2><span aria-hidden="true">🗣️</span> {t('voice.title')}</h2>
+      <div className="ui-pref voice-read-aloud">
+        <div className="ui-pref-text">
+          <strong>{t('voice.readAloud')}</strong>
+          <small>{t('voice.readAloudHelp')}</small>
+        </div>
+        <Switch checked={readAloud} onChange={onReadAloudChange} label={t('voice.readAloud')} />
+      </div>
+
       <p className="section-hint" id="voice-hint">{t('voice.hint')}</p>
 
       <div role="radiogroup" aria-labelledby="voice-hint" className="voice-list">

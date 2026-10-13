@@ -4,6 +4,7 @@
 
 import { invoke } from '@tauri-apps/api/core'
 import { spokenMath } from './spokenMath'
+import { logUi } from './applog'
 
 export const SYSTEM_VOICE = 'system'
 
@@ -94,8 +95,14 @@ async function speakWithNeural(spoken: string, voiceId: string): Promise<SpeakRe
     const el = audio
     const result = await new Promise<SpeakResult>(resolve => {
       el.addEventListener('ended', () => resolve(stopped ? 'stopped' : 'done'), { once: true })
-      el.addEventListener('error', () => resolve('failed'), { once: true })
-      el.play().catch(() => resolve('failed'))
+      el.addEventListener('error', () => {
+        logUi('warn', 'voz', `El audio no se pudo reproducir (código ${el.error?.code ?? '?'}: ${el.error?.message ?? 'sin detalle'})`)
+        resolve('failed')
+      }, { once: true })
+      el.play().catch(e => {
+        logUi('warn', 'voz', `El navegador no dejó reproducir el audio: ${e?.name ?? ''} ${e?.message ?? e}`)
+        resolve('failed')
+      })
     })
     return result
   } catch {

@@ -17,7 +17,7 @@ beforeEach(() => {
 
 describe('VoiceSection', () => {
   it('lista las voces como grupo de opciones y solo deja elegir las descargadas', async () => {
-    render(<VoiceSection voice="system" onChange={() => {}} />)
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     expect(await screen.findByRole('radio', { name: /Piper · Claude/ })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /Kokoro · Dora/ })).toBeDisabled()
     expect(screen.getByRole('radiogroup')).toBeInTheDocument()
@@ -25,20 +25,20 @@ describe('VoiceSection', () => {
 
   it('elegir una voz descargada avisa el cambio', async () => {
     const onChange = vi.fn()
-    render(<VoiceSection voice="system" onChange={onChange} />)
+    render(<VoiceSection voice="system" onChange={onChange} readAloud={false} onReadAloudChange={() => {}} />)
     await userEvent.click(await screen.findByRole('radio', { name: /Piper · Claude/ }))
     expect(onChange).toHaveBeenCalledWith('piper-claude')
   })
 
   it('descarga con un boton que dice cual voz y cuanto pesa', async () => {
-    render(<VoiceSection voice="system" onChange={() => {}} />)
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora (mujer)' }))
     expect(mockInvoke).toHaveBeenCalledWith('download_voice', { voiceId: 'kokoro-dora' })
     expect(screen.getByText(/Descarga de 334 MB/)).toBeInTheDocument()
   })
 
   it('muestra el avance con una barra accesible y permite cancelar', async () => {
-    render(<VoiceSection voice="system" onChange={() => {}} />)
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     const bar = await screen.findByRole('progressbar', { name: 'Descargando Kokoro · Alex (hombre)' })
     expect(bar).toHaveAttribute('value', '40')
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar la descarga de Kokoro · Alex (hombre)' }))
@@ -47,7 +47,7 @@ describe('VoiceSection', () => {
 
   it('si la voz elegida ya no esta descargada vuelve a la del sistema', async () => {
     const onChange = vi.fn()
-    render(<VoiceSection voice="kokoro-dora" onChange={onChange} />)
+    render(<VoiceSection voice="kokoro-dora" onChange={onChange} readAloud={false} onReadAloudChange={() => {}} />)
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('system'))
   })
 
@@ -56,8 +56,17 @@ describe('VoiceSection', () => {
       if (cmd === 'list_voices') return voices
       throw 'Sin espacio en disco'
     })
-    render(<VoiceSection voice="system" onChange={() => {}} />)
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora (mujer)' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin espacio en disco')
+  })
+
+  it('el interruptor de lectura en voz alta avisa el cambio', async () => {
+    const onReadAloudChange = vi.fn()
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={onReadAloudChange} />)
+    const sw = await screen.findByRole('switch', { name: 'Leer la explicación en voz alta' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    await userEvent.click(sw)
+    expect(onReadAloudChange).toHaveBeenCalledWith(true)
   })
 })

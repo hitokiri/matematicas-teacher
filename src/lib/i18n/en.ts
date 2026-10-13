@@ -134,6 +134,8 @@ export const en: Record<MessageKey, string> = {
   'ui.themeDark': 'Dark',
 
   'voice.title': 'Teacher voice',
+  'voice.readAloud': 'Read the explanation aloud',
+  'voice.readAloudHelp': 'The teacher reads each step and the board moves on when she finishes. You can also turn it on with the button on the board.',
   'voice.hint': 'Choose the voice the teacher reads with. Natural voices are downloaded once and work offline.',
   'voice.system': 'System voice',
   'voice.systemDesc': 'The one your computer comes with; it sounds more robotic.',

@@ -342,10 +342,9 @@ export default function Chalkboard({
             className={`btn btn-secondary ${voice ? 'active' : ''}`}
             onClick={() => { const on = !voice; setVoice(on); onReadAloudChange?.(on) }}
             aria-pressed={voice}
-            aria-label={t('board.readAloud')}
             title={t('board.readAloud')}
           >
-            <span aria-hidden="true">{voice ? '🔊' : '🔈'}</span>
+            <span aria-hidden="true">{voice ? '🔊' : '🔈'}</span> {t('board.readAloud')}
           </button>
         )}
         {onFontScaleChange && (

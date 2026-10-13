@@ -141,6 +141,8 @@ export const es = {
 
   // Voz
   'voice.title': 'Voz de la maestra',
+  'voice.readAloud': 'Leer la explicación en voz alta',
+  'voice.readAloudHelp': 'La maestra lee cada paso y la pizarra avanza cuando termina. También se enciende con el botón de la pizarra.',
   'voice.hint': 'Elige con qué voz lee la maestra. Las voces naturales se descargan una vez y funcionan sin internet.',
   'voice.system': 'Voz del sistema',
   'voice.systemDesc': 'La que trae tu computadora; suena más robótica.',

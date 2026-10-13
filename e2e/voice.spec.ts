@@ -18,6 +18,8 @@ test.describe('Voz de la maestra', () => {
     await expect(radio).toBeEnabled()
     await radio.check()
     await expect(radio).toBeChecked()
+    // Elegir una voz natural enciende la lectura en voz alta
+    await expect(page.getByRole('switch', { name: 'Leer la explicación en voz alta' })).toHaveAttribute('aria-checked', 'true')
 
     page.once('dialog', d => d.accept())
     await page.getByRole('button', { name: 'Eliminar la voz Piper · Claude (México)' }).click()

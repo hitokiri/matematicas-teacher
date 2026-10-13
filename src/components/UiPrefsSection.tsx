@@ -1,15 +1,12 @@
 import { FONT_SCALES, type UiPrefs } from '../lib/uiPrefs'
 import { LANGS, useI18n } from '../lib/i18n'
+import Switch from './Switch'
 
 interface UiPrefsSectionProps {
   prefs: UiPrefs
   onChange: (prefs: UiPrefs) => void
   theme?: 'light' | 'dark'
   onThemeChange?: (theme: 'light' | 'dark') => void
-}
-
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <button type="button" role="switch" className="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} />
 }
 
 /** Configuracion de como se ve la app: idioma, pizarras, reproduccion, panel de temas y tema */
