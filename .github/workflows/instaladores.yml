@@ -114,6 +114,11 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          # La variante apple_m4 de ggml (con SME) hace que Apple clang defina __ARM_FEATURE_SVE
+          # sin soportar sus intrinsics ('svexpa_f32' needs target feature sve). Los Apple Silicon
+          # no tienen SVE, asi que se anula la macro y se omite ese codigo.
+          CFLAGS: -U__ARM_FEATURE_SVE
+          CXXFLAGS: -U__ARM_FEATURE_SVE
         run: npm run package:mac
 
       - uses: actions/upload-artifact@v7
