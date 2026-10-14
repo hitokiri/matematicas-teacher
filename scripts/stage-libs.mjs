@@ -49,7 +49,15 @@ if (darwin) {
   const backends = fs.existsSync(backendsDir) ? fs.readdirSync(backendsDir).filter(f => f.endsWith('.dylib')) : []
   for (const f of backends) { fs.copyFileSync(path.join(backendsDir, f), path.join(stage, 'backends', f)); staged.add(f) }
 
-  const int = args => execFileSync('install_name_tool', args)
+  const int = args => {
+    try { execFileSync('install_name_tool', args, { stdio: 'pipe', encoding: 'utf8' }) }
+    catch (e) {
+      const msg = String(e.stderr || e.message)
+      // el rpath ya estaba puesto: no es un error
+      if (args[0] === '-add_rpath' && /would duplicate path|already has LC_RPATH/.test(msg)) return
+      fail(`install_name_tool ${args.join(' ')}\n${msg}`)
+    }
+  }
   const depsOf = file => execFileSync('otool', ['-L', file], { encoding: 'utf8' })
     .split('\n').map(l => l.trim().split(' ')[0]).filter(p => p.startsWith('/') || p.startsWith('@'))
 
