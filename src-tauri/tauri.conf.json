@@ -44,6 +44,9 @@
       "deb": {
         "desktopTemplate": "linux/matematicas-teacher.desktop"
       }
+    },
+    "macOS": {
+      "minimumSystemVersion": "14.0"
     }
   }
 }
