@@ -162,6 +162,6 @@ jobs:
 
             - `.deb`: Ubuntu / Debian → `sudo apt install ./matematicas-teacher_*.deb`
             - `.AppImage`: cualquier Linux → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
-            - `.dmg`: macOS → abre el `.dmg`, arrastra **Matemáticas Teacher** a *Aplicaciones*. Como no está firmada por Apple, la primera vez ábrela con clic derecho → *Abrir* (o `xattr -dr com.apple.quarantine` si Gatekeeper la bloquea).
+            - `.dmg`: macOS → abre el `.dmg`, arrastra **Matemáticas Teacher** a *Aplicaciones*. Como no está firmada por Apple, macOS la bloquea la primera vez: en macOS 15 (Sequoia) ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*; en macOS 14, clic derecho → *Abrir*. También funciona en Terminal: `xattr -dr com.apple.quarantine "/Applications/Matematicas Teacher.app"`.
 
             Para la versión con GPU solo hace falta el driver de NVIDIA (`nvidia-smi` debe funcionar); no hay que instalar CUDA.

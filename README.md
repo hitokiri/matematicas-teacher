@@ -120,7 +120,7 @@ open matematicas-teacher_0.1.0_arm64_macOS.dmg
 
 - La versión con GPU también funciona en PCs sin GPU: si no detecta una NVIDIA, usa la CPU.
 - El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y aparece en el menú como **Matemáticas Teacher**.
-- El `.dmg` de macOS no está firmado por Apple: la primera vez ábrela con clic derecho → *Abrir*.
+- El `.dmg` de macOS no está firmado por Apple, así que macOS la bloquea la primera vez: en macOS 15 (Sequoia) ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*; en macOS 14, clic derecho → *Abrir*. También funciona `xattr -dr com.apple.quarantine "/Applications/Matematicas Teacher.app"` en Terminal.
 - Ninguna versión incluye modelos: se descargan desde la app.
 
 ### Compilar desde el código
