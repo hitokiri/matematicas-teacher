@@ -1,6 +1,6 @@
 name: Diagnostico macOS (llama-cpp-sys-2)
 
-# Compila solo llama-cpp-sys-2 en macOS y muestra que deja cmake en out/lib.
+# Compila la app en macOS y muestra que deja cmake en out/lib (los .dylib salian vacios).
 # Se lanza a mano: gh workflow run diagnostico-macos.yml --ref main
 on:
   workflow_dispatch:
@@ -14,24 +14,35 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { nombre: "macos-15 con dynamic-backends", runner: macos-15, features: "dynamic-backends,mtmd" }
-          - { nombre: "macos-15 estatico",             runner: macos-15, features: "mtmd" }
-          - { nombre: "macos-26 con dynamic-backends", runner: macos-26, features: "dynamic-backends,mtmd" }
+          - { nombre: "macos-15 con dynamic-backends", runner: macos-15, estatico: "no" }
+          - { nombre: "macos-15 estatico",             runner: macos-15, estatico: "si" }
+          - { nombre: "macos-26 con dynamic-backends", runner: macos-26, estatico: "no" }
     steps:
       - uses: actions/checkout@v5
       - run: brew install cmake
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
-      - name: Compilar llama-cpp-sys-2 aislado
+      - run: npm ci && npm run build
+      - name: Variante estatica (sin dynamic-backends)
+        if: matrix.estatico == 'si'
+        run: sed -i '' 's/"dynamic-backends", //' src-tauri/Cargo.toml && grep -n "^llama-cpp-2" src-tauri/Cargo.toml
+      - name: Compilar
+        id: build
+        continue-on-error: true
         working-directory: src-tauri
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
-        run: |
-          cargo build --release -p llama-cpp-sys-2 --features "${{ matrix.features }}" 2>&1 | tail -30 || true
+        run: cargo build --release --no-default-features --features custom-protocol 2>&1 | tail -40; exit ${PIPESTATUS[0]}
       - name: Que dejo cmake
         if: always()
         working-directory: src-tauri
         run: |
+          echo "resultado del build: ${{ steps.build.outcome }}"
           for d in target/release/build/llama-cpp-sys-2-*/out/lib target/release/build/llama-cpp-sys-2-*/out/backends target/release; do
-            echo "== $d"; ls -l "$d" 2>/dev/null | grep -i "dylib\|\.a$" || true
+            echo "== $d"; ls -lO "$d" 2>/dev/null | grep -i "dylib\|\.a$" || true
           done
-          find target/release/build -name "*.dylib" -size 0 | head -20
+          echo "== dylib de 0 bytes"; find target/release -name "*.dylib" -size 0 | head -20
+          echo "== inodos (hard links)"; ls -li target/release/*.dylib 2>/dev/null | head
