@@ -619,7 +619,7 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   Se quita Homebrew LLVM y los wrappers; se usa el clang de Apple de Xcode 16.4. Si vuelve el error de SVE
   (`svexpa_f32 needs target feature sve`), probar `macos-26` como Handy.
 
-### macOS: estado del build en GitHub Actions (14 oct 2026) — PENDIENTE
+### macOS: estado del build en GitHub Actions (14 oct 2026) — RESUELTO (ver abajo)
 
 Cómo lo hace Handy (`cjpais/Handy`, v0.9.8, `.github/workflows/release.yml` y `build.yml`):
 - Mac Arm en `macos-26` (para el SDK de Apple Intelligence) con `--target aarch64-apple-darwin`; Mac Intel en `macos-latest`.
@@ -649,3 +649,14 @@ Ideas para la próxima vez:
 - Descartar que `rust-cache` o `clean-llama-libs.mjs` intervengan (llama-cpp-sys-2 sí se recompila de cero en la corrida).
 - Las corridas de prueba se lanzan a mano (`gh workflow run instaladores.yml --ref main`) y se cancelan al ver el resultado de macOS,
   para no gastar los jobs de Linux; la etiqueta `v0.4.2` existe pero su release no se publicó. Falta `v0.4.3` (o mover `v0.4.2`) cuando macOS pase.
+
+**Solución (14 oct 2026):** un workflow temporal de diagnóstico (compilando la app completa en `macos-15`) mostró que con
+`dynamic-backends` `cmake install` deja los `.dylib` de `out/lib` con 0 bytes (hard links al mismo inodo, en `release/`, `deps/`
+y `examples/`); con enlace estático salen `libggml-metal.a`, `libggml-cpu.a`, etc. con tamaño normal.
+- `src-tauri/Cargo.toml`: `llama-cpp-2` queda por plataforma: `dynamic-backends` + `mtmd` en Linux/Windows, solo `mtmd` en macOS (estático, Metal y CPU dentro del binario).
+- `src-tauri/src/ai/local.rs`: la carga de backends dinámicos solo se compila fuera de macOS (`load_backends` no existe sin esa feature).
+- `src-tauri/build.rs`: el rpath `@executable_path/../Resources` de macOS se fija siempre (sherpa/onnxruntime lo necesitan aunque llama.cpp sea estático).
+- `scripts/stage-libs.mjs`: en macOS ya no exige `.dylib` de llama.cpp ni backends; empaqueta solo sherpa y onnxruntime. `install_name_tool` muestra su error y tolera rpath repetido.
+- Se descartó la config de `.cargo/config.toml` para macOS (rustflags que no hacían falta; Handy tampoco la tiene).
+- Resultado: `npm run package:mac` en `macos-15` genera `matematicas-teacher_0.4.2_arm64_macOS.dmg` (~18 MB). Sigue pendiente probarlo en una Mac real.
+- Falta publicar: `v0.4.3` (o mover `v0.4.2`) para que el job `release` lo incluya.
