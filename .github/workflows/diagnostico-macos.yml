@@ -1,0 +1,37 @@
+name: Diagnostico macOS (llama-cpp-sys-2)
+
+# Compila solo llama-cpp-sys-2 en macOS y muestra que deja cmake en out/lib.
+# Se lanza a mano: gh workflow run diagnostico-macos.yml --ref main
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { nombre: "macos-15 con dynamic-backends", runner: macos-15, features: "dynamic-backends,mtmd" }
+          - { nombre: "macos-15 estatico",             runner: macos-15, features: "mtmd" }
+          - { nombre: "macos-26 con dynamic-backends", runner: macos-26, features: "dynamic-backends,mtmd" }
+    steps:
+      - uses: actions/checkout@v5
+      - run: brew install cmake
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Compilar llama-cpp-sys-2 aislado
+        working-directory: src-tauri
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: |
+          cargo build --release -p llama-cpp-sys-2 --features "${{ matrix.features }}" 2>&1 | tail -30 || true
+      - name: Que dejo cmake
+        if: always()
+        working-directory: src-tauri
+        run: |
+          for d in target/release/build/llama-cpp-sys-2-*/out/lib target/release/build/llama-cpp-sys-2-*/out/backends target/release; do
+            echo "== $d"; ls -l "$d" 2>/dev/null | grep -i "dylib\|\.a$" || true
+          done
+          find target/release/build -name "*.dylib" -size 0 | head -20
