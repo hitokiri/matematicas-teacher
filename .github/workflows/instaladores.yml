@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Dependencias del sistema
-        run: brew install cmake create-dmg llvm
+        run: brew install cmake create-dmg
 
       - uses: actions/setup-node@v5
         with:
@@ -115,24 +115,8 @@ jobs:
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         run: |
-          # Apple clang 15 define __ARM_FEATURE_SVE con -march=armv9.2-a (la variante apple_m4
-          # de ggml) pero no habilita las intrinsics de SVE: 'svexpa_f32' needs target feature sve.
-          # cmake-rs ignora CFLAGS/CXXFLAGS, asi que se usa clang de Homebrew, que no define la
-          # macro sin +sve. No se instala libomp: OpenMP no se encuentra y no se enlaza.
-          #
-          # Ese clang es mas nuevo que el SDK de Xcode 15.4: los headers de CoreFoundation (CF_ENUM)
-          # fallan con '-Welaborated-enum-base' al compilar cpp-httplib. Como los flags por entorno
-          # tampoco llegan, se usan wrappers que anaden -Wno-elaborated-enum-base siempre.
-          llvm="$(brew --prefix llvm)/bin"
-          mkdir -p "$RUNNER_TEMP/cc"
-          printf '#!/bin/sh\nexec "%s/clang" -Wno-elaborated-enum-base "$@"\n' "$llvm" > "$RUNNER_TEMP/cc/clang"
-          # clang++ ademas usa los headers de libc++ del SDK (no los de LLVM 23, donde <memory> ya no
-          # llega por inclusion transitiva: 'no template named unique_ptr' en ggml-metal.cpp).
-          sdk="$(xcrun --show-sdk-path)"
-          printf '#!/bin/sh\nexec "%s/clang++" -Wno-elaborated-enum-base -nostdinc++ -isystem "%s/usr/include/c++/v1" "$@"\n' "$llvm" "$sdk" > "$RUNNER_TEMP/cc/clang++"
-          chmod +x "$RUNNER_TEMP/cc/clang" "$RUNNER_TEMP/cc/clang++"
-          export CC="$RUNNER_TEMP/cc/clang"
-          export CXX="$RUNNER_TEMP/cc/clang++"
+          # Se usa el clang de Apple (Xcode 16 en macos-15), como hace Handy. El clang de Homebrew
+          # (LLVM 23) compilaba pero daba .dylib vacios al enlazar y necesitaba varios parches.
           npm run package:mac
 
       - uses: actions/upload-artifact@v7

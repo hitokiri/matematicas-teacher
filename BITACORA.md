@@ -613,3 +613,8 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   (deployment target 10.13). La variable de entorno no sirve: Tauri CLI sobreescribe `MACOSX_DEPLOYMENT_TARGET` con
   `bundle.macOS.minimumSystemVersion` (por defecto 10.13). Se fija `"minimumSystemVersion": "14.0"` en `tauri.conf.json`:
   el `.dmg` queda para macOS 14 o superior (se puede bajar a 12/13 si se prueba que compila).
+- v0.4.2 (macOS, `macos-15` + `minimumSystemVersion 14.0`): compiló todo C++ pero el enlace falló con
+  `file is empty in .../libggml-base.0.dylib` (y las demás .dylib) usando el clang de Homebrew. Revisado el workflow de Handy
+  (`release.yml`/`build.yml`): compila el mac Arm en `macos-26` con el clang de Apple, sin `brew install llvm` ni wrappers.
+  Se quita Homebrew LLVM y los wrappers; se usa el clang de Apple de Xcode 16.4. Si vuelve el error de SVE
+  (`svexpa_f32 needs target feature sve`), probar `macos-26` como Handy.
