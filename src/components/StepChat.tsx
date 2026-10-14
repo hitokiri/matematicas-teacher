@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../lib/i18n'
+import { logUi } from '../lib/applog'
+import { SYSTEM_VOICE, plainSpeech, speak, stopSpeaking } from '../lib/voice'
+import { useSystemVoice } from '../lib/useSystemVoice'
 import type { BoardScript } from '../lib/board/types'
 
 interface Message {
@@ -14,6 +17,10 @@ interface StepChatProps {
   currentStep: number
   /** Pregunta preparada al pulsar el numero de un paso; cambia `nonce` para repetirla */
   draft?: { text: string; nonce: number } | null
+  /** Voz con que se leen las respuestas ('system' o el id de una voz descargada) */
+  voiceId?: string
+  /** Leer en voz alta cada respuesta de la maestra (nunca lo que escribe el nino) */
+  readAloud?: boolean
 }
 
 /** Lo que la maestra sabe de la pizarra: problema, pasos numerados y en que paso va el nino */
@@ -48,8 +55,12 @@ function Rich({ text }: { text: string }) {
   )
 }
 
-export default function StepChat({ script, currentStep, draft }: StepChatProps) {
+export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_VOICE, readAloud = false }: StepChatProps) {
   const { t, lang } = useI18n()
+  const systemVoice = useSystemVoice()
+  const canSpeak = voiceId !== SYSTEM_VOICE || systemVoice.available
+  /** Respuesta que se esta leyendo (su posicion en la conversacion) */
+  const [speaking, setSpeaking] = useState<number | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -67,9 +78,28 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
     listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
+  /** Lee una respuesta de la maestra; si ya se estaba leyendo, la detiene */
+  const say = useCallback(async (text: string, index: number) => {
+    setSpeaking(index)
+    const result = await speak(plainSpeech(text), voiceId, lang)
+    setSpeaking(current => (current === index ? null : current))
+    if (result === 'failed') logUi('warn', 'voz', 'No se pudo leer la respuesta del chat')
+  }, [voiceId, lang])
+
+  // Al salir del chat, o al apagar la lectura, se calla lo que se estaba leyendo
+  useEffect(() => () => stopSpeaking(), [])
+  useEffect(() => {
+    if (!readAloud) {
+      stopSpeaking()
+      setSpeaking(null)
+    }
+  }, [readAloud])
+
   async function ask(question: string) {
     const q = question.trim()
     if (!q || loading) return
+    stopSpeaking() // una pregunta nueva corta la lectura anterior
+    setSpeaking(null)
     const next: Message[] = [...messages, { role: 'user', content: q }]
     setMessages(next)
     setInput('')
@@ -82,6 +112,8 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
         language: lang,
       })
       setMessages([...next, { role: 'assistant', content: answer }])
+      // Solo se lee lo que contesta la maestra, nunca lo que escribe el nino
+      if (readAloud && canSpeak) void say(answer, next.length)
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e?.message || t('chat.errAnswer'))
     } finally {
@@ -111,7 +143,21 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             <span className="chat-avatar" aria-hidden="true">{m.role === 'user' ? '🧒' : '👩‍🏫'}</span>
-            <div className="chat-bubble"><Rich text={m.content} /></div>
+            <div className="chat-bubble">
+              <Rich text={m.content} />
+              {m.role === 'assistant' && canSpeak && (
+                <button
+                  type="button"
+                  className="chat-listen"
+                  aria-pressed={speaking === i}
+                  aria-label={speaking === i ? t('chat.stopListening') : t('chat.listen')}
+                  title={speaking === i ? t('chat.stopListening') : t('chat.listen')}
+                  onClick={() => { if (speaking === i) { stopSpeaking(); setSpeaking(null) } else void say(m.content, i) }}
+                >
+                  <span aria-hidden="true">{speaking === i ? '⏹' : '🔊'}</span>
+                </button>
+              )}
+            </div>
           </div>
         ))}
         {loading && (

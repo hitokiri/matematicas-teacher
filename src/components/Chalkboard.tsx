@@ -65,6 +65,8 @@ export default function Chalkboard({
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(readAloud)
   const [voiceError, setVoiceError] = useState('')
+  /** Sube al pulsar Play con la lectura encendida: vuelve a leer el paso actual */
+  const [replay, setReplay] = useState(0)
   // La preferencia puede cambiar desde Configuración con la pizarra ya en pantalla
   useEffect(() => setVoice(readAloud), [readAloud])
   const systemVoice = useSystemVoice()
@@ -114,6 +116,9 @@ export default function Chalkboard({
         setVoice(false)
         onReadAloudChange?.(false)
         setVoiceError(t('board.voiceError'))
+      } else if (result === 'stopped') {
+        // Algo ajeno corto la lectura (p. ej. la respuesta del chat): se pausa y Play la retoma
+        setPlaying(false)
       } else if (result === 'done' && playingRef.current) {
         if (at >= last) setPlaying(false)
         else setStep(at + 1)
@@ -125,7 +130,7 @@ export default function Chalkboard({
       cancelled = true
       stopSpeaking()
     }
-  }, [voice, voiceId, lang, step, script, last, canSpeak])
+  }, [voice, voiceId, lang, step, script, last, canSpeak, replay])
 
   // Trazos visibles hasta el paso actual; los del paso actual se animan
   const { visible, fresh } = useMemo(() => {
@@ -338,7 +343,7 @@ export default function Chalkboard({
       <div className="chalk-controls">
         <button className="btn btn-secondary" onClick={() => { setStep(0); setPlaying(true) }} title={t('board.againTitle')}><span aria-hidden="true">⏮</span> {t('board.again')}</button>
         <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}><span aria-hidden="true">◀</span> {t('board.prev')}</button>
-        <button className="btn btn-primary" onClick={() => setPlaying(p => !p)} disabled={step === last && !playing}>
+        <button className="btn btn-primary" onClick={() => { if (!playing && voice) setReplay(r => r + 1); setPlaying(p => !p) }} disabled={step === last && !playing}>
           <span aria-hidden="true">{playing ? '⏸' : '▶'}</span> {playing ? t('board.pause') : t('board.play')}
         </button>
         <button className="btn btn-secondary" onClick={() => go(step + 1)} disabled={step === last}>{t('board.next')} <span aria-hidden="true">▶</span></button>

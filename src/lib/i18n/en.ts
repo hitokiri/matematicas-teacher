@@ -77,6 +77,8 @@ export const en: Record<MessageKey, string> = {
   'chat.quick3': 'Give me a similar example',
   'chat.placeholder': 'Type your question (for example about step {n})...',
   'chat.inputLabel': 'Your question for the teacher',
+  'chat.listen': 'Listen to this answer',
+  'chat.stopListening': 'Stop reading',
   'chat.send': 'Send',
   'chat.draft': 'I have a doubt about step {n}: ',
   'chat.errAnswer': 'I could not answer',

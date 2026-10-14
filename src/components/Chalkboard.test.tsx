@@ -192,6 +192,20 @@ describe('Chalkboard', () => {
       expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')
     })
 
+    it('si algo ajeno corta la lectura (la respuesta del chat) la pizarra se pausa, y Play la retoma', async () => {
+      let cut!: (r: SpeakResult) => void
+      vi.mocked(speak).mockReturnValueOnce(new Promise(r => { cut = r }))
+      vi.mocked(speak).mockResolvedValue('stopped')
+      const script = multiplicationScript('10', '20')
+      render(<Chalkboard script={script} readAloud voiceId="piper-claude" />)
+      expect(screen.getByRole('button', { name: /pausa/i })).toBeInTheDocument()
+      await act(async () => { cut('stopped') })
+      await screen.findByRole('button', { name: /reproducir/i })
+      const calls = vi.mocked(speak).mock.calls.length
+      fireEvent.click(screen.getByRole('button', { name: /reproducir/i }))
+      await waitFor(() => expect(vi.mocked(speak).mock.calls.length).toBeGreaterThan(calls))
+    })
+
     it('el boton de lectura avisa su estado y guarda la eleccion', () => {
       const onReadAloudChange = vi.fn()
       vi.mocked(speak).mockResolvedValue('stopped')

@@ -81,6 +81,8 @@ export const es = {
   'chat.quick3': 'Dame otro ejemplo parecido',
   'chat.placeholder': 'Escribe tu pregunta (por ejemplo sobre el paso {n})...',
   'chat.inputLabel': 'Tu pregunta para la maestra',
+  'chat.listen': 'Escuchar esta respuesta',
+  'chat.stopListening': 'Detener la lectura',
   'chat.send': 'Enviar',
   'chat.draft': 'Tengo una duda con el paso {n}: ',
   'chat.errAnswer': 'No pude responder',

@@ -570,3 +570,9 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   `piper-dave` (es_ES-davefx-medium, CC0, acento de España; es la voz base de la que se ajustó Aldo). `RETIRED_DIRS` borra el
   paquete viejo de quien ya lo había bajado (se limpia al listar las voces). La mejor voz masculina en español es Kokoro Alex.
 
+### Chat con voz (2026-10-13)
+- `StepChat` lee en voz alta solo las respuestas de la maestra (con «Leer en voz alta» encendido), nunca lo que escribe el usuario;
+  cada respuesta tiene su botón 🔊 para escucharla (o detenerla) aunque la lectura esté apagada. `plainSpeech()` quita el formato
+  (`**`, listas) antes de leer. Un canal de audio único (`voice.ts`): leer una respuesta corta la narración de la pizarra, y entonces
+  la pizarra se pausa; Play vuelve a leer el paso actual (`replay` en `Chalkboard`). Una pregunta nueva corta la lectura anterior.
+

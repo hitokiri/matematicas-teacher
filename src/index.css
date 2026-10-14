@@ -1847,3 +1847,20 @@ body {
   overflow-wrap: anywhere;
 }
 .voice-help-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Boton para escuchar una respuesta del chat */
+.chat-listen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.chat-listen[aria-pressed='true'] { background: var(--primary); color: #fff; border-color: var(--primary); }

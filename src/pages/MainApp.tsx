@@ -271,7 +271,14 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         </details>
       )}
     </div>
-    {board && !loading && <StepChat key={boardKey} script={board} currentStep={viewStep} draft={draft} />}
+    {board && !loading && <StepChat
+      key={boardKey}
+      script={board}
+      currentStep={viewStep}
+      draft={draft}
+      voiceId={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
+      readAloud={uiPrefs.readAloud}
+    />}
     </div>
   )
 }

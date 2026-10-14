@@ -77,6 +77,17 @@ let audio: HTMLAudioElement | null = null
 let url: string | null = null
 let cancelCurrent: (() => void) | null = null
 
+/** Texto de una respuesta del chat sin marcas de formato (**negrita**, listas, encabezados) para leerlo */
+export function plainSpeech(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[*_`#>]+/g, '')
+    .replace(/^\s*[-•]\s+/gm, '')
+    .replace(/\s*\n+\s*/g, '. ')
+    .replace(/\.\s*\./g, '.')
+    .trim()
+}
+
 /** Corta lo que se este leyendo */
 export function stopSpeaking(): void {
   cancelCurrent?.()

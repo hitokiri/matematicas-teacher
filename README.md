@@ -74,7 +74,7 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
   Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), en español o en inglés (según el idioma de la app),
   o se usa la voz del sistema (`espeak-ng`; la app detecta tu distribución y te dice qué instalar si falta). La maestra lee las
   matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada
-  audio. El botón 🔈 junto a la pizarra enciende la lectura.
+  audio. El botón 🔈 junto a la pizarra enciende la lectura. En el chat de preguntas la maestra también lee sus respuestas (nunca lo que escribes tú), y cada respuesta tiene un botón 🔊 para escucharla de nuevo.
 
 ## Próximamente
 
