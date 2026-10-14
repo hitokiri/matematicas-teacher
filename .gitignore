@@ -17,3 +17,6 @@ instaladores/
 AGENTS.md
 opencode.json
 .mcp.json
+
+# Esquema que Tauri genera al compilar en macOS
+src-tauri/gen/schemas/macOS-schema.json
