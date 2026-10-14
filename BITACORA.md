@@ -598,3 +598,7 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   Se usa `clang` de Homebrew (`brew install llvm`, `CC`/`CXX`), que no define la macro sin `+sve` (verificado con clang 18).
   No se instala `libomp`: si OpenMP se encontrara, el binario quedaría enlazado a una librería que no se empaqueta.
 
+- Falló otra vez el job de macOS, ahora con clang de Homebrew: `cpp-httplib` (vendor de llama.cpp) no compila contra el SDK de
+  Xcode 15.4 → `error: non-defining declaration of enumeration with a fixed underlying type ... [-Welaborated-enum-base]`
+  en los headers `CF_ENUM` de CoreFoundation. `CC`/`CXX` ahora apuntan a wrappers (en `$RUNNER_TEMP/cc`) que llaman al clang
+  de Homebrew con `-Wno-elaborated-enum-base`, porque los flags por entorno no llegan a CMake.

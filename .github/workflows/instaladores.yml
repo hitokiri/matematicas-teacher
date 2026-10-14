@@ -119,8 +119,17 @@ jobs:
           # de ggml) pero no habilita las intrinsics de SVE: 'svexpa_f32' needs target feature sve.
           # cmake-rs ignora CFLAGS/CXXFLAGS, asi que se usa clang de Homebrew, que no define la
           # macro sin +sve. No se instala libomp: OpenMP no se encuentra y no se enlaza.
-          export CC="$(brew --prefix llvm)/bin/clang"
-          export CXX="$(brew --prefix llvm)/bin/clang++"
+          #
+          # Ese clang es mas nuevo que el SDK de Xcode 15.4: los headers de CoreFoundation (CF_ENUM)
+          # fallan con '-Welaborated-enum-base' al compilar cpp-httplib. Como los flags por entorno
+          # tampoco llegan, se usan wrappers que anaden -Wno-elaborated-enum-base siempre.
+          llvm="$(brew --prefix llvm)/bin"
+          mkdir -p "$RUNNER_TEMP/cc"
+          printf '#!/bin/sh\nexec "%s/clang" -Wno-elaborated-enum-base "$@"\n' "$llvm" > "$RUNNER_TEMP/cc/clang"
+          printf '#!/bin/sh\nexec "%s/clang++" -Wno-elaborated-enum-base "$@"\n' "$llvm" > "$RUNNER_TEMP/cc/clang++"
+          chmod +x "$RUNNER_TEMP/cc/clang" "$RUNNER_TEMP/cc/clang++"
+          export CC="$RUNNER_TEMP/cc/clang"
+          export CXX="$RUNNER_TEMP/cc/clang++"
           npm run package:mac
 
       - uses: actions/upload-artifact@v7
