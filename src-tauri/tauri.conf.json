@@ -43,6 +43,9 @@
     "linux": {
       "deb": {
         "desktopTemplate": "linux/matematicas-teacher.desktop"
+      },
+      "appimage": {
+        "bundleMediaFramework": true
       }
     },
     "macOS": {
