@@ -603,3 +603,6 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   en los headers `CF_ENUM` de CoreFoundation. `CC`/`CXX` ahora apuntan a wrappers (en `$RUNNER_TEMP/cc`) que llaman al clang
   de Homebrew con `-Wno-elaborated-enum-base`, porque los flags por entorno no llegan a CMake.
 - Version 0.4.2 (`package.json` y `src-tauri/tauri.conf.json`) para reintentar el release de macOS con la etiqueta `v0.4.2`; `v0.4.1` quedó sin publicar.
+- v0.4.2 (macOS): pasó `cpp-httplib` pero `ggml-metal.cpp` falló con `no template named 'unique_ptr' in namespace 'std'`: el libc++
+  de LLVM 23 (Homebrew) ya no incluye `<memory>` de forma transitiva. El wrapper de `clang++` ahora usa los headers de libc++
+  del SDK (`-nostdinc++ -isystem $(xcrun --show-sdk-path)/usr/include/c++/v1`).

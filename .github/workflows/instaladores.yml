@@ -126,7 +126,10 @@ jobs:
           llvm="$(brew --prefix llvm)/bin"
           mkdir -p "$RUNNER_TEMP/cc"
           printf '#!/bin/sh\nexec "%s/clang" -Wno-elaborated-enum-base "$@"\n' "$llvm" > "$RUNNER_TEMP/cc/clang"
-          printf '#!/bin/sh\nexec "%s/clang++" -Wno-elaborated-enum-base "$@"\n' "$llvm" > "$RUNNER_TEMP/cc/clang++"
+          # clang++ ademas usa los headers de libc++ del SDK (no los de LLVM 23, donde <memory> ya no
+          # llega por inclusion transitiva: 'no template named unique_ptr' en ggml-metal.cpp).
+          sdk="$(xcrun --show-sdk-path)"
+          printf '#!/bin/sh\nexec "%s/clang++" -Wno-elaborated-enum-base -nostdinc++ -isystem "%s/usr/include/c++/v1" "$@"\n' "$llvm" "$sdk" > "$RUNNER_TEMP/cc/clang++"
           chmod +x "$RUNNER_TEMP/cc/clang" "$RUNNER_TEMP/cc/clang++"
           export CC="$RUNNER_TEMP/cc/clang"
           export CXX="$RUNNER_TEMP/cc/clang++"
