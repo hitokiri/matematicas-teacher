@@ -602,3 +602,4 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   Xcode 15.4 → `error: non-defining declaration of enumeration with a fixed underlying type ... [-Welaborated-enum-base]`
   en los headers `CF_ENUM` de CoreFoundation. `CC`/`CXX` ahora apuntan a wrappers (en `$RUNNER_TEMP/cc`) que llaman al clang
   de Homebrew con `-Wno-elaborated-enum-base`, porque los flags por entorno no llegan a CMake.
+- Version 0.4.2 (`package.json` y `src-tauri/tauri.conf.json`) para reintentar el release de macOS con la etiqueta `v0.4.2`; `v0.4.1` quedó sin publicar.
