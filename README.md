@@ -70,7 +70,7 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 - **Tema** claro u oscuro (si no has escogido, el del sistema).
 - **Registro de la app** (Configuración › Registro de la app): lo que hace la app y sus errores, con filtro, botón
   para copiarlo y borrarlo. También se guarda en `logs/app.log` dentro de la carpeta de datos de la app, por si no abre.
-- **Voz de la maestra** (sin internet): en Configuración se descarga una voz natural, Piper (~64 MB, rápida) o
+- **Voz de la maestra** (sin internet): en Configuración se descarga una voz natural, Piper (~64 MB, rápida; voz de mujer y de hombre en cada idioma) o
   Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), en español o en inglés (según el idioma de la app),
   o se usa la voz del sistema (`espeak-ng`; la app detecta tu distribución y te dice qué instalar si falta). La maestra lee las
   matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada

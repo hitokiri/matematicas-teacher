@@ -557,3 +557,11 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - No traducido todavía: mensajes de error del backend, las etiquetas del contexto que se le manda al modelo
   (`boardContext`), y el analizador de problemas no entiende frases en inglés ("3 plus 4").
 
+### Voces masculinas de Piper y regla de selección (2026-10-13)
+- Nuevas: `piper-ald` (es_MX, «Aldo»; dataset Unlicense, ajustado de la voz masculina davefx; F0 medida ≈166 Hz) y `piper-joe`
+  (en_US, CC0; F0 ≈91 Hz). Se descartaron `ryan` y `hfc_male` (licencia CC BY-NC-SA, no comercial). Los nombres de
+  `claude` (F0 ≈193 Hz) y `lessac` (≈199 Hz) ahora llevan «(mujer)/(female)». No se pudo confirmar el género de oído, solo
+  por tono y por las fuentes de cada modelo.
+- Una voz solo se puede elegir si ya está descargada (el radio está deshabilitado y el clic en su fila no hace nada); se
+  descarga con su botón. Se quitó el flujo «elegir = descargar y activar».
+

@@ -47,7 +47,7 @@ fn rechaza_texto_vacio_o_demasiado_largo() {
 #[ignore]
 fn voz_real_genera_audio_con_piper_y_kokoro() {
     let dir = std::path::PathBuf::from(std::env::var("VOICE_TEST_DIR").expect("VOICE_TEST_DIR"));
-    for id in ["piper-claude", "kokoro-dora", "kokoro-alex", "piper-lessac", "kokoro-heart", "kokoro-michael"] {
+    for id in ["piper-claude", "kokoro-dora", "kokoro-alex", "piper-lessac", "kokoro-heart", "kokoro-michael", "piper-ald", "piper-joe"] {
         let v = find_voice(id).unwrap();
         let wav = engine::synthesize(&dir, v, "Dos equis más tres ye igual a seis.").unwrap();
         assert!(wav.len() > 20_000, "{id}: audio demasiado corto ({} bytes)", wav.len());

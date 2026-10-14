@@ -19,8 +19,8 @@ describe('VoiceSection', () => {
   it('lista las voces como grupo de opciones y solo deja elegir las descargadas', async () => {
     render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     expect(await screen.findByRole('radio', { name: /Piper · Claude/ })).toBeEnabled()
-    // Las no descargadas se pueden elegir: se descargan y se activan solas
-    expect(screen.getByRole('radio', { name: /Kokoro · Dora/ })).toBeEnabled()
+    // Una voz que no se ha descargado no se puede elegir
+    expect(screen.getByRole('radio', { name: /Kokoro · Dora/ })).toBeDisabled()
     expect(screen.getByRole('radiogroup')).toBeInTheDocument()
   })
 
@@ -35,7 +35,7 @@ describe('VoiceSection', () => {
     render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Descargar la voz Kokoro · Dora (mujer)' }))
     expect(mockInvoke).toHaveBeenCalledWith('download_voice', { voiceId: 'kokoro-dora' })
-    expect(screen.getAllByText(/Al elegirla se descarga \(334 MB\)/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Descarga de 334 MB/).length).toBeGreaterThan(0)
   })
 
   it('muestra el avance con una barra accesible y permite cancelar', async () => {
@@ -71,18 +71,24 @@ describe('VoiceSection', () => {
     expect(onReadAloudChange).toHaveBeenCalledWith(true)
   })
 
-  it('elegir una voz sin descargar la descarga y la activa sola al terminar', async () => {
+  it('hacer clic en una voz sin descargar no la elige ni la descarga; hay que pulsar Descargar', async () => {
     const onChange = vi.fn()
-    let downloaded = false
-    mockInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'download_voice') { downloaded = true; return undefined }
-      if (cmd !== 'list_voices') return undefined
-      return voices.map(v => (v.id === 'kokoro-dora' ? { ...v, is_downloaded: downloaded, is_downloading: false } : v))
-    })
     render(<VoiceSection voice="piper-claude" onChange={onChange} readAloud={false} onReadAloudChange={() => {}} />)
-    await userEvent.click(await screen.findByRole('radio', { name: /Kokoro · Dora/ }))
-    expect(mockInvoke).toHaveBeenCalledWith('download_voice', { voiceId: 'kokoro-dora' })
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith('kokoro-dora'))
+    await userEvent.click((await screen.findAllByText(/Más expresiva y natural; el modelo es más grande/))[0])
+    await userEvent.click(screen.getByRole('radio', { name: /Kokoro · Dora/ }))
+    expect(onChange).not.toHaveBeenCalled()
+    expect(mockInvoke).not.toHaveBeenCalledWith('download_voice', expect.anything())
+  })
+
+  it('una vez descargada la voz sí se puede elegir', async () => {
+    const onChange = vi.fn()
+    mockInvoke.mockImplementation(async (cmd: string) => (cmd === 'list_voices'
+      ? voices.map(v => (v.id === 'kokoro-dora' ? { ...v, is_downloaded: true } : v))
+      : undefined))
+    render(<VoiceSection voice="piper-claude" onChange={onChange} readAloud={false} onReadAloudChange={() => {}} />)
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Kokoro · Dora/ })).toBeEnabled())
+    await userEvent.click(screen.getByRole('radio', { name: /Kokoro · Dora/ }))
+    expect(onChange).toHaveBeenCalledWith('kokoro-dora')
   })
 
   it('la voz del sistema que falta explica que instalar, con el comando de la distribucion', async () => {
@@ -135,7 +141,7 @@ describe('VoiceSection', () => {
         ]
       : undefined))
     render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
-    expect(await screen.findByRole('radio', { name: /Piper · Lessac \(US\)/ })).toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: /Piper · Lessac \(female\)/ })).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: /Claude/ })).not.toBeInTheDocument()
     localStorage.removeItem('lang')
   })

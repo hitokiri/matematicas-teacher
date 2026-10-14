@@ -8,21 +8,32 @@ test.describe('Voz de la maestra', () => {
     await page.getByRole('button', { name: /configuración|configuracion/i }).first().click()
   })
 
-  test('elegir una voz sin descargar la descarga y la activa; se puede borrar', async ({ page }) => {
+  test('solo se puede elegir una voz ya descargada; se descarga con su botón y se puede borrar', async ({ page }) => {
     await expect(page.getByRole('radiogroup')).toBeVisible()
     const radio = page.getByRole('radio', { name: /Piper · Claude/ })
-    await expect(radio).toBeEnabled()
+    await expect(radio).toBeDisabled()
+
+    // Un clic en la fila de una voz sin descargar no hace nada
+    await page.getByText('Ligera y rápida, aun en computadoras modestas.').first().click({ force: true })
     await expect(radio).not.toBeChecked()
 
-    // Un clic en la voz (en cualquier parte de su fila) la descarga y la activa sola
-    await page.getByText('Ligera y rápida, aun en computadoras modestas.').click()
+    await page.getByRole('button', { name: 'Descargar la voz Piper · Claude (mujer)' }).click()
+    await expect(radio).toBeEnabled()
+    await radio.check()
     await expect(radio).toBeChecked()
     // Elegir una voz natural enciende la lectura en voz alta
     await expect(page.getByRole('switch', { name: 'Leer la explicación en voz alta' })).toHaveAttribute('aria-checked', 'true')
 
     page.once('dialog', d => d.accept())
-    await page.getByRole('button', { name: 'Eliminar la voz Piper · Claude (México)' }).click()
+    await page.getByRole('button', { name: 'Eliminar la voz Piper · Claude (mujer)' }).click()
     await expect(radio).not.toBeChecked()
+  })
+
+  test('hay una voz de hombre de Piper en cada idioma', async ({ page }) => {
+    await expect(page.getByRole('radio', { name: 'Piper · Aldo (hombre)' })).toBeVisible()
+    await page.getByRole('dialog').getByRole('group', { name: 'Idioma' }).getByRole('button', { name: 'English' }).click()
+    await expect(page.getByRole('radio', { name: 'Piper · Joe (male)' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Piper · Aldo (hombre)' })).toHaveCount(0)
   })
 
   test('la voz del sistema que falta explica qué instalar y se puede volver a comprobar', async ({ page }) => {

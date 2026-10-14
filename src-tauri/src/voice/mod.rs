@@ -60,6 +60,24 @@ pub static PIPER_EN: Pack = Pack {
     size_mb: 64.0,
 };
 
+pub static PIPER_ALD: Pack = Pack {
+    id: "piper-ald",
+    kind: Kind::Piper,
+    dir: "vits-piper-es_MX-ald-medium",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-ald-medium.tar.bz2",
+    sha256: "c60cf7bc853eb01a875fba0756523fecf9d9f46c763b19785d223fc981fb4fb6",
+    size_mb: 64.0,
+};
+
+pub static PIPER_JOE: Pack = Pack {
+    id: "piper-joe",
+    kind: Kind::Piper,
+    dir: "vits-piper-en_US-joe-medium",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-joe-medium.tar.bz2",
+    sha256: "261b903a1fb2ce621e2b5b14233cd41223c3b9f9590f896c11daee4df22d9bd3",
+    size_mb: 64.0,
+};
+
 pub static KOKORO: Pack = Pack {
     id: "kokoro",
     kind: Kind::Kokoro,
@@ -69,12 +87,20 @@ pub static KOKORO: Pack = Pack {
     size_mb: 334.0,
 };
 
-pub static VOICES: [Voice; 6] = [
+pub static VOICES: [Voice; 8] = [
     Voice {
         id: "piper-claude",
         name: "Piper · Claude (México)",
         description: "Ligera y rápida, aun en computadoras modestas.",
         pack: &PIPER,
+        sid: 0,
+        lang: "es",
+    },
+    Voice {
+        id: "piper-ald",
+        name: "Piper · Aldo (hombre)",
+        description: "Ligera y rápida, aun en computadoras modestas.",
+        pack: &PIPER_ALD,
         sid: 0,
         lang: "es",
     },
@@ -103,6 +129,14 @@ pub static VOICES: [Voice; 6] = [
         lang: "en",
     },
     Voice {
+        id: "piper-joe",
+        name: "Piper · Joe (male)",
+        description: "Light and fast, even on modest computers.",
+        pack: &PIPER_JOE,
+        sid: 0,
+        lang: "en",
+    },
+    Voice {
         id: "kokoro-heart",
         name: "Kokoro · Heart (female)",
         description: "More expressive and natural; the model is larger.",
@@ -125,7 +159,7 @@ pub fn find_voice(id: &str) -> Option<&'static Voice> {
 }
 
 pub fn find_pack(id: &str) -> Option<&'static Pack> {
-    [&PIPER, &PIPER_EN, &KOKORO].into_iter().find(|p| p.id == id)
+    [&PIPER, &PIPER_ALD, &PIPER_EN, &PIPER_JOE, &KOKORO].into_iter().find(|p| p.id == id)
 }
 
 pub fn pack_path(voices_dir: &Path, pack: &Pack) -> PathBuf {
