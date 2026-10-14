@@ -618,3 +618,34 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   (`release.yml`/`build.yml`): compila el mac Arm en `macos-26` con el clang de Apple, sin `brew install llvm` ni wrappers.
   Se quita Homebrew LLVM y los wrappers; se usa el clang de Apple de Xcode 16.4. Si vuelve el error de SVE
   (`svexpa_f32 needs target feature sve`), probar `macos-26` como Handy.
+
+### macOS: estado del build en GitHub Actions (14 oct 2026) — PENDIENTE
+
+Cómo lo hace Handy (`cjpais/Handy`, v0.9.8, `.github/workflows/release.yml` y `build.yml`):
+- Mac Arm en `macos-26` (para el SDK de Apple Intelligence) con `--target aarch64-apple-darwin`; Mac Intel en `macos-latest`.
+- Usa el clang de Apple tal cual: sin `brew install llvm`, sin wrappers de `CC`/`CXX` ni flags especiales para macOS.
+- Su motor es `transcribe-cpp-sys` (whisper/ggml), no `llama-cpp-sys-2`; no tiene `minimumSystemVersion` propio en `tauri.conf.json`.
+- Solo toca `CC`/`CXX`/`CMAKE_*` en Windows ARM (clang-cl + Ninja).
+
+Errores que fueron apareciendo, en orden, y su solución:
+1. Apple clang 15 (`macos-14`): `svexpa_f32 needs target feature sve` → probado con clang de Homebrew (ya no se usa).
+2. clang de Homebrew vs SDK Xcode 15.4: `-Welaborated-enum-base` en `cpp-httplib` → ya no aplica.
+3. LLVM 23: `no template named 'unique_ptr'` en `ggml-metal.cpp` (libc++ sin `<memory>` transitivo) → ya no aplica.
+4. `macos-14` (SDK 14): `unknown type name 'MTLResidencySetDescriptor'` → **resuelto** con `macos-15` (Xcode 16.4).
+5. `std::filesystem::path is unavailable: introduced in macOS 10.15` → **resuelto**: la env `MACOSX_DEPLOYMENT_TARGET` no sirve porque
+   Tauri CLI la sobreescribe con `bundle.macOS.minimumSystemVersion` (por defecto 10.13); está fijado `"14.0"` en `src-tauri/tauri.conf.json`.
+6. Con el clang de Apple de Xcode 16.4 (`macos-15`) **toda la compilación de C++ pasa** (incluido SVE: ya no hace falta Homebrew LLVM).
+
+**Sigue fallando (corrida manual 38514889205):** el enlace del binario final:
+`ld: file is empty in .../llama-cpp-sys-2-<hash>/out/lib/libggml-base.0.24.0.dylib` (y `libggml-base.0.dylib`, `libggml-base.dylib`,
+`libggml*.dylib`, `libllama*.dylib`, `libllama-common*.dylib`, `libmtmd*.dylib`; además `search path .../out/lib64 not found`).
+Es decir, `cmake install` deja las `.dylib` de `out/lib` con 0 bytes. Pasa igual con el clang de Homebrew y con el de Apple,
+así que no es del compilador. El log de CMake no se ve cuando el build script termina bien.
+
+Ideas para la próxima vez:
+- Ver qué deja `cmake --install` en `out/lib` (agregar un paso de diagnóstico: `ls -l` de `src-tauri/target/release/build/llama-cpp-sys-2-*/out/lib`).
+- Revisar si `dynamic-backends` (`GGML_BACKEND_DL`, librerías compartidas) en macOS es el origen; probar sin esa feature en macOS, enlazando estático.
+- Probar `macos-26` como Handy, por si el SDK/ld nuevo se comporta distinto.
+- Descartar que `rust-cache` o `clean-llama-libs.mjs` intervengan (llama-cpp-sys-2 sí se recompila de cero en la corrida).
+- Las corridas de prueba se lanzan a mano (`gh workflow run instaladores.yml --ref main`) y se cancelan al ver el resultado de macOS,
+  para no gastar los jobs de Linux; la etiqueta `v0.4.2` existe pero su release no se publicó. Falta `v0.4.3` (o mover `v0.4.2`) cuando macOS pase.
