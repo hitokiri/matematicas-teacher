@@ -592,4 +592,9 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   firmada por Apple, así que la primera vez se abre con clic derecho → Abrir.
 - Pendiente: probar el `.dmg` en una Mac real (en GitHub no se puede ejecutar la app).
 - Version 0.4.0 (`package.json` y `src-tauri/tauri.conf.json`), para que el nombre del `.dmg` coincida con la etiqueta `v0.4.0`.
+- Falló el job de macOS: `ggml-cpu-apple_m4` se compila con `-march=armv9.2-a+dotprod+i8mm+nosve+sme` y Apple clang 15
+  define `__ARM_FEATURE_SVE` sin habilitar el feature `sve` → `error: 'svexpa_f32' needs target feature sve`.
+  El truco de `CFLAGS`/`CXXFLAGS` no sirve porque `cmake-rs` no lee esas variables (pasa sus propios flags).
+  Se usa `clang` de Homebrew (`brew install llvm`, `CC`/`CXX`), que no define la macro sin `+sve` (verificado con clang 18).
+  No se instala `libomp`: si OpenMP se encontrara, el binario quedaría enlazado a una librería que no se empaqueta.
 

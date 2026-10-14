@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Dependencias del sistema
-        run: brew install cmake create-dmg
+        run: brew install cmake create-dmg llvm
 
       - uses: actions/setup-node@v5
         with:
@@ -114,12 +114,14 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
-          # La variante apple_m4 de ggml (con SME) hace que Apple clang defina __ARM_FEATURE_SVE
-          # sin soportar sus intrinsics ('svexpa_f32' needs target feature sve). Los Apple Silicon
-          # no tienen SVE, asi que se anula la macro y se omite ese codigo.
-          CFLAGS: -U__ARM_FEATURE_SVE
-          CXXFLAGS: -U__ARM_FEATURE_SVE
-        run: npm run package:mac
+        run: |
+          # Apple clang 15 define __ARM_FEATURE_SVE con -march=armv9.2-a (la variante apple_m4
+          # de ggml) pero no habilita las intrinsics de SVE: 'svexpa_f32' needs target feature sve.
+          # cmake-rs ignora CFLAGS/CXXFLAGS, asi que se usa clang de Homebrew, que no define la
+          # macro sin +sve. No se instala libomp: OpenMP no se encuentra y no se enlaza.
+          export CC="$(brew --prefix llvm)/bin/clang"
+          export CXX="$(brew --prefix llvm)/bin/clang++"
+          npm run package:mac
 
       - uses: actions/upload-artifact@v7
         with:
