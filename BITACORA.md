@@ -576,3 +576,20 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   (`**`, listas) antes de leer. Un canal de audio único (`voice.ts`): leer una respuesta corta la narración de la pizarra, y entonces
   la pizarra se pausa; Play vuelve a leer el paso actual (`replay` en `Chalkboard`). Una pregunta nueva corta la lectura anterior.
 
+### CI de macOS (2026-10-13)
+- Se agrega la compilación de macOS a GitHub Actions: un job `macos` en `.github/workflows/instaladores.yml`
+  que corre en `macos-14` (Apple Silicon), compila con `--no-default-features` (sin CUDA) y genera un `.dmg`.
+  El Release ahora depende de `build` y `macos`.
+- Los scripts de empaquetado se vuelven multiplataforma:
+  - `scripts/stage-libs.mjs`: en macOS copia los `.dylib` de llama.cpp, sherpa y onnxruntime, les fija
+    `install_name` a `@rpath/<nombre>` y el rpath (`@loader_path` / `@loader_path/..`) con `install_name_tool`,
+    y genera `bundle.resources` para meterlos en `Contents/Resources` del `.app`.
+  - `scripts/collect-bundles.mjs`: acepta `mac` y copia el `.dmg` como `..._arm64_macOS.dmg`.
+  - `scripts/clean-llama-libs.mjs`: también borra `.dylib`.
+- `src-tauri/build.rs`: fija el rpath del binario a `@executable_path/../Resources` en macOS.
+- `src-tauri/src/ai/local.rs`: busca los backends también en `Contents/Resources/backends` (ruta del `.app`).
+- En macOS la GPU es Metal (llama.cpp la activa solo al compilar en Apple); no hay CUDA. La app no está
+  firmada por Apple, así que la primera vez se abre con clic derecho → Abrir.
+- Pendiente: probar el `.dmg` en una Mac real (en GitHub no se puede ejecutar la app).
+- Version 0.4.0 (`package.json` y `src-tauri/tauri.conf.json`), para que el nombre del `.dmg` coincida con la etiqueta `v0.4.0`.
+

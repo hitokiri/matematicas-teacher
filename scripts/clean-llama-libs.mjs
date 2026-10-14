@@ -12,7 +12,7 @@ let removed = 0
 for (const dir of [release, path.join(release, 'deps'), path.join(release, 'examples'), path.join(release, 'backends')]) {
   if (!fs.existsSync(dir)) continue
   for (const f of fs.readdirSync(dir)) {
-    if (/^lib(llama|ggml|mtmd)[\w-]*\.so/.test(f)) {
+    if (/^lib(llama|ggml|mtmd)[\w-]*\.(so|dylib)/.test(f)) {
       fs.rmSync(path.join(dir, f), { force: true })
       removed++
     }

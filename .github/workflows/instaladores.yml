@@ -1,9 +1,11 @@
-# Genera los instaladores de Linux (.deb y AppImage) en dos versiones:
+# Genera los instaladores en tres versiones:
 #
-#   - Con GPU NVIDIA (CUDA): usa la GPU si la PC tiene una NVIDIA con driver, y si no, la CPU.
+#   - Linux con GPU NVIDIA (CUDA): usa la GPU si la PC tiene una NVIDIA con driver, y si no, la CPU.
 #     Funciona en cualquier PC, pero pesa mas porque incluye las librerias de CUDA
 #     (no hace falta instalar el CUDA Toolkit, solo el driver de NVIDIA).
-#   - Solo CPU: mas ligera; funciona en cualquier PC pero nunca usa la GPU.
+#   - Linux solo CPU: mas ligera; funciona en cualquier PC pero nunca usa la GPU.
+#   - macOS (Apple Silicon): un .dmg con la app; usa la GPU integrada Metal. Se compila en un
+#     runner de macOS, por eso va en un job aparte.
 #
 # Se ejecuta a mano (Actions -> Instaladores -> Run workflow) o al subir una etiqueta v* (v0.2.0),
 # que ademas publica un Release con los instaladores.
@@ -84,9 +86,45 @@ jobs:
           path: instaladores/*
           if-no-files-found: error
 
+  macos:
+    name: macOS (Apple Silicon, Metal)
+    runs-on: macos-14
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Dependencias del sistema
+        run: brew install cmake create-dmg
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: macos
+
+      - name: Dependencias de npm
+        run: npm ci
+
+      - name: Compilar y empaquetar
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+        run: npm run package:mac
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: matematicas-teacher-macOS
+          path: instaladores/*
+          if-no-files-found: error
+
   release:
     name: Publicar Release
-    needs: build
+    needs: [build, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -107,8 +145,10 @@ jobs:
             |---|---|---|
             | **con-GPU-NVIDIA** | PCs con tarjeta NVIDIA: la usa automáticamente (mucho más rápido). Si la PC no tiene NVIDIA, funciona igual con la CPU. | Grande (incluye CUDA) |
             | **solo-CPU** | PCs sin NVIDIA o si prefieres una descarga ligera. Nunca usa la GPU. | Pequeña |
+            | **macOS** | Macs con Apple Silicon (M1–M4). Usa la GPU integrada (Metal). | Mediana |
 
             - `.deb`: Ubuntu / Debian → `sudo apt install ./matematicas-teacher_*.deb`
             - `.AppImage`: cualquier Linux → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
+            - `.dmg`: macOS → abre el `.dmg`, arrastra **Matemáticas Teacher** a *Aplicaciones*. Como no está firmada por Apple, la primera vez ábrela con clic derecho → *Abrir* (o `xattr -dr com.apple.quarantine` si Gatekeeper la bloquea).
 
             Para la versión con GPU solo hace falta el driver de NVIDIA (`nvidia-smi` debe funcionar); no hay que instalar CUDA.

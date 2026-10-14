@@ -17,7 +17,7 @@ Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a r
 - **Lienzo de dibujo**: lee lo que el niño escribe/dibuja con modelos con visión (mtmd) y permite corregirlo.
 - **IA local con llama.cpp** integrado en la app (como Handy con whisper): sin servidor ni puertos; backends CPU/CUDA/Vulkan se cargan en tiempo de ejecución según el hardware.
 - **Gestor de modelos** (Llama, Qwen, Phi, Gemma, Mistral): descarga desde HuggingFace, selección del modelo activo y eliminación.
-- **Instaladores** `.deb` y AppImage (versiones con GPU NVIDIA y solo CPU) en `instaladores/`.
+- **Instaladores** `.deb` y AppImage (versiones con GPU NVIDIA y solo CPU) y `.dmg` para macOS (Apple Silicon, GPU Metal) en `instaladores/`.
 
 ## Qué sabe explicar
 
@@ -87,7 +87,7 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 
 | | Mínimo | Recomendado |
 |---|---|---|
-| Sistema | Linux x86_64 (probado en Ubuntu 24.04) | — |
+| Sistema | Linux x86_64 (probado en Ubuntu 24.04) o macOS Apple Silicon | — |
 | RAM | 8 GB | 16 GB o más |
 | Disco | 5 GB libres (app + un modelo pequeño) | 20 GB (varios modelos) |
 | GPU | No hace falta: funciona en CPU | NVIDIA con 8 GB de VRAM o más |
@@ -100,10 +100,11 @@ Sin GPU funciona igual, solo más lento (~15 s por explicación con un modelo de
 
 Descarga el instalador (`.deb` o AppImage) de la página de *Releases* o de [`instaladores/`](instaladores/):
 
-| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage) |
+| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage / .dmg) |
 |---|---|---|---|
 | **con-GPU-NVIDIA** | Cualquier PC | Sí, si hay NVIDIA con driver | ~520 MB / ~590 MB |
 | **solo-CPU** | Cualquier PC | Nunca | ~20 MB / ~100 MB |
+| **macOS** | Macs con Apple Silicon | Sí, con la GPU integrada (Metal) | ~150 MB |
 
 ```bash
 # Ubuntu / Debian
@@ -112,10 +113,14 @@ sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
 # Cualquier Linux (sin instalar)
 chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
+
+# macOS (Apple Silicon): abre el .dmg y arrastra la app a Aplicaciones
+open matematicas-teacher_0.1.0_arm64_macOS.dmg
 ```
 
 - La versión con GPU también funciona en PCs sin GPU: si no detecta una NVIDIA, usa la CPU.
 - El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y aparece en el menú como **Matemáticas Teacher**.
+- El `.dmg` de macOS no está firmado por Apple: la primera vez ábrela con clic derecho → *Abrir*.
 - Ninguna versión incluye modelos: se descargan desde la app.
 
 ### Compilar desde el código
@@ -187,6 +192,7 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 | `npm run tauri:build` | Compilar la app |
 | `npm run package:gpu` | Generar instaladores (.deb/AppImage) con backends GPU |
 | `npm run package:cpu` | Generar instaladores solo CPU |
+| `npm run package:mac` | Generar instalador de macOS (.dmg, Apple Silicon, Metal) |
 
 ## Estructura
 

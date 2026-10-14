@@ -14,7 +14,7 @@ internet y sin servidores: los modelos se descargan una vez y se usan en la prop
 
 | | Mínimo | Recomendado |
 |---|---|---|
-| Sistema | Linux x86_64 (probado en Ubuntu 24.04) | — |
+| Sistema | Linux x86_64 (probado en Ubuntu 24.04) o macOS Apple Silicon | — |
 | RAM | 8 GB | 16 GB o más |
 | Disco | 5 GB libres (app + un modelo pequeño) | 20 GB (varios modelos) |
 | GPU | No hace falta: funciona en CPU | NVIDIA con 8 GB de VRAM o más |
@@ -40,6 +40,11 @@ sudo apt install -y build-essential curl wget file pkg-config cmake clang libcla
 - `cmake`, `clang` y `libclang-dev` son para compilar **llama.cpp**, el motor de IA que va dentro de la app.
 - `patchelf` y `libfuse2t64` solo hacen falta para generar los instaladores.
 - El resto son los requisitos de Tauri.
+
+En **macOS** (Apple Silicon) no hace falta instalar nada aparte: `cmake` y las herramientas de Xcode
+ya vienen con el *Command Line Tools* (`xcode-select --install`). La GPU se usa con **Metal**, que
+llama.cpp activa solo al compilar en macOS. Para generar el `.dmg` hace falta `create-dmg`
+(`brew install create-dmg`).
 
 ### 2.2 Rust
 
@@ -103,6 +108,9 @@ npm run tauri -- build -- --no-default-features --features custom-protocol
 ```
 
 La app funciona igual, solo con CPU.
+
+En **macOS** la feature `cuda` no aplica (no hay CUDA): compila siempre con `--no-default-features`
+como arriba, y llama.cpp usa la GPU integrada **Metal** automáticamente. No hay que activar nada.
 
 ## 5. Primer uso
 
@@ -187,10 +195,11 @@ LOCAL_GGUF=$M/Qwen3VL-4B-Instruct-Q4_K_M.gguf LOCAL_MMPROJ=$M/mmproj-Qwen3VL-4B-
 driver. Si la hay, la usa; si no, el módulo de GPU no se carga y la app usa la CPU, sin hacer nada.
 Hay dos versiones solo por el **tamaño de la descarga**:
 
-| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage) |
+| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage / .dmg) |
 |---|---|---|---|
 | **con-GPU-NVIDIA** | Cualquier PC | Sí, si hay NVIDIA con driver | ~520 MB / ~590 MB |
 | **solo-CPU** | Cualquier PC | Nunca | ~20 MB / ~100 MB |
+| **macOS** | Macs con Apple Silicon | Sí, con la GPU integrada (Metal) | ~150 MB |
 
 - La versión con GPU pesa más porque incluye las librerías de CUDA (`libcudart`, `libcublas`,
   `libcublasLt`). Así no hay que instalar el CUDA Toolkit: basta con el driver de NVIDIA
@@ -206,10 +215,15 @@ sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
 # Cualquier Linux (sin instalar)
 chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
+
+# macOS (Apple Silicon): abre el .dmg y arrastra la app a Aplicaciones
+open matematicas-teacher_0.1.0_arm64_macOS.dmg
 ```
 
 - El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y sus librerías en
   `/usr/lib/matematicas-teacher/`.
+- En macOS las librerías van dentro del `.app` (`Contents/Resources`), así que el `.dmg` es
+  autónomo: no hay que instalar nada aparte.
 - La app aparece en el menú como **Matemáticas Teacher**.
 
 ### Generar los instaladores en tu computadora
@@ -217,18 +231,20 @@ chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ```bash
 npm run package:gpu    # con GPU NVIDIA (necesita el CUDA Toolkit para compilar)
 npm run package:cpu    # solo CPU
+npm run package:mac    # macOS (Apple Silicon, Metal); hay que ejecutarlo en una Mac
 ```
 
 Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-GPU-NVIDIA.deb`,
-`..._solo-CPU.AppImage`). Cada comando hace estos pasos:
+`..._solo-CPU.AppImage`, `..._macOS.dmg`). Cada comando hace estos pasos:
 
 1. `scripts/clean-llama-libs.mjs`: borra copias viejas de las librerías de llama.cpp (evita un error
    al alternar entre las dos versiones).
 2. `tauri build --no-bundle`: compila la app en modo *release*.
 3. `scripts/stage-libs.mjs`: reúne las librerías de llama.cpp, los módulos de CPU y, en la versión
-   con GPU, el de CUDA y sus librerías. Les ajusta las rutas de búsqueda (`patchelf`) y genera la
-   lista de archivos del paquete.
-4. `tauri bundle`: arma el `.deb` y la AppImage.
+   con GPU, el de CUDA y sus librerías (en macOS, el de Metal). Les ajusta las rutas de búsqueda
+   (`patchelf` en Linux, `install_name_tool` con `@rpath` en macOS) y genera la lista de archivos
+   del paquete.
+4. `tauri bundle`: arma el `.deb` y la AppImage (en macOS, el `.app` y el `.dmg`).
 5. `scripts/collect-bundles.mjs`: los copia a `instaladores/` con el nombre de la versión.
 
 ### En GitHub (Actions)
@@ -236,7 +252,7 @@ Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-G
 | Workflow | Cuándo corre | Qué hace |
 |---|---|---|
 | `.github/workflows/pruebas.yml` | Cada *push* a `main` y cada *pull request* | Tipos, vitest, Playwright y `cargo test` (versión solo CPU) |
-| `.github/workflows/instaladores.yml` | A mano (*Actions → Instaladores → Run workflow*) o al subir una etiqueta `v*` | Genera las dos versiones en paralelo y las sube como *artifacts*; con una etiqueta, también publica un *Release* |
+| `.github/workflows/instaladores.yml` | A mano (*Actions → Instaladores → Run workflow*) o al subir una etiqueta `v*` | Genera las tres versiones en paralelo (dos en Linux, la de macOS en un runner de Mac) y las sube como *artifacts*; con una etiqueta, también publica un *Release* |
 
 Para publicar una versión:
 

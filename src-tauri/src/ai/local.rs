@@ -46,6 +46,22 @@ static BACKEND: OnceLock<LlamaBackend> = OnceLock::new();
 /// Modelo cargado en memoria
 static LOADED: Mutex<Option<Loaded>> = Mutex::new(None);
 
+/// Como `load_backends_from_path` de llama-cpp-2, pero sin exigir UTF-8: una AppImage con tilde en el
+/// nombre (p. ej. la que crea Gear Lever) se monta en /tmp/.mount_<nombre recortado>, que puede
+/// quedar con un caracter partido, y esa funcion entra en panico.
+#[cfg(unix)]
+fn load_backends_from(dir: &Path) {
+    use std::os::unix::ffi::OsStrExt;
+    if let Ok(path) = std::ffi::CString::new(dir.as_os_str().as_bytes()) {
+        unsafe { llama_cpp_sys_2::ggml_backend_load_all_from_path(path.as_ptr()) }
+    }
+}
+
+#[cfg(not(unix))]
+fn load_backends_from(dir: &Path) {
+    llama_cpp_2::llama_backend::load_backends_from_path(dir)
+}
+
 fn backend() -> Result<&'static LlamaBackend> {
     if let Some(b) = BACKEND.get() {
         return Ok(b);
@@ -62,12 +78,12 @@ fn backend() -> Result<&'static LlamaBackend> {
     let bundled = std::env::current_exe().ok()
         .and_then(|exe| exe.parent().map(|d| d.to_path_buf()))
         .and_then(|dir| {
-            [dir.join("backends"), dir.join("../lib/matematicas-teacher/backends")]
+            [dir.join("backends"), dir.join("../lib/matematicas-teacher/backends"), dir.join("../Resources/backends")]
                 .into_iter()
                 .find(|d| d.is_dir())
         });
     match bundled {
-        Some(dir) => llama_cpp_2::llama_backend::load_backends_from_path(&dir),
+        Some(dir) => load_backends_from(&dir),
         None => llama_cpp_2::llama_backend::load_backends(),
     }
     let b = LlamaBackend::init().map_err(|e| anyhow::anyhow!("No se pudo iniciar llama.cpp: {}", e))?;

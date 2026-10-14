@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Reune las librerias que necesita la app instalada y genera la configuracion de Tauri que las
-// incluye en el .deb y la AppImage, en /usr/lib/matematicas-teacher/:
+// incluye en el paquete, en la carpeta donde la app las busca al arrancar:
+//   - Linux (.deb / AppImage): en /usr/lib/matematicas-teacher/
+//   - macOS (.app / .dmg): en Contents/Resources/ (el binario las busca con @rpath)
 //   - llama.cpp: libllama, libggml*, libmtmd (compartidas, porque los backends son dinamicos)
-//   - voz de la maestra: libsherpa-onnx-c-api y libonnxruntime (sin versiones en el nombre)
-//   - backends/: modulos de CPU (todas las variantes) y, en la version con GPU, el de CUDA
-//   - version con GPU: las librerias de CUDA que usa el modulo (libcudart, libcublas, libcublasLt),
+//   - voz de la maestra: libsherpa-onnx-c-api y libonnxruntime
+//   - backends/: modulos de CPU (todas las variantes), CUDA (Linux con GPU) y Metal (macOS)
+//   - Linux con GPU: las librerias de CUDA que usa el modulo (libcudart, libcublas, libcublasLt),
 //     para que funcione sin instalar el CUDA Toolkit. Solo hace falta el driver de NVIDIA.
 //
 // Uso: node scripts/stage-libs.mjs [--gpu]   (despues de `tauri build --no-bundle`)
@@ -14,10 +16,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const gpu = process.argv.includes('--gpu')
+const darwin = process.platform === 'darwin'
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const release = path.join(root, 'src-tauri', 'target', 'release')
 const stage = path.join(release, 'lib-bundle')
-const INSTALL_DIR = '/usr/lib/matematicas-teacher'
 
 const fail = msg => {
   console.error(`✗ ${msg}`)
@@ -27,6 +29,79 @@ const fail = msg => {
 if (!fs.existsSync(release)) fail(`No existe ${release}: primero ejecuta "tauri build --no-bundle"`)
 fs.rmSync(stage, { recursive: true, force: true })
 fs.mkdirSync(path.join(stage, 'backends'), { recursive: true })
+
+const base = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
+const out = path.join(release, 'bundle-files.json')
+
+// ---- macOS: los .dylib se copian dentro del .app y se arreglan con install_name_tool ----
+if (darwin) {
+  const staged = new Set()
+  const libs = fs.readdirSync(release).filter(f => /^lib(llama|ggml|mtmd)[\w-]*\.dylib$/.test(f))
+  if (!libs.length) fail('No se encontraron las librerias de llama.cpp (.dylib) en target/release')
+  for (const f of libs) { fs.copyFileSync(path.join(release, f), path.join(stage, f)); staged.add(f) }
+
+  for (const f of ['libsherpa-onnx-c-api.dylib', 'libonnxruntime.dylib']) {
+    if (!fs.existsSync(path.join(release, f))) fail(`No se encontro ${f} en target/release (voz de la maestra)`)
+    fs.copyFileSync(path.join(release, f), path.join(stage, f)); staged.add(f)
+  }
+
+  const backendsDir = path.join(release, 'backends')
+  const backends = fs.existsSync(backendsDir) ? fs.readdirSync(backendsDir).filter(f => f.endsWith('.dylib')) : []
+  if (!backends.some(f => f.startsWith('libggml-cpu'))) fail('No se encontraron los backends de CPU')
+  for (const f of backends) { fs.copyFileSync(path.join(backendsDir, f), path.join(stage, 'backends', f)); staged.add(f) }
+
+  const int = args => execFileSync('install_name_tool', args)
+  const depsOf = file => execFileSync('otool', ['-L', file], { encoding: 'utf8' })
+    .split('\n').map(l => l.trim().split(' ')[0]).filter(p => p.startsWith('/') || p.startsWith('@'))
+
+  // Cada libreria se referencia por @rpath/<nombre> y busca a las demas en su carpeta.
+  const fix = (file, rpath) => {
+    const b = path.basename(file)
+    int(['-id', `@rpath/${b}`, file])
+    int(['-add_rpath', rpath, file])
+    for (const dep of depsOf(file)) {
+      const d = path.basename(dep)
+      if (staged.has(d)) int(['-change', dep, `@rpath/${d}`, file])
+    }
+  }
+  for (const f of fs.readdirSync(stage)) if (f.endsWith('.dylib')) fix(path.join(stage, f), '@loader_path')
+  for (const f of fs.readdirSync(path.join(stage, 'backends'))) if (f.endsWith('.dylib')) fix(path.join(stage, 'backends', f), '@loader_path/..')
+
+  // El ejecutable: busca las librerias en Contents/Resources (rpath fijado en build.rs).
+  const binary = fs.readdirSync(release).find(f => {
+    const full = path.join(release, f)
+    if (fs.statSync(full).isDirectory() || /^lib.*\.(dylib|so)$/.test(f)) return false
+    try { execFileSync('otool', ['-h', full], { stdio: 'ignore' }); return true } catch { return false }
+  })
+  if (!binary) fail('No se encontro el ejecutable en target/release')
+  const binPath = path.join(release, binary)
+  for (const dep of depsOf(binPath)) {
+    const d = path.basename(dep)
+    if (staged.has(d)) int(['-change', dep, `@rpath/${d}`, binPath])
+  }
+
+  // Tauri resources: origen (relativo a src-tauri) -> destino dentro de Contents/Resources
+  const resources = {}
+  const walk = dir => {
+    for (const f of fs.readdirSync(dir)) {
+      const full = path.join(dir, f)
+      if (fs.statSync(full).isDirectory()) walk(full)
+      else {
+        const rel = path.posix.relative(stage, full)
+        resources[path.posix.join('target/release/lib-bundle', rel)] = rel
+      }
+    }
+  }
+  walk(stage)
+  fs.writeFileSync(out, JSON.stringify({ bundle: { resources } }, null, 2))
+  const mb = Object.values(resources).reduce((s, r) => s + fs.statSync(path.join(stage, r)).size, 0) / 1e6
+  console.log(`✓ ${Object.keys(resources).length} archivos (${mb.toFixed(0)} MB) para macOS (Metal)`)
+  console.log(`✓ ${path.relative(root, out)}`)
+  process.exit(0)
+}
+
+// ---- Linux (.deb / AppImage) ----
+const INSTALL_DIR = '/usr/lib/matematicas-teacher'
 
 // 1) Librerias de llama.cpp (el binario las pide por su soname: libllama.so.0, ...)
 const libs = fs.readdirSync(release).filter(f => /^lib(llama|ggml|mtmd)[\w-]*\.so\.\d+$/.test(f))
@@ -94,12 +169,10 @@ const walk = dir => {
   }
 }
 walk(stage)
-const base = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
 const linux = base.bundle?.linux ?? {}
 const config = {
   bundle: { linux: { ...linux, deb: { ...linux.deb, files }, appimage: { ...linux.appimage, files } } },
 }
-const out = path.join(release, 'bundle-files.json')
 fs.writeFileSync(out, JSON.stringify(config, null, 2))
 
 const mb = Object.values(files).reduce((s, f) => s + fs.statSync(f).size, 0) / 1e6
