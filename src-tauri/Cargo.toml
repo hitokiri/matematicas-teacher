@@ -30,7 +30,6 @@ futures-util = "0.3"
 # llama.cpp integrado en la app (como Handy con whisper): sin servidor ni puertos
 # dynamic-backends: CPU/CUDA/Vulkan se cargan en tiempo de ejecucion segun el hardware
 # mtmd: modelos con vision (leer dibujos)
-llama-cpp-2 = { version = "0.1.158", features = ["dynamic-backends", "mtmd"] }
 base64 = "0.22"
 # Dependencia directa solo para que build.rs reciba DEP_LLAMA_BACKENDS_DIR y copie las .so
 llama-cpp-sys-2 = "=0.1.158"
@@ -55,6 +54,12 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["share
 bzip2 = "0.5"
 minijinja = { version = "2", features = ["loader", "json"] }
 minijinja-contrib = { version = "2", features = ["pycompat"] }
+
+# macOS: enlace estatico (Metal + CPU dentro del binario); con dynamic-backends cmake dejaba las .dylib vacias
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+llama-cpp-2 = { version = "0.1.158", features = ["dynamic-backends", "mtmd"] }
+[target.'cfg(target_os = "macos")'.dependencies]
+llama-cpp-2 = { version = "0.1.158", features = ["mtmd"] }
 
 [dev-dependencies]
 tempfile = "3"

@@ -49,7 +49,7 @@ static LOADED: Mutex<Option<Loaded>> = Mutex::new(None);
 /// Como `load_backends_from_path` de llama-cpp-2, pero sin exigir UTF-8: una AppImage con tilde en el
 /// nombre (p. ej. la que crea Gear Lever) se monta en /tmp/.mount_<nombre recortado>, que puede
 /// quedar con un caracter partido, y esa funcion entra en panico.
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn load_backends_from(dir: &Path) {
     use std::os::unix::ffi::OsStrExt;
     if let Ok(path) = std::ffi::CString::new(dir.as_os_str().as_bytes()) {
@@ -57,7 +57,7 @@ fn load_backends_from(dir: &Path) {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
 fn load_backends_from(dir: &Path) {
     llama_cpp_2::llama_backend::load_backends_from_path(dir)
 }
@@ -73,18 +73,22 @@ fn backend() -> Result<&'static LlamaBackend> {
         return Ok(b);
     }
     llama_cpp_2::send_logs_to_tracing(llama_cpp_2::LogOptions::default().with_logs_enabled(false));
-    // Modulos de backend: junto al ejecutable (desarrollo), en ../lib/matematicas-teacher (app
-    // instalada) o, si no, en la carpeta donde se compilaron
-    let bundled = std::env::current_exe().ok()
-        .and_then(|exe| exe.parent().map(|d| d.to_path_buf()))
-        .and_then(|dir| {
-            [dir.join("backends"), dir.join("../lib/matematicas-teacher/backends"), dir.join("../Resources/backends")]
-                .into_iter()
-                .find(|d| d.is_dir())
-        });
-    match bundled {
-        Some(dir) => load_backends_from(&dir),
-        None => llama_cpp_2::llama_backend::load_backends(),
+    // macOS enlaza llama.cpp de forma estatica (Metal y CPU ya vienen dentro del binario)
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Modulos de backend: junto al ejecutable (desarrollo), en ../lib/matematicas-teacher (app
+        // instalada) o, si no, en la carpeta donde se compilaron
+        let bundled = std::env::current_exe().ok()
+            .and_then(|exe| exe.parent().map(|d| d.to_path_buf()))
+            .and_then(|dir| {
+                [dir.join("backends"), dir.join("../lib/matematicas-teacher/backends"), dir.join("../Resources/backends")]
+                    .into_iter()
+                    .find(|d| d.is_dir())
+            });
+        match bundled {
+            Some(dir) => load_backends_from(&dir),
+            None => llama_cpp_2::llama_backend::load_backends(),
+        }
     }
     let b = LlamaBackend::init().map_err(|e| anyhow::anyhow!("No se pudo iniciar llama.cpp: {}", e))?;
     Ok(BACKEND.get_or_init(|| b))

@@ -14,9 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { nombre: "macos-15 con dynamic-backends", runner: macos-15, estatico: "no" }
-          - { nombre: "macos-15 estatico",             runner: macos-15, estatico: "si" }
-          - { nombre: "macos-26 con dynamic-backends", runner: macos-26, estatico: "no" }
+          - { nombre: "macos-15 estatico (package:mac)", runner: macos-15, estatico: "no" }
     steps:
       - uses: actions/checkout@v5
       - run: brew install cmake
@@ -26,16 +24,21 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci && npm run build
-      - name: Variante estatica (sin dynamic-backends)
-        if: matrix.estatico == 'si'
-        run: sed -i '' 's/"dynamic-backends", //' src-tauri/Cargo.toml && grep -n "^llama-cpp-2" src-tauri/Cargo.toml
-      - name: Compilar
+      - name: Empaquetar
         id: build
         continue-on-error: true
-        working-directory: src-tauri
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
-        run: cargo build --release --no-default-features --features custom-protocol 2>&1 | tail -40; exit ${PIPESTATUS[0]}
+        run: npm run package:mac 2>&1 | tail -40; exit ${PIPESTATUS[0]}
+      - name: Que dejo el empaquetado
+        if: always()
+        run: |
+          echo "resultado: ${{ steps.build.outcome }}"; ls -lh instaladores 2>/dev/null
+      - uses: actions/upload-artifact@v7
+        if: steps.build.outcome == 'success'
+        with:
+          name: diagnostico-macos
+          path: instaladores/*
       - name: Que dejo cmake
         if: always()
         working-directory: src-tauri

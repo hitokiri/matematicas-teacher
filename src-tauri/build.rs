@@ -2,6 +2,10 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     copy_llama_libs();
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        // En el .app las .dylib (voz, sherpa/onnxruntime) quedan en Contents/Resources; el binario (en Contents/MacOS) las busca con @rpath
+        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,@executable_path/../Resources");
+    }
     tauri_build::build()
 }
 
@@ -24,9 +28,6 @@ fn copy_llama_libs() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         // $ORIGIN: desarrollo (target/<perfil>); ../lib/matematicas-teacher: app instalada (.deb/AppImage)
         println!("cargo:rustc-link-arg-bins=-Wl,-rpath,$ORIGIN:$ORIGIN/../lib/matematicas-teacher");
-    } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
-        // En el .app las .dylib quedan en Contents/Resources; el binario (en Contents/MacOS) las busca con @rpath
-        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,@executable_path/../Resources");
     }
 }
 

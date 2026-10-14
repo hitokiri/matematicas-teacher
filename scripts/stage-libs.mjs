@@ -37,7 +37,7 @@ const out = path.join(release, 'bundle-files.json')
 if (darwin) {
   const staged = new Set()
   const libs = fs.readdirSync(release).filter(f => /^lib(llama|ggml|mtmd)[\w-]*\.dylib$/.test(f))
-  if (!libs.length) fail('No se encontraron las librerias de llama.cpp (.dylib) en target/release')
+  // llama.cpp va enlazado de forma estatica en macOS: solo se empaquetan sherpa y onnxruntime
   for (const f of libs) { fs.copyFileSync(path.join(release, f), path.join(stage, f)); staged.add(f) }
 
   for (const f of ['libsherpa-onnx-c-api.dylib', 'libonnxruntime.dylib']) {
@@ -47,7 +47,6 @@ if (darwin) {
 
   const backendsDir = path.join(release, 'backends')
   const backends = fs.existsSync(backendsDir) ? fs.readdirSync(backendsDir).filter(f => f.endsWith('.dylib')) : []
-  if (!backends.some(f => f.startsWith('libggml-cpu'))) fail('No se encontraron los backends de CPU')
   for (const f of backends) { fs.copyFileSync(path.join(backendsDir, f), path.join(stage, 'backends', f)); staged.add(f) }
 
   const int = args => execFileSync('install_name_tool', args)
