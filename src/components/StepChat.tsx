@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../lib/i18n'
 import { logUi } from '../lib/applog'
-import { SYSTEM_VOICE, plainSpeech, speak, stopSpeaking } from '../lib/voice'
+import { SYSTEM_VOICE, notifyVoiceInterrupt, plainSpeech, speak, stopSpeaking } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
 import type { BoardScript } from '../lib/board/types'
 
@@ -61,6 +61,9 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   const canSpeak = voiceId !== SYSTEM_VOICE || systemVoice.available
   /** Respuesta que se esta leyendo (su posicion en la conversacion) */
   const [speaking, setSpeaking] = useState<number | null>(null)
+  // Solo se corta la voz si la estaba usando este chat (la pizarra tambien usa el mismo canal)
+  const speakingRef = useRef<number | null>(null)
+  speakingRef.current = speaking
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -81,15 +84,16 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   /** Lee una respuesta de la maestra; si ya se estaba leyendo, la detiene */
   const say = useCallback(async (text: string, index: number) => {
     setSpeaking(index)
+    notifyVoiceInterrupt() // la narracion de la pizarra se pausa mientras la maestra contesta
     const result = await speak(plainSpeech(text), voiceId, lang)
     setSpeaking(current => (current === index ? null : current))
     if (result === 'failed') logUi('warn', 'voz', 'No se pudo leer la respuesta del chat')
   }, [voiceId, lang])
 
   // Al salir del chat, o al apagar la lectura, se calla lo que se estaba leyendo
-  useEffect(() => () => stopSpeaking(), [])
+  useEffect(() => () => { if (speakingRef.current !== null) stopSpeaking() }, [])
   useEffect(() => {
-    if (!readAloud) {
+    if (!readAloud && speakingRef.current !== null) {
       stopSpeaking()
       setSpeaking(null)
     }
@@ -98,8 +102,10 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   async function ask(question: string) {
     const q = question.trim()
     if (!q || loading) return
-    stopSpeaking() // una pregunta nueva corta la lectura anterior
-    setSpeaking(null)
+    if (speakingRef.current !== null) {
+      stopSpeaking() // una pregunta nueva corta la lectura anterior del chat
+      setSpeaking(null)
+    }
     const next: Message[] = [...messages, { role: 'user', content: q }]
     setMessages(next)
     setInput('')

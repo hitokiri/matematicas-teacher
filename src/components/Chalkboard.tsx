@@ -6,7 +6,7 @@ import BoardVisual from './BoardVisual'
 import { FONT_SCALES } from '../lib/uiPrefs'
 import { logUi } from '../lib/applog'
 import { useI18n, useT } from '../lib/i18n'
-import { SYSTEM_VOICE, prefetch, speak, stopSpeaking } from '../lib/voice'
+import { SYSTEM_VOICE, onVoiceInterrupt, prefetch, speak, stopSpeaking } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
@@ -103,6 +103,9 @@ export default function Chalkboard({
     onStepChange?.(Math.min(step, last))
   }, [step, last, onStepChange])
 
+  // Si el chat empieza a leer una respuesta, la pizarra se pausa (Play retoma el paso actual)
+  useEffect(() => onVoiceInterrupt(() => setPlaying(false)), [])
+
   // Lectura en voz alta: al terminar cada audio la pizarra pasa sola al siguiente paso
   useEffect(() => {
     if (!voice || !canSpeak) return
@@ -116,9 +119,6 @@ export default function Chalkboard({
         setVoice(false)
         onReadAloudChange?.(false)
         setVoiceError(t('board.voiceError'))
-      } else if (result === 'stopped') {
-        // Algo ajeno corto la lectura (p. ej. la respuesta del chat): se pausa y Play la retoma
-        setPlaying(false)
       } else if (result === 'done' && playingRef.current) {
         if (at >= last) setPlaying(false)
         else setStep(at + 1)

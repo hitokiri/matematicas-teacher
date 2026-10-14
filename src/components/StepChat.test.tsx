@@ -90,6 +90,7 @@ describe('StepChat', () => {
 
     it('una pregunta nueva corta la lectura anterior', async () => {
       mockInvoke.mockResolvedValue('Respuesta.')
+      vi.mocked(speak).mockReturnValue(new Promise(() => {})) // la respuesta sigue sonando
       render(<StepChat script={script} currentStep={1} readAloud voiceId="piper-claude" />)
       await askQuestion()
       await waitFor(() => expect(speak).toHaveBeenCalled())

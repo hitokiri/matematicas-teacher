@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { speak, prefetch, type SpeakResult } from '../lib/voice'
+import { speak, prefetch, notifyVoiceInterrupt, type SpeakResult } from '../lib/voice'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import Chalkboard from './Chalkboard'
 import { multiplicationScript } from '../lib/board/arithmetic'
@@ -192,18 +192,23 @@ describe('Chalkboard', () => {
       expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')
     })
 
-    it('si algo ajeno corta la lectura (la respuesta del chat) la pizarra se pausa, y Play la retoma', async () => {
-      let cut!: (r: SpeakResult) => void
-      vi.mocked(speak).mockReturnValueOnce(new Promise(r => { cut = r }))
+    it('si el chat empieza a leer una respuesta la pizarra se pausa, y Play retoma el paso', async () => {
       vi.mocked(speak).mockResolvedValue('stopped')
       const script = multiplicationScript('10', '20')
       render(<Chalkboard script={script} readAloud voiceId="piper-claude" />)
       expect(screen.getByRole('button', { name: /pausa/i })).toBeInTheDocument()
-      await act(async () => { cut('stopped') })
+      await act(async () => { notifyVoiceInterrupt() })
       await screen.findByRole('button', { name: /reproducir/i })
       const calls = vi.mocked(speak).mock.calls.length
       fireEvent.click(screen.getByRole('button', { name: /reproducir/i }))
       await waitFor(() => expect(vi.mocked(speak).mock.calls.length).toBeGreaterThan(calls))
+    })
+
+    it('un corte de voz que no avisa (sin notifyVoiceInterrupt) NO pausa la pizarra', async () => {
+      vi.mocked(speak).mockResolvedValue('stopped')
+      render(<Chalkboard script={multiplicationScript('10', '20')} readAloud voiceId="piper-claude" />)
+      await act(async () => { await Promise.resolve() })
+      expect(screen.getByRole('button', { name: /pausa/i })).toBeInTheDocument()
     })
 
     it('el boton de lectura avisa su estado y guarda la eleccion', () => {

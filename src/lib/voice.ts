@@ -88,6 +88,14 @@ export function plainSpeech(text: string): string {
     .trim()
 }
 
+/** Quien interrumpe a proposito la narracion (p. ej. la respuesta del chat) lo avisa; la pizarra se pausa */
+const INTERRUPT = 'voice-interrupt'
+export const notifyVoiceInterrupt = (): void => { window.dispatchEvent(new Event(INTERRUPT)) }
+export function onVoiceInterrupt(callback: () => void): () => void {
+  window.addEventListener(INTERRUPT, callback)
+  return () => window.removeEventListener(INTERRUPT, callback)
+}
+
 /** Corta lo que se este leyendo */
 export function stopSpeaking(): void {
   cancelCurrent?.()
