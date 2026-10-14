@@ -114,6 +114,9 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          # Sin esto el target por defecto es anterior a macOS 10.15 y std::filesystem::path
+          # (ggml-backend-reg.cpp) falla con "is unavailable: introduced in macOS 10.15".
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
         run: |
           # Apple clang 15 define __ARM_FEATURE_SVE con -march=armv9.2-a (la variante apple_m4
           # de ggml) pero no habilita las intrinsics de SVE: 'svexpa_f32' needs target feature sve.

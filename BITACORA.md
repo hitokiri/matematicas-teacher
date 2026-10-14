@@ -609,3 +609,6 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - v0.4.2 (macOS): `ggml-metal-device.m` falló con `unknown type name 'MTLResidencySetDescriptor'`: esa API es del SDK de macOS 15
   y `macos-14` trae Xcode 15.4. El job de macOS pasa a `macos-15` (Xcode 16). Los comentarios sobre Xcode 15.4 en el workflow
   describen los errores que se vieron antes; los wrappers de clang se mantienen hasta comprobar que Apple clang 16 ya no los necesita.
+- v0.4.2 (macOS, `macos-15`): pasó Metal pero `std::filesystem::path` falló con `is unavailable: introduced in macOS 10.15`
+  (deployment target por defecto demasiado bajo). Se fija `MACOSX_DEPLOYMENT_TARGET=14.0` en el paso de compilación:
+  el `.dmg` queda para macOS 14 o superior (se puede bajar a 12/13 si se prueba que compila).
