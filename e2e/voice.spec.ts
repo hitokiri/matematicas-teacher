@@ -30,10 +30,10 @@ test.describe('Voz de la maestra', () => {
   })
 
   test('hay una voz de hombre de Piper en cada idioma', async ({ page }) => {
-    await expect(page.getByRole('radio', { name: 'Piper · Aldo (hombre)' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Piper · Dave (hombre, España)' })).toBeVisible()
     await page.getByRole('dialog').getByRole('group', { name: 'Idioma' }).getByRole('button', { name: 'English' }).click()
     await expect(page.getByRole('radio', { name: 'Piper · Joe (male)' })).toBeVisible()
-    await expect(page.getByRole('radio', { name: 'Piper · Aldo (hombre)' })).toHaveCount(0)
+    await expect(page.getByRole('radio', { name: 'Piper · Dave (hombre, España)' })).toHaveCount(0)
   })
 
   test('la voz del sistema que falta explica qué instalar y se puede volver a comprobar', async ({ page }) => {

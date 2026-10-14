@@ -564,4 +564,9 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   por tono y por las fuentes de cada modelo.
 - Una voz solo se puede elegir si ya está descargada (el radio está deshabilitado y el clic en su fila no hace nada); se
   descarga con su botón. Se quitó el flujo «elegir = descargar y activar».
+- Aldo se retiró (2026-10-13): sonaba plano y poco natural. Medido con 8 frases de narración: variación del tono 16 Hz
+  (Claude 27, Kokoro Alex 31, davefx 47) y tono medio 155 Hz (alto para un hombre); Whisper base no lo distinguió por
+  inteligibilidad (33 % de error de palabras, igual que Claude 35 %) y los ajustes de ruido no mejoran. Lo reemplaza
+  `piper-dave` (es_ES-davefx-medium, CC0, acento de España; es la voz base de la que se ajustó Aldo). `RETIRED_DIRS` borra el
+  paquete viejo de quien ya lo había bajado (se limpia al listar las voces). La mejor voz masculina en español es Kokoro Alex.
 

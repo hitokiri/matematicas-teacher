@@ -60,14 +60,28 @@ pub static PIPER_EN: Pack = Pack {
     size_mb: 64.0,
 };
 
-pub static PIPER_ALD: Pack = Pack {
-    id: "piper-ald",
+pub static PIPER_DAVE: Pack = Pack {
+    id: "piper-dave",
     kind: Kind::Piper,
-    dir: "vits-piper-es_MX-ald-medium",
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_MX-ald-medium.tar.bz2",
-    sha256: "c60cf7bc853eb01a875fba0756523fecf9d9f46c763b19785d223fc981fb4fb6",
+    dir: "vits-piper-es_ES-davefx-medium",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+    sha256: "a3f6beb54a9cb893279f72978a22f807a4d9fc9c7848157b524d5cc7b7f58b22",
     size_mb: 64.0,
 };
+
+/// Paquetes que ya no se ofrecen: se borran si estaban descargados (Aldo sonaba plano y poco natural)
+pub const RETIRED_DIRS: [&str; 1] = ["vits-piper-es_MX-ald-medium"];
+
+/// Borra los paquetes retirados; devuelve cuantos habia
+pub fn remove_retired(voices_dir: &Path) -> usize {
+    RETIRED_DIRS
+        .iter()
+        .filter(|dir| {
+            let path = voices_dir.join(dir);
+            path.is_dir() && std::fs::remove_dir_all(path).is_ok()
+        })
+        .count()
+}
 
 pub static PIPER_JOE: Pack = Pack {
     id: "piper-joe",
@@ -97,10 +111,10 @@ pub static VOICES: [Voice; 8] = [
         lang: "es",
     },
     Voice {
-        id: "piper-ald",
-        name: "Piper · Aldo (hombre)",
-        description: "Ligera y rápida, aun en computadoras modestas.",
-        pack: &PIPER_ALD,
+        id: "piper-dave",
+        name: "Piper · Dave (hombre)",
+        description: "Voz de hombre con acento de España; ligera y rápida.",
+        pack: &PIPER_DAVE,
         sid: 0,
         lang: "es",
     },
@@ -159,7 +173,7 @@ pub fn find_voice(id: &str) -> Option<&'static Voice> {
 }
 
 pub fn find_pack(id: &str) -> Option<&'static Pack> {
-    [&PIPER, &PIPER_ALD, &PIPER_EN, &PIPER_JOE, &KOKORO].into_iter().find(|p| p.id == id)
+    [&PIPER, &PIPER_DAVE, &PIPER_EN, &PIPER_JOE, &KOKORO].into_iter().find(|p| p.id == id)
 }
 
 pub fn pack_path(voices_dir: &Path, pack: &Pack) -> PathBuf {

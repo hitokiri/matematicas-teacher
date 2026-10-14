@@ -39,12 +39,12 @@ setInterval(() => {
 
 // Voces de la maestra: id -> descargada (la descarga se simula al instante)
 state.voices = state.voices || {};
-for (const id of ['piper-claude', 'piper-ald', 'kokoro-dora', 'kokoro-alex', 'piper-lessac', 'piper-joe', 'kokoro-heart', 'kokoro-michael']) if (!(id in state.voices)) state.voices[id] = false;
+for (const id of ['piper-claude', 'piper-dave', 'kokoro-dora', 'kokoro-alex', 'piper-lessac', 'piper-joe', 'kokoro-heart', 'kokoro-michael']) if (!(id in state.voices)) state.voices[id] = false;
 const VOICE_INFO = {
-  'piper-claude': { name: 'Piper · Claude (México)', description: 'Ligera y rápida.', size_mb: 64 },
+  'piper-claude': { name: 'Piper · Claude (México)', description: 'Voz de hombre con acento de España.', size_mb: 64 },
   'kokoro-dora': { name: 'Kokoro · Dora (mujer)', description: 'Más expresiva.', size_mb: 334 },
   'kokoro-alex': { name: 'Kokoro · Alex (hombre)', description: 'Más expresiva.', size_mb: 334 },
-  'piper-ald': { name: 'Piper · Aldo (hombre)', description: 'Ligera y rápida.', size_mb: 64 },
+  'piper-dave': { name: 'Piper · Dave (hombre, España)', description: 'Voz de hombre con acento de España.', size_mb: 64 },
   'piper-joe': { name: 'Piper · Joe (male)', description: 'Light and fast.', size_mb: 64, lang: 'en' },
   'piper-lessac': { name: 'Piper · Lessac (US)', description: 'Light and fast.', size_mb: 64, lang: 'en' },
   'kokoro-heart': { name: 'Kokoro · Heart (female)', description: 'More expressive.', size_mb: 334, lang: 'en' },

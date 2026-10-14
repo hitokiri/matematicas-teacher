@@ -47,7 +47,7 @@ fn rechaza_texto_vacio_o_demasiado_largo() {
 #[ignore]
 fn voz_real_genera_audio_con_piper_y_kokoro() {
     let dir = std::path::PathBuf::from(std::env::var("VOICE_TEST_DIR").expect("VOICE_TEST_DIR"));
-    for id in ["piper-claude", "kokoro-dora", "kokoro-alex", "piper-lessac", "kokoro-heart", "kokoro-michael", "piper-ald", "piper-joe"] {
+    for id in ["piper-claude", "kokoro-dora", "kokoro-alex", "piper-lessac", "kokoro-heart", "kokoro-michael", "piper-dave", "piper-joe"] {
         let v = find_voice(id).unwrap();
         let wav = engine::synthesize(&dir, v, "Dos equis más tres ye igual a seis.").unwrap();
         assert!(wav.len() > 20_000, "{id}: audio demasiado corto ({} bytes)", wav.len());
@@ -92,4 +92,18 @@ fn la_voz_del_sistema_genera_un_wav_valido_si_espeak_esta_instalado() {
     let data_len = u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize;
     assert_eq!(data_len, wav.len() - 44, "la cabecera debe tener el tamaño real");
     assert!(wav.len() > 10_000);
+}
+
+#[test]
+fn borra_los_paquetes_retirados_y_deja_los_demas() {
+    let dir = tempfile::tempdir().unwrap();
+    let retired = dir.path().join(RETIRED_DIRS[0]);
+    std::fs::create_dir_all(&retired).unwrap();
+    std::fs::write(retired.join("tokens.txt"), "x").unwrap();
+    let keep = pack_path(dir.path(), &PIPER);
+    std::fs::create_dir_all(&keep).unwrap();
+    assert_eq!(remove_retired(dir.path()), 1);
+    assert!(!retired.exists());
+    assert!(keep.exists());
+    assert_eq!(remove_retired(dir.path()), 0);
 }

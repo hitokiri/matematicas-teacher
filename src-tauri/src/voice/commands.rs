@@ -9,6 +9,9 @@ fn voices_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
 #[tauri::command]
 pub fn list_voices(app: tauri::AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let dir = voices_dir(&app)?;
+    if super::remove_retired(&dir) > 0 {
+        log::info!("Se borró una voz que ya no se ofrece");
+    }
     Ok(VOICES
         .iter()
         .map(|v| {
