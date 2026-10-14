@@ -591,7 +591,7 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - En macOS la GPU es Metal (llama.cpp la activa solo al compilar en Apple); no hay CUDA. La app no está
   firmada por Apple, así que la primera vez se abre con clic derecho → Abrir.
 - Pendiente: probar el `.dmg` en una Mac real (en GitHub no se puede ejecutar la app).
-- Version 0.4.0 (`package.json` y `src-tauri/tauri.conf.json`), para que el nombre del `.dmg` coincida con la etiqueta `v0.4.0`.
+- Version 0.4.1 (`package.json` y `src-tauri/tauri.conf.json`), para que el nombre del `.dmg` coincida con la etiqueta `v0.4.1`.
 - Falló el job de macOS: `ggml-cpu-apple_m4` se compila con `-march=armv9.2-a+dotprod+i8mm+nosve+sme` y Apple clang 15
   define `__ARM_FEATURE_SVE` sin habilitar el feature `sve` → `error: 'svexpa_f32' needs target feature sve`.
   El truco de `CFLAGS`/`CXXFLAGS` no sirve porque `cmake-rs` no lee esas variables (pasa sus propios flags).
