@@ -87,6 +87,16 @@ if (darwin) {
     if (staged.has(d)) int(['-change', dep, `@rpath/${d}`, binPath])
   }
 
+  // install_name_tool invalida la firma; en Apple Silicon un binario sin firma valida no carga.
+  // Firma ad-hoc (sin cuenta de Apple) para cada libreria y el ejecutable.
+  const sign = file => {
+    try { execFileSync('codesign', ['--force', '--sign', '-', file], { stdio: 'pipe', encoding: 'utf8' }) }
+    catch (e) { fail(`codesign ${file}\n${String(e.stderr || e.message)}`) }
+  }
+  for (const f of fs.readdirSync(stage)) if (f.endsWith('.dylib')) sign(path.join(stage, f))
+  for (const f of fs.readdirSync(path.join(stage, 'backends'))) if (f.endsWith('.dylib')) sign(path.join(stage, 'backends', f))
+  sign(binPath)
+
   // Tauri resources: origen (relativo a src-tauri) -> destino dentro de Contents/Resources
   const resources = {}
   const walk = dir => {
