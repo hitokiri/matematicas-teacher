@@ -6,10 +6,11 @@ use sherpa_onnx::{
 use std::path::Path;
 use std::sync::Mutex;
 
-use super::{pack_path, wav_bytes, Voice, MAX_TEXT_CHARS};
+use super::{pack_path, wav_bytes, Kind, Voice, MAX_TEXT_CHARS};
 
 /// Motor cargado: el modelo pesa y tarda en abrir, asi que se reutiliza mientras no cambie el paquete
-static ENGINE: Mutex<Option<(&'static str, OfflineTts)>> = Mutex::new(None);
+/// La clave es paquete + idioma (Kokoro se configura con el idioma al cargarlo)
+static ENGINE: Mutex<Option<(String, OfflineTts)>> = Mutex::new(None);
 
 fn path_str(p: &Path) -> Option<String> {
     Some(p.to_str()?.to_string())
@@ -19,8 +20,8 @@ fn config_for(voices_dir: &Path, voice: &Voice) -> Result<OfflineTtsConfig> {
     let dir = pack_path(voices_dir, voice.pack);
     let file = |name: &str| path_str(&dir.join(name));
     let threads = std::thread::available_parallelism().map(|n| n.get() as i32).unwrap_or(2).clamp(1, 4);
-    let model = match voice.pack.id {
-        "piper" => {
+    let model = match voice.pack.kind {
+        Kind::Piper => {
             let onnx = std::fs::read_dir(&dir)?
                 .flatten()
                 .map(|e| e.path())
@@ -37,7 +38,7 @@ fn config_for(voices_dir: &Path, voice: &Voice) -> Result<OfflineTtsConfig> {
                 ..Default::default()
             }
         }
-        "kokoro" => OfflineTtsModelConfig {
+        Kind::Kokoro => OfflineTtsModelConfig {
             kokoro: OfflineTtsKokoroModelConfig {
                 model: file("model.onnx"),
                 voices: file("voices.bin"),
@@ -49,13 +50,12 @@ fn config_for(voices_dir: &Path, voice: &Voice) -> Result<OfflineTtsConfig> {
                     dir.join("lexicon-us-en.txt").to_str().unwrap_or_default(),
                     dir.join("lexicon-zh.txt").to_str().unwrap_or_default()
                 )),
-                lang: Some("es".into()),
+                lang: Some(if voice.lang == "en" { "en-us" } else { "es" }.into()),
                 ..Default::default()
             },
             num_threads: threads,
             ..Default::default()
         },
-        other => return Err(anyhow!("Paquete de voz desconocido: {other}")),
     };
     Ok(OfflineTtsConfig { model, ..Default::default() })
 }
@@ -74,12 +74,13 @@ pub fn synthesize(voices_dir: &Path, voice: &Voice, text: &str) -> Result<Vec<u8
     }
 
     let mut guard = ENGINE.lock().map_err(|_| anyhow!("El motor de voz fallo antes"))?;
-    if guard.as_ref().map(|(pack, _)| *pack) != Some(voice.pack.id) {
+    let key = format!("{}:{}", voice.pack.id, voice.lang);
+    if guard.as_ref().map(|(k, _)| k.as_str()) != Some(key.as_str()) {
         *guard = None; // soltar el anterior antes de cargar otro
         log::info!("Cargando la voz «{}»", voice.pack.id);
         let tts = OfflineTts::create(&config_for(voices_dir, voice)?)
             .ok_or_else(|| anyhow!("No se pudo cargar la voz (¿faltan archivos? prueba a descargarla otra vez)"))?;
-        *guard = Some((voice.pack.id, tts));
+        *guard = Some((key, tts));
     }
     let tts = &guard.as_ref().expect("motor cargado arriba").1;
     let config = GenerationConfig { sid: voice.sid, speed: 1.0, ..Default::default() };

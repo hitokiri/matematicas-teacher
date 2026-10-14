@@ -6,6 +6,9 @@ pub struct MathProblem {
     pub text: String,
     /// Dibujo del problema como data URL (png), si el usuario lo dibujo
     pub image: Option<String>,
+    /// Idioma en que debe responder la maestra ("es" o "en"); sin dato, español
+    #[serde(default)]
+    pub language: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { useT } from '../lib/i18n'
+import { useI18n } from '../lib/i18n'
 import type { BoardScript } from '../lib/board/types'
 
 interface Message {
@@ -49,7 +49,7 @@ function Rich({ text }: { text: string }) {
 }
 
 export default function StepChat({ script, currentStep, draft }: StepChatProps) {
-  const t = useT()
+  const { t, lang } = useI18n()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -79,6 +79,7 @@ export default function StepChat({ script, currentStep, draft }: StepChatProps) 
       const answer = await invoke<string>('ask_about_steps', {
         context: boardContext(script, currentStep),
         messages: next,
+        language: lang,
       })
       setMessages([...next, { role: 'assistant', content: answer }])
     } catch (e: any) {

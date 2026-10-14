@@ -125,4 +125,18 @@ describe('VoiceSection', () => {
     await userEvent.click(radio)
     expect(onChange).toHaveBeenCalledWith('system')
   })
+
+  it('en inglés solo se ofrecen las voces en inglés', async () => {
+    localStorage.setItem('lang', 'en')
+    mockInvoke.mockImplementation(async (cmd: string) => (cmd === 'list_voices'
+      ? [
+          { ...voices[0], lang: 'es' },
+          { id: 'piper-lessac', name: 'x', description: 'x', size_mb: 64, lang: 'en', is_downloaded: false, is_downloading: false, download_progress: 0 },
+        ]
+      : undefined))
+    render(<VoiceSection voice="system" onChange={() => {}} readAloud={false} onReadAloudChange={() => {}} />)
+    expect(await screen.findByRole('radio', { name: /Piper · Lessac \(US\)/ })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Claude/ })).not.toBeInTheDocument()
+    localStorage.removeItem('lang')
+  })
 })

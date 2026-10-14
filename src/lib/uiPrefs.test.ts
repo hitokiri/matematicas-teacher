@@ -10,7 +10,7 @@ describe('preferencias de la interfaz', () => {
   })
 
   it('se guardan y se vuelven a cargar', () => {
-    const prefs = { boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4, voice: 'kokoro-dora', readAloud: true } as const
+    const prefs = { boards: 'all', autoPlay: false, showLevels: false, fontScale: 1.4, voice: 'kokoro-dora', voiceEn: 'kokoro-heart', readAloud: true } as const
     saveUiPrefs(prefs)
     expect(loadUiPrefs()).toEqual(prefs)
   })

@@ -11,6 +11,8 @@ export interface UiPrefs {
   fontScale: number
   /** Voz con que la maestra lee: 'system' (la del sistema) o el id de una voz descargada */
   voice: string
+  /** Voz con que lee cuando la app esta en ingles */
+  voiceEn: string
   /** La maestra lee en voz alta cada paso */
   readAloud: boolean
 }
@@ -18,7 +20,7 @@ export interface UiPrefs {
 /** Tamanos de letra que se pueden elegir: chica, normal, grande, muy grande */
 export const FONT_SCALES = [0.85, 1, 1.2, 1.4] as const
 
-export const DEFAULT_UI_PREFS: UiPrefs = { boards: 'one', autoPlay: true, showLevels: true, fontScale: 1, voice: 'system', readAloud: false }
+export const DEFAULT_UI_PREFS: UiPrefs = { boards: 'one', autoPlay: true, showLevels: true, fontScale: 1, voice: 'system', voiceEn: 'system', readAloud: false }
 
 const KEY = 'ui-prefs'
 
@@ -31,6 +33,7 @@ export function loadUiPrefs(): UiPrefs {
       showLevels: typeof saved.showLevels === 'boolean' ? saved.showLevels : DEFAULT_UI_PREFS.showLevels,
       fontScale: FONT_SCALES.find(f => f === saved.fontScale) ?? DEFAULT_UI_PREFS.fontScale,
       voice: typeof saved.voice === 'string' && /^[a-z0-9-]{1,40}$/.test(saved.voice) ? saved.voice : DEFAULT_UI_PREFS.voice,
+      voiceEn: typeof saved.voiceEn === 'string' && /^[a-z0-9-]{1,40}$/.test(saved.voiceEn) ? saved.voiceEn : DEFAULT_UI_PREFS.voiceEn,
       readAloud: typeof saved.readAloud === 'boolean' ? saved.readAloud : DEFAULT_UI_PREFS.readAloud,
     }
   } catch {

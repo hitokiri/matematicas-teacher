@@ -1,5 +1,8 @@
 // Convierte lo que dice la maestra (con simbolos matematicos) en texto que una voz lee bien:
-// "2x + 3y = 6" -> "dos equis más tres ye igual a seis". Es español de México.
+// "2x + 3y = 6" -> "dos equis más tres ye igual a seis" (español de México) o
+// "two x plus three y equals six" (inglés de EE. UU.).
+
+export type SpokenLang = 'es' | 'en'
 
 const UNITS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce',
   'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós',
@@ -72,7 +75,93 @@ function strip(text: string): string {
     .replace(/[“”«»"]/g, '')
 }
 
-export function spokenMath(input: string): string {
+// ---------- Inglés ----------
+
+const EN_UNITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+  'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+
+function enBelow1000(n: number): string {
+  const parts: string[] = []
+  const h = Math.floor(n / 100)
+  const rest = n % 100
+  if (h) parts.push(`${EN_UNITS[h]} hundred`)
+  if (rest) {
+    if (rest < 20) parts.push(EN_UNITS[rest])
+    else parts.push(rest % 10 ? `${EN_TENS[Math.floor(rest / 10)]}-${EN_UNITS[rest % 10]}` : EN_TENS[Math.floor(rest / 10)])
+  }
+  return parts.join(' ')
+}
+
+/** Entero no negativo en palabras en inglés (hasta 999 999 999 999; mas alla, cifra por cifra) */
+export function numberToWordsEn(n: number): string {
+  if (!Number.isInteger(n) || n < 0) return String(n)
+  if (n < 20) return EN_UNITS[n]
+  if (n >= 1e12) return String(n).split('').map(d => EN_UNITS[Number(d)]).join(' ')
+  const billions = Math.floor(n / 1e9)
+  const millions = Math.floor((n % 1e9) / 1e6)
+  const thousands = Math.floor((n % 1e6) / 1000)
+  const rest = n % 1000
+  const parts: string[] = []
+  if (billions) parts.push(`${enBelow1000(billions)} billion`)
+  if (millions) parts.push(`${enBelow1000(millions)} million`)
+  if (thousands) parts.push(`${enBelow1000(thousands)} thousand`)
+  if (rest) parts.push(enBelow1000(rest))
+  return parts.join(' ')
+}
+
+const EN_DENOMINATORS: Record<number, [string, string]> = {
+  2: ['half', 'halves'], 3: ['third', 'thirds'], 4: ['fourth', 'fourths'], 5: ['fifth', 'fifths'], 6: ['sixth', 'sixths'],
+  7: ['seventh', 'sevenths'], 8: ['eighth', 'eighths'], 9: ['ninth', 'ninths'], 10: ['tenth', 'tenths'],
+}
+
+function fractionEn(num: number, den: number): string {
+  const d = EN_DENOMINATORS[den]
+  if (!d) return `${numberToWordsEn(num)} over ${numberToWordsEn(den)}`
+  return num === 1 ? `one ${d[0]}` : `${numberToWordsEn(num)} ${d[1]}`
+}
+
+const EN_LETTERS: Record<string, string> = {
+  b: 'bee', c: 'see', d: 'dee', f: 'eff', g: 'gee', h: 'aitch', j: 'jay', k: 'kay', l: 'ell', m: 'em', n: 'en',
+  p: 'pee', q: 'cue', r: 'ar', s: 'ess', t: 'tee', u: 'you', v: 'vee', w: 'double-u', x: 'ex', y: 'why', z: 'zee',
+}
+
+const EN_SYMBOLS: Array<[RegExp, string]> = [
+  [/≤|<=/g, ' is less than or equal to '], [/≥|>=/g, ' is greater than or equal to '], [/≠/g, ' is not equal to '],
+  [/=/g, ' equals '], [/</g, ' is less than '], [/>/g, ' is greater than '],
+  [/±/g, ' plus or minus '], [/\+/g, ' plus '], [/[×·*]/g, ' times '], [/÷/g, ' divided by '],
+  [/√/g, ' the square root of '], [/π/g, ' pi '], [/∞/g, ' infinity '], [/%/g, ' percent '], [/°/g, ' degrees '],
+]
+
+function spokenMathEn(input: string): string {
+  let t = strip(input)
+
+  t = t.replace(/\^\s*\(?(-?\d+)\)?/g, (_, n) => (n === '2' ? ' squared ' : n === '3' ? ' cubed ' : ` to the power of ${n} `))
+  t = t.replace(/²/g, ' squared ').replace(/³/g, ' cubed ')
+
+  t = t.replace(/(?<![\d/])(\d+)\s*\/\s*(\d+)(?![\d/])/g, (_, a, b) => ` ${fractionEn(Number(a), Number(b))} `)
+  t = t.replace(/\//g, ' divided by ')
+
+  t = t.replace(/(\d)\s+x\s+(?=\d)/g, '$1 times ')
+
+  t = t.replace(/(\d+)\.(\d+)/g, (_, a, b) => ` ${numberToWordsEn(Number(a))} point ${b.split('').map((d: string) => EN_UNITS[Number(d)]).join(' ')} `)
+  t = t.replace(/(\d),(?=\d{3}\b)/g, '$1') // 1,234 -> 1234
+
+  t = t.replace(/[−–—-]/g, ' minus ')
+  for (const [re, word] of EN_SYMBOLS) t = t.replace(re, word)
+
+  t = t.replace(/\d+/g, m => ` ${numberToWordsEn(Number(m))} `)
+
+  // Letras sueltas (variables). "a", "I" y "o" son palabras; el resto de letras solas son variables.
+  // El apostrofe evita leer "let's" o "don't" como una letra suelta.
+  t = t.replace(/(?<![\p{L}\d'’])([b-df-hj-np-z])(?![\p{L}\d'’])/giu, (_, l: string) => EN_LETTERS[l.toLowerCase()] ?? l)
+
+  t = t.replace(/[()[\]{}]/g, ', ')
+  return t.replace(/\s+,/g, ',').replace(/,\s*,+/g, ',').replace(/\s+/g, ' ').replace(/\s+([.!?:;])/g, '$1').trim()
+}
+
+export function spokenMath(input: string, lang: SpokenLang = 'es'): string {
+  if (lang === 'en') return spokenMathEn(input)
   let t = strip(input)
 
   // Potencias
@@ -98,7 +187,7 @@ export function spokenMath(input: string): string {
   t = t.replace(/\d+/g, m => ` ${numberToWords(Number(m))} `)
 
   // Letras sueltas (variables): "y" solo si no es la conjuncion
-  t = t.replace(/(?<![\p{L}\d])([b-df-hj-np-xz])(?![\p{L}\d])/giu, (_, l: string) => LETTERS[l.toLowerCase()] ?? l)
+  t = t.replace(/(?<![\p{L}\d'’])([b-df-hj-np-xz])(?![\p{L}\d'’])/giu, (_, l: string) => LETTERS[l.toLowerCase()] ?? l)
   t = t.replace(/(?<![\p{L}\d])y(?![\p{L}\d])/gu, (m, offset: number, whole: string) => {
     const before = whole.slice(0, offset).trimEnd().split(/\s+/).pop() ?? ''
     const after = whole.slice(offset + 1).trimStart().split(/\s+/)[0] ?? ''

@@ -6,6 +6,7 @@ import type { Q } from './rational'
 import { add, div, eq, isInt, isZero, lcm, mul, neg, q, sub, value } from './rational'
 import type { BoardItem, BoardScript, BoardStep } from './types'
 import { inner, normalizeLinear, parseLinear, term, txt } from './twoVars'
+import { pick, type Lang } from './lang'
 
 interface Eq2 {
   /** a·x + b·y = c */
@@ -72,7 +73,8 @@ function exprText(p: Q, r: Q, w: string): string {
   return `${txt(p)} ${value(r) < 0 ? '−' : '+'} ${term(abs(r), w)}`
 }
 
-export function systemScript(s: LinearSystem): BoardScript {
+export function systemScript(s: LinearSystem, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   const { x, y } = s
   const [e1, e2] = s.eqs
   let n = 0
@@ -90,15 +92,22 @@ export function systemScript(s: LinearSystem): BoardScript {
   const show = (t: string) => t.replace(/\s*=\s*/, ' = ').replace(/-/g, '−')
 
   steps.push({
-    say: `Son dos ecuaciones con las mismas dos letras, la ${x} y la ${y}. Buscamos UNA sola pareja de números ` +
-      `que cumpla las dos ecuaciones a la vez. A la primera la llamamos (1) y a la segunda (2).`,
+    say: T(
+      `Son dos ecuaciones con las mismas dos letras, la ${x} y la ${y}. Buscamos UNA sola pareja de números ` +
+        `que cumpla las dos ecuaciones a la vez. A la primera la llamamos (1) y a la segunda (2).`,
+      `These are two equations with the same two letters, ${x} and ${y}. We are looking for ONE pair of numbers ` +
+        `that works in both equations at the same time. We call the first one (1) and the second one (2).`,
+    ),
     ...write(`(1)  ${show(e1.text)}`, 'op'),
   })
-  steps.push({ say: 'Esta es la ecuación (2).', ...write(`(2)  ${show(e2.text)}`, 'op') })
+  steps.push({ say: T('Esta es la ecuación (2).', 'This is equation (2).'), ...write(`(2)  ${show(e2.text)}`, 'op') })
   s.eqs.forEach((e, i) => {
     if (norm(eqText(e)) !== norm(e.text)) {
       steps.push({
-        say: `Acomodamos la ecuación (${i + 1}): las letras de un lado y el número solo del otro.`,
+        say: T(
+          `Acomodamos la ecuación (${i + 1}): las letras de un lado y el número solo del otro.`,
+          `Let's tidy up equation (${i + 1}): the letters on one side and the number alone on the other.`,
+        ),
         ...write(`(${i + 1})  ${eqText(e)}`),
       })
     }
@@ -112,8 +121,14 @@ export function systemScript(s: LinearSystem): BoardScript {
       r = sub(c, p)
       steps.push({
         say: value(p) > 0
-          ? `Junto a la ${v} hay un ${pa}. Lo quitamos de los dos lados para dejar la ${v} más sola.`
-          : `A la ${v} le están restando ${pa}. Sumamos ${pa} en los dos lados para cancelarlo.`,
+          ? T(
+            `Junto a la ${v} hay un ${pa}. Lo quitamos de los dos lados para dejar la ${v} más sola.`,
+            `Next to ${v} there is a ${pa}. We take it away from both sides to get ${v} more on its own.`,
+          )
+          : T(
+            `A la ${v} le están restando ${pa}. Sumamos ${pa} en los dos lados para cancelarlo.`,
+            `${pa} is being subtracted from ${v}. We add ${pa} to both sides to cancel it.`,
+          ),
         ...write(`${term(k, v)} = ${txt(c)} ${value(p) > 0 ? '−' : '+'} ${pa}`),
       })
       steps.push({
@@ -125,14 +140,23 @@ export function systemScript(s: LinearSystem): BoardScript {
     if (!eq(k, ONE)) {
       steps.push({
         say: eq(k, neg(ONE))
-          ? `Tenemos −${v} = ${txt(r)}. Cambiamos el signo de los dos lados: ${v} = ${txt(val)}.`
+          ? T(
+            `Tenemos −${v} = ${txt(r)}. Cambiamos el signo de los dos lados: ${v} = ${txt(val)}.`,
+            `We have −${v} = ${txt(r)}. We change the sign on both sides: ${v} = ${txt(val)}.`,
+          )
           : value(k) < 0
-            ? `La ${v} está multiplicada por ${txt(k)}. Dividimos los dos lados entre ${inner(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`
-            : `Hay ${txt(k)} veces la ${v}. Repartimos ${txt(r)} entre ${txt(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`,
+            ? T(
+              `La ${v} está multiplicada por ${txt(k)}. Dividimos los dos lados entre ${inner(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`,
+              `${v} is multiplied by ${txt(k)}. We divide both sides by ${inner(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`,
+            )
+            : T(
+              `Hay ${txt(k)} veces la ${v}. Repartimos ${txt(r)} entre ${txt(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`,
+              `There are ${txt(k)} times ${v}. We share ${txt(r)} among ${txt(k)}: ${txt(r)} ÷ ${inner(k)} = ${txt(val)}.`,
+            ),
         ...write(eq(k, neg(ONE)) ? `${v} = ${txt(val)}` : `${v} = ${txt(r)} ÷ ${inner(k)} = ${txt(val)}`, 'result'),
       })
     } else if (isZero(p)) {
-      steps.push({ say: `¡Ya sabemos cuánto vale la ${v}!`, ...write(`${v} = ${txt(val)}`, 'result') })
+      steps.push({ say: T(`¡Ya sabemos cuánto vale la ${v}!`, `Now we know what ${v} is worth!`), ...write(`${v} = ${txt(val)}`, 'result') })
     }
     return val
   }
@@ -142,15 +166,21 @@ export function systemScript(s: LinearSystem): BoardScript {
     const same = eq(left, right)
     steps.push({
       say: same
-        ? `Las letras se fueron y quedó ${txt(left)} = ${txt(right)}, que siempre es cierto: las dos ecuaciones son la misma recta y hay muchísimas parejas.`
-        : `Las letras se fueron y quedó ${txt(left)} = ${txt(right)}, que nunca es cierto: no hay ninguna pareja que cumpla las dos.`,
-      ...write(`${txt(left)} = ${txt(right)}  ${same ? '✔ siempre' : '✗ nunca'}`, 'result'),
+        ? T(
+          `Las letras se fueron y quedó ${txt(left)} = ${txt(right)}, que siempre es cierto: las dos ecuaciones son la misma recta y hay muchísimas parejas.`,
+          `The letters disappeared and we are left with ${txt(left)} = ${txt(right)}, which is always true: the two equations are the same line and there are infinitely many pairs.`,
+        )
+        : T(
+          `Las letras se fueron y quedó ${txt(left)} = ${txt(right)}, que nunca es cierto: no hay ninguna pareja que cumpla las dos.`,
+          `The letters disappeared and we are left with ${txt(left)} = ${txt(right)}, which is never true: no pair works in both equations.`,
+        ),
+      ...write(`${txt(left)} = ${txt(right)}  ${same ? T('✔ siempre', '✔ always') : T('✗ nunca', '✗ never')}`, 'result'),
     })
-    return finish(same ? 'Tiene infinitas soluciones' : 'No tiene solución')
+    return finish(same ? T('Tiene infinitas soluciones', 'It has infinitely many solutions') : T('No tiene solución', 'It has no solution'))
   }
 
   const finish = (answer: string): BoardScript => {
-    steps.push({ say: `¡Listo! ${answer}. 🎉`, ...write(`✔ ${answer}`, 'result') })
+    steps.push({ say: T(`¡Listo! ${answer}. 🎉`, `All done! ${answer}. 🎉`), ...write(`✔ ${answer}`, 'result') })
     const longest = Math.max(...steps.flatMap(st => st.add).map(i => (i.kind === 'text' ? i.text.length : 0)), 10)
     return { title: s.text, cols: Math.ceil(longest / 1.6) + 1, rows: row, steps, answer }
   }
@@ -163,8 +193,12 @@ export function systemScript(s: LinearSystem): BoardScript {
       if (!isZero(e.a)) parts.push(`${value(e.a) < 0 ? '−' : ''}${times(e.a, xv)}`)
       if (!isZero(e.b)) parts.push(parts.length ? `${value(e.b) < 0 ? '−' : '+'} ${times(e.b, yv)}` : `${value(e.b) < 0 ? '−' : ''}${times(e.b, yv)}`)
       steps.push({
-        say: `Comprobamos en la ecuación (${i + 1}): cambiamos la ${x} por ${txt(xv)} y la ${y} por ${txt(yv)}. ` +
-          `Da ${txt(e.c)}, igual que del otro lado. ¡Se cumple! ✔`,
+        say: T(
+          `Comprobamos en la ecuación (${i + 1}): cambiamos la ${x} por ${txt(xv)} y la ${y} por ${txt(yv)}. ` +
+            `Da ${txt(e.c)}, igual que del otro lado. ¡Se cumple! ✔`,
+          `Let's check in equation (${i + 1}): we replace ${x} with ${txt(xv)} and ${y} with ${txt(yv)}. ` +
+            `We get ${txt(e.c)}, the same as the other side. It works! ✔`,
+        ),
         ...write(`(${i + 1})  ${parts.join(' ')} = ${txt(e.c)}  ✔`, 'muted'),
       })
     })
@@ -187,10 +221,15 @@ export function systemScript(s: LinearSystem): BoardScript {
     const C = E.c
 
     steps.push({
-      say: `Usamos el método de sustitución. ¿Por qué? Porque en la ecuación (${i + 1}) la ${u} ` +
-        `${eq(A, ONE) ? 'está sola, sin ningún número delante' : 'solo tiene un signo menos delante'}: ` +
-        `es la más fácil de despejar porque no hay que dividir.`,
-      ...write(`Despejamos la ${u} de la ecuación (${i + 1}): no hay que dividir`, 'muted'),
+      say: T(
+        `Usamos el método de sustitución. ¿Por qué? Porque en la ecuación (${i + 1}) la ${u} ` +
+          `${eq(A, ONE) ? 'está sola, sin ningún número delante' : 'solo tiene un signo menos delante'}: ` +
+          `es la más fácil de despejar porque no hay que dividir.`,
+        `We use the substitution method. Why? Because in equation (${i + 1}) ${u} ` +
+          `${eq(A, ONE) ? 'is alone, with no number in front' : 'only has a minus sign in front'}: ` +
+          `it is the easiest to solve for because we do not have to divide.`,
+      ),
+      ...write(T(`Despejamos la ${u} de la ecuación (${i + 1}): no hay que dividir`, `Solve for ${u} in equation (${i + 1}): no dividing needed`), 'muted'),
     })
     // A·u + B·w = C  ->  u = p + r·w
     const p = div(C, A)
@@ -200,18 +239,27 @@ export function systemScript(s: LinearSystem): BoardScript {
       const bw = term(abs(B), w)
       steps.push({
         say: value(B) > 0
-          ? `Para dejar la ${u} sola quitamos ${bw} de los dos lados de la ecuación (${i + 1}).`
-          : `Para dejar la ${u} sola sumamos ${bw} en los dos lados de la ecuación (${i + 1}).`,
+          ? T(
+            `Para dejar la ${u} sola quitamos ${bw} de los dos lados de la ecuación (${i + 1}).`,
+            `To get ${u} alone we take away ${bw} from both sides of equation (${i + 1}).`,
+          )
+          : T(
+            `Para dejar la ${u} sola sumamos ${bw} en los dos lados de la ecuación (${i + 1}).`,
+            `To get ${u} alone we add ${bw} to both sides of equation (${i + 1}).`,
+          ),
         ...write(`${term(A, u)} = ${exprText(C, neg(B), w)}`, eq(A, ONE) ? 'result' : 'line-text'),
       })
     }
     if (eq(A, neg(ONE))) {
       steps.push({
-        say: `La ${u} tiene signo menos. Cambiamos el signo de todo (multiplicamos los dos lados por −1).`,
+        say: T(
+          `La ${u} tiene signo menos. Cambiamos el signo de todo (multiplicamos los dos lados por −1).`,
+          `${u} has a minus sign. We change the sign of everything (we multiply both sides by −1).`,
+        ),
         ...write(`${u} = ${expr}`, 'result'),
       })
     } else if (isZero(B)) {
-      steps.push({ say: `La ecuación (${i + 1}) ya nos dice cuánto vale la ${u}.`, ...write(`${u} = ${expr}`, 'result') })
+      steps.push({ say: T(`La ecuación (${i + 1}) ya nos dice cuánto vale la ${u}.`, `Equation (${i + 1}) already tells us what ${u} is worth.`), ...write(`${u} = ${expr}`, 'result') })
     }
 
     const A2 = coefOf(O, u)
@@ -221,7 +269,10 @@ export function systemScript(s: LinearSystem): BoardScript {
     let P: Q
     if (isZero(A2)) {
       steps.push({
-        say: `La ecuación (${j}) no tiene ${u}, así que de ahí sacamos la ${w} directamente.`,
+        say: T(
+          `La ecuación (${j}) no tiene ${u}, así que de ahí sacamos la ${w} directamente.`,
+          `Equation (${j}) has no ${u}, so we can get ${w} from it directly.`,
+        ),
         ...write(`(${j})  ${sum([[B2, w]])} = ${txt(C2)}`),
       })
       K = B2
@@ -230,8 +281,12 @@ export function systemScript(s: LinearSystem): BoardScript {
       const pre = eq(A2, ONE) ? '' : eq(A2, neg(ONE)) ? '−' : txt(A2)
       const rest = isZero(B2) ? '' : ` ${value(B2) < 0 ? '−' : '+'} ${term(abs(B2), w)}`
       steps.push({
-        say: `Ahora, en la ecuación (${j}), cambiamos la ${u} por (${expr}), porque valen lo mismo. ` +
-          `Así la ecuación (${j}) se queda solo con la ${w} y la podemos resolver.`,
+        say: T(
+          `Ahora, en la ecuación (${j}), cambiamos la ${u} por (${expr}), porque valen lo mismo. ` +
+            `Así la ecuación (${j}) se queda solo con la ${w} y la podemos resolver.`,
+          `Now, in equation (${j}), we replace ${u} with (${expr}), because they are worth the same. ` +
+            `That way equation (${j}) only has ${w} left and we can solve it.`,
+        ),
         ...write(`(${j})  ${pre}(${expr})${rest} = ${txt(C2)}`),
       })
       const A2p = mul(A2, p)
@@ -239,9 +294,16 @@ export function systemScript(s: LinearSystem): BoardScript {
       if (!isZero(r)) {
         steps.push({
           say: eq(A2, ONE)
-            ? `Quitamos el paréntesis: como no tiene nada delante, todo queda igual.`
-            : `Quitamos el paréntesis: el ${txt(A2)} de afuera multiplica a cada cosa de adentro. ` +
-              `${txt(A2)} × ${inner(p)} = ${txt(A2p)} y ${txt(A2)} × ${inner(r)}${w} = ${term(A2r, w)}.`,
+            ? T(
+              `Quitamos el paréntesis: como no tiene nada delante, todo queda igual.`,
+              `We remove the parentheses: since nothing is in front of them, everything stays the same.`,
+            )
+            : T(
+              `Quitamos el paréntesis: el ${txt(A2)} de afuera multiplica a cada cosa de adentro. ` +
+                `${txt(A2)} × ${inner(p)} = ${txt(A2p)} y ${txt(A2)} × ${inner(r)}${w} = ${term(A2r, w)}.`,
+              `We remove the parentheses: the ${txt(A2)} outside multiplies everything inside. ` +
+                `${txt(A2)} × ${inner(p)} = ${txt(A2p)} and ${txt(A2)} × ${inner(r)}${w} = ${term(A2r, w)}.`,
+            ),
           ...write(`${sum([[A2p, ''], [A2r, w], [B2, w]])} = ${txt(C2)}`),
         })
       } else {
@@ -254,7 +316,10 @@ export function systemScript(s: LinearSystem): BoardScript {
       P = A2p
       if (!isZero(r) && !isZero(B2)) {
         steps.push({
-          say: `Juntamos las ${w}: ${term(A2r, w)} y ${term(B2, w)} dan ${isZero(K) ? '0' : term(K, w)}.`,
+          say: T(
+            `Juntamos las ${w}: ${term(A2r, w)} y ${term(B2, w)} dan ${isZero(K) ? '0' : term(K, w)}.`,
+            `We put the ${w} together: ${term(A2r, w)} and ${term(B2, w)} make ${isZero(K) ? '0' : term(K, w)}.`,
+          ),
           ...write(`${sum([[P, ''], [K, w]])} = ${txt(C2)}`),
         })
       }
@@ -265,23 +330,29 @@ export function systemScript(s: LinearSystem): BoardScript {
     // Regresar a la u despejada
     let uv = p
     if (isZero(r)) {
-      steps.push({ say: `La ${u} ya la teníamos: ${u} = ${txt(p)}.`, ...write(`${u} = ${txt(p)}`, 'result') })
+      steps.push({ say: T(`La ${u} ya la teníamos: ${u} = ${txt(p)}.`, `We already had ${u}: ${u} = ${txt(p)}.`), ...write(`${u} = ${txt(p)}`, 'result') })
     } else {
       const t = mul(r, wv)
       uv = add(p, t)
       const one = eq(abs(r), ONE)
       const head = isZero(p) ? (value(r) < 0 ? '−' : '') : `${txt(p)} ${value(r) < 0 ? '−' : '+'} `
       steps.push({
-        say: `Ya sabemos que ${w} = ${txt(wv)}. Lo ponemos en ${u} = ${expr} para sacar la ${u}.`,
+        say: T(
+          `Ya sabemos que ${w} = ${txt(wv)}. Lo ponemos en ${u} = ${expr} para sacar la ${u}.`,
+          `We know that ${w} = ${txt(wv)}. We put it into ${u} = ${expr} to find ${u}.`,
+        ),
         ...write(`${u} = ${head}${one ? inner(wv) : `${txt(abs(r))} × ${inner(wv)}`}`),
       })
       if (!isZero(p) && !one) {
         steps.push({
-          say: `Primero la multiplicación: ${txt(abs(r))} × ${inner(wv)} = ${txt(abs(t))}.`,
+          say: T(
+            `Primero la multiplicación: ${txt(abs(r))} × ${inner(wv)} = ${txt(abs(t))}.`,
+            `Multiplication first: ${txt(abs(r))} × ${inner(wv)} = ${txt(abs(t))}.`,
+          ),
           ...write(`${u} = ${txt(p)} ${value(r) < 0 ? '−' : '+'} ${inner(abs(t))}`),
         })
       }
-      steps.push({ say: `Entonces ${u} = ${txt(uv)}.`, ...write(`${u} = ${txt(uv)}`, 'result') })
+      steps.push({ say: T(`Entonces ${u} = ${txt(uv)}.`, `So ${u} = ${txt(uv)}.`), ...write(`${u} = ${txt(uv)}`, 'result') })
     }
     return u === x ? check(uv, wv) : check(wv, uv)
   }
@@ -295,18 +366,27 @@ export function systemScript(s: LinearSystem): BoardScript {
   const k2 = coefOf(e2, v)
   const L = Math.min(lx, ly)
   steps.push({
-    say: `Ninguna letra está sola, así que usamos el método de reducción: hacemos que la ${v} tenga el mismo número ` +
-      `en las dos ecuaciones; así, al restarlas o sumarlas, la ${v} desaparece. Escogemos la ${v} porque sus números ` +
-      `(${txt(abs(k1))} y ${txt(abs(k2))}) son los que llegan más fácil a un número igual.`,
-    ...write(`Reducción: hacemos que la ${v} tenga el mismo número`, 'muted'),
+    say: T(
+      `Ninguna letra está sola, así que usamos el método de reducción: hacemos que la ${v} tenga el mismo número ` +
+        `en las dos ecuaciones; así, al restarlas o sumarlas, la ${v} desaparece. Escogemos la ${v} porque sus números ` +
+        `(${txt(abs(k1))} y ${txt(abs(k2))}) son los que llegan más fácil a un número igual.`,
+      `No letter is alone, so we use the elimination method: we make ${v} have the same number ` +
+        `in both equations; that way, when we subtract or add them, ${v} disappears. We pick ${v} because its numbers ` +
+        `(${txt(abs(k1))} and ${txt(abs(k2))}) are the easiest to turn into the same number.`,
+    ),
+    ...write(T(`Reducción: hacemos que la ${v} tenga el mismo número`, `Elimination: make the ${v} number the same`), 'muted'),
   })
   const m1 = q(L / Math.abs(value(k1)))
   const m2 = q(L / Math.abs(value(k2)))
   if (!eq(abs(k1), abs(k2))) {
     steps.push({
-      say: `¿Qué número está en la tabla del ${txt(abs(k1))} y en la del ${txt(abs(k2))}? El más pequeño es ${L}: ` +
-        `${txt(abs(k1))} × ${txt(m1)} = ${L} y ${txt(abs(k2))} × ${txt(m2)} = ${L}.`,
-      ...write(`mcm(${txt(abs(k1))}, ${txt(abs(k2))}) = ${L}`, 'muted'),
+      say: T(
+        `¿Qué número está en la tabla del ${txt(abs(k1))} y en la del ${txt(abs(k2))}? El más pequeño es ${L}: ` +
+          `${txt(abs(k1))} × ${txt(m1)} = ${L} y ${txt(abs(k2))} × ${txt(m2)} = ${L}.`,
+        `Which number is in both the ${txt(abs(k1))} times table and the ${txt(abs(k2))} times table? The smallest is ${L}: ` +
+          `${txt(abs(k1))} × ${txt(m1)} = ${L} and ${txt(abs(k2))} × ${txt(m2)} = ${L}.`,
+      ),
+      ...write(`${T('mcm', 'LCM')}(${txt(abs(k1))}, ${txt(abs(k2))}) = ${L}`, 'muted'),
     })
   }
   const scale = (e: Eq2, m: Q): Eq2 => ({ a: mul(e.a, m), b: mul(e.b, m), c: mul(e.c, m), text: '' })
@@ -315,7 +395,10 @@ export function systemScript(s: LinearSystem): BoardScript {
   ;[[1, m1, s1], [2, m2, s2]].forEach(([i, m, se]) => {
     if (eq(m as Q, ONE)) return
     steps.push({
-      say: `Multiplicamos toda la ecuación (${i}) por ${txt(m as Q)}: cada número de los dos lados, así sigue en equilibrio.`,
+      say: T(
+        `Multiplicamos toda la ecuación (${i}) por ${txt(m as Q)}: cada número de los dos lados, así sigue en equilibrio.`,
+        `We multiply the whole equation (${i}) by ${txt(m as Q)}: every number on both sides, so it stays balanced.`,
+      ),
       ...write(`(${i}) × ${txt(m as Q)}:  ${eqText(se as Eq2)}`),
     })
   })
@@ -330,15 +413,26 @@ export function systemScript(s: LinearSystem): BoardScript {
   const lhs = (e: Eq2) => sum([[e.a, x], [e.b, y]])
   steps.push({
     say: sameSign
-      ? `Las dos tienen ${term(coefOf(s1, v), v)}, con el mismo signo. Si restamos (${fi}) − (${gi}), la ${v} se va.` +
-        (flip ? ` Restamos al revés para que la ${u} quede positiva.` : '')
-      : `Una tiene ${term(coefOf(s1, v), v)} y la otra ${term(coefOf(s2, v), v)}: signos distintos. Si las sumamos, la ${v} se va.`,
+      ? T(
+        `Las dos tienen ${term(coefOf(s1, v), v)}, con el mismo signo. Si restamos (${fi}) − (${gi}), la ${v} se va.` +
+          (flip ? ` Restamos al revés para que la ${u} quede positiva.` : ''),
+        `Both have ${term(coefOf(s1, v), v)}, with the same sign. If we subtract (${fi}) − (${gi}), ${v} goes away.` +
+          (flip ? ` We subtract the other way around so that ${u} stays positive.` : ''),
+      )
+      : T(
+        `Una tiene ${term(coefOf(s1, v), v)} y la otra ${term(coefOf(s2, v), v)}: signos distintos. Si las sumamos, la ${v} se va.`,
+        `One has ${term(coefOf(s1, v), v)} and the other ${term(coefOf(s2, v), v)}: different signs. If we add them, ${v} goes away.`,
+      ),
     ...write(`(${lhs(f)}) ${op} (${lhs(g)}) = ${txt(f.c)} ${op} ${inner(g.c)}`),
   })
   if (isZero(K)) return degenerate(ZERO, R)
   steps.push({
-    say: `La ${v} se cancela. Con la ${u}: ${txt(coefOf(f, u))} ${op} ${inner(coefOf(g, u))} = ${txt(K)}. ` +
-      `Del otro lado: ${txt(f.c)} ${op} ${inner(g.c)} = ${txt(R)}.`,
+    say: T(
+      `La ${v} se cancela. Con la ${u}: ${txt(coefOf(f, u))} ${op} ${inner(coefOf(g, u))} = ${txt(K)}. ` +
+        `Del otro lado: ${txt(f.c)} ${op} ${inner(g.c)} = ${txt(R)}.`,
+      `${v} cancels out. With ${u}: ${txt(coefOf(f, u))} ${op} ${inner(coefOf(g, u))} = ${txt(K)}. ` +
+        `On the other side: ${txt(f.c)} ${op} ${inner(g.c)} = ${txt(R)}.`,
+    ),
     ...write(`${term(K, u)} = ${txt(R)}`, eq(K, ONE) ? 'result' : 'line-text'),
   })
   const uv = solveOne(K, u, ZERO, R)
@@ -350,7 +444,10 @@ export function systemScript(s: LinearSystem): BoardScript {
   const cv = coefOf(E, v)
   const known = mul(cu, uv)
   steps.push({
-    say: `Ya sabemos que ${u} = ${txt(uv)}. Lo ponemos en la ecuación (${bi + 1}) para sacar la ${v}.`,
+    say: T(
+      `Ya sabemos que ${u} = ${txt(uv)}. Lo ponemos en la ecuación (${bi + 1}) para sacar la ${v}.`,
+      `We know that ${u} = ${txt(uv)}. We put it into equation (${bi + 1}) to find ${v}.`,
+    ),
     ...write(`(${bi + 1})  ${isZero(cu) ? '' : `${txt(cu)} × ${inner(uv)} ${value(cv) < 0 ? '−' : '+'} `}${isZero(cu) ? term(cv, v) : term(abs(cv), v)} = ${txt(E.c)}`),
   })
   if (!isZero(cu)) {

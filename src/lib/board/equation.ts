@@ -5,6 +5,7 @@ import { fromLatex } from './expression'
 import type { Q } from './rational'
 import { add, div, eq, isInt, isZero, mul, neg, q, show, signed, sub, value } from './rational'
 import type { BoardItem, BoardScript, BoardStep, PanItem, Visual } from './types'
+import { pick, type Lang } from './lang'
 
 /** Expresion lineal: a·x + b */
 interface Lin {
@@ -165,7 +166,8 @@ function pan(l: Lin, v: string, opts: { removeX?: Q; removeUnits?: Q; groups?: n
 
 const balance = (left: PanItem[], right: PanItem[], groups?: number): Visual => ({ kind: 'balance', left, right, groups })
 
-export function equationScript(e: Equation): BoardScript {
+export function equationScript(e: Equation, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   const v = e.variable
   let n = 0
   let row = 0
@@ -182,15 +184,22 @@ export function equationScript(e: Equation): BoardScript {
   const eqText = () => `${showLin(L, v)} = ${showLin(R, v)}`
 
   steps.push({
-    say: `Una ecuación es como una balanza en equilibrio: los dos lados pesan lo mismo. ` +
-      `La ${v} es una bolsa con un peso que no conocemos. ¡Vamos a descubrir cuánto pesa!`,
+    say: T(
+      `Una ecuación es como una balanza en equilibrio: los dos lados pesan lo mismo. ` +
+        `La ${v} es una bolsa con un peso que no conocemos. ¡Vamos a descubrir cuánto pesa!`,
+      `An equation is like a balance scale that is level: both sides weigh the same. ` +
+        `${v} is a bag with a weight we do not know. Let's find out how much it weighs!`,
+    ),
     add: [line(e.text.replace(/\s*=\s*/, ' = '), 'op')],
     visual: e.hadParens ? undefined : balance(pan(L, v), pan(R, v)),
   })
 
   if (e.hadParens) {
     steps.push({
-      say: 'Primero quitamos el paréntesis: el número de afuera multiplica a cada cosa de adentro.',
+      say: T(
+        'Primero quitamos el paréntesis: el número de afuera multiplica a cada cosa de adentro.',
+        'First we remove the parentheses: the number outside multiplies everything inside.',
+      ),
       ...write(eqText()),
       visual: balance(pan(L, v), pan(R, v)),
     })
@@ -200,7 +209,10 @@ export function equationScript(e: Equation): BoardScript {
   if (value(L.a) < value(R.a)) {
     ;[L, R] = [R, L]
     steps.push({
-      say: `Hay más bolsas ${v} del lado derecho, así que volteamos la balanza: es lo mismo leerla al revés.`,
+      say: T(
+        `Hay más bolsas ${v} del lado derecho, así que volteamos la balanza: es lo mismo leerla al revés.`,
+        `There are more ${v} bags on the right side, so we flip the balance scale: reading it backwards is the same thing.`,
+      ),
       ...write(eqText()),
       visual: balance(pan(L, v), pan(R, v)),
     })
@@ -211,24 +223,33 @@ export function equationScript(e: Equation): BoardScript {
     const c = R.a
     const what = showLin(lin(c, ZERO), v)
     steps.push({
-      say: `Hay bolsas ${v} en los dos lados. Quitamos ${what} de cada lado, así la balanza sigue en equilibrio.`,
+      say: T(
+        `Hay bolsas ${v} en los dos lados. Quitamos ${what} de cada lado, así la balanza sigue en equilibrio.`,
+        `There are ${v} bags on both sides. We take away ${what} from each side, so the balance scale stays level.`,
+      ),
       ...write(`${showLin(L, v)} − ${what} = ${showLin(R, v)} − ${what}`),
       visual: balance(pan(L, v, { removeX: c }), pan(R, v, { removeX: c })),
     })
     L = lin(sub(L.a, c), L.b)
     R = lin(ZERO, R.b)
-    steps.push({ say: `Nos queda ${eqText()}.`, ...write(eqText()), visual: balance(pan(L, v), pan(R, v)) })
+    steps.push({ say: T(`Nos queda ${eqText()}.`, `We are left with ${eqText()}.`), ...write(eqText()), visual: balance(pan(L, v), pan(R, v)) })
   }
 
   if (isZero(L.a)) {
     const same = eq(L.b, R.b)
     steps.push({
       say: same
-        ? `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que siempre es cierto: cualquier número sirve.`
-        : `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que nunca es cierto: la ecuación no tiene solución.`,
-      ...write(`${show(L.b)} = ${show(R.b)}  ${same ? '✔ siempre' : '✗ nunca'}`, 'result'),
+        ? T(
+            `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que siempre es cierto: cualquier número sirve.`,
+            `The bags are gone and we are left with ${show(L.b)} = ${show(R.b)}, which is always true: any number works.`,
+          )
+        : T(
+            `Las bolsas se fueron y quedó ${show(L.b)} = ${show(R.b)}, que nunca es cierto: la ecuación no tiene solución.`,
+            `The bags are gone and we are left with ${show(L.b)} = ${show(R.b)}, which is never true: the equation has no solution.`,
+          ),
+      ...write(`${show(L.b)} = ${show(R.b)}  ${same ? T('✔ siempre', '✔ always') : T('✗ nunca', '✗ never')}`, 'result'),
     })
-    return finish(steps, row, same ? 'Cualquier número' : 'No tiene solución', e)
+    return finish(steps, row, same ? T('Cualquier número', 'Any number') : T('No tiene solución', 'No solution'), e, lang)
   }
 
   // Quitar el numero que acompana a las x
@@ -238,8 +259,14 @@ export function equationScript(e: Equation): BoardScript {
     const abs = show(positive ? b : neg(b))
     steps.push({
       say: positive
-        ? `Junto a las bolsas hay ${abs}. Quitamos ${abs} de cada lado de la balanza: sigue en equilibrio y la ${v} queda más sola.`
-        : `Del lado de la ${v} están restando ${abs}. Sumamos ${abs} a los dos lados para cancelarlo.`,
+        ? T(
+            `Junto a las bolsas hay ${abs}. Quitamos ${abs} de cada lado de la balanza: sigue en equilibrio y la ${v} queda más sola.`,
+            `Next to the bags there is ${abs}. We take away ${abs} from each side of the balance scale: it stays level and ${v} ends up more on its own.`,
+          )
+        : T(
+            `Del lado de la ${v} están restando ${abs}. Sumamos ${abs} a los dos lados para cancelarlo.`,
+            `On the side with ${v}, ${abs} is being subtracted. We add ${abs} to both sides to cancel it.`,
+          ),
       ...write(`${showLin(L, v)} ${positive ? '−' : '+'} ${abs} = ${showLin(R, v)} ${positive ? '−' : '+'} ${abs}`),
       visual: positive
         ? balance(pan(L, v, { removeUnits: b }), pan(R, v, { removeUnits: b }))
@@ -247,7 +274,7 @@ export function equationScript(e: Equation): BoardScript {
     })
     L = lin(L.a, ZERO)
     R = lin(ZERO, sub(R.b, b))
-    steps.push({ say: `Nos queda ${eqText()}.`, ...write(eqText()), visual: balance(pan(L, v), pan(R, v)) })
+    steps.push({ say: T(`Nos queda ${eqText()}.`, `We are left with ${eqText()}.`), ...write(eqText()), visual: balance(pan(L, v), pan(R, v)) })
   }
 
   // Repartir entre el numero de bolsas
@@ -258,18 +285,24 @@ export function equationScript(e: Equation): BoardScript {
     let say: string
     let text: string
     if (isInt(a) && value(a) > 0) {
-      say = `Ahora ${show(a)} bolsas ${v} pesan ${show(total)}. Repartimos ${show(total)} en ${show(a)} partes iguales: cada bolsa pesa ${show(result)}.`
+      say = T(
+        `Ahora ${show(a)} bolsas ${v} pesan ${show(total)}. Repartimos ${show(total)} en ${show(a)} partes iguales: cada bolsa pesa ${show(result)}.`,
+        `Now ${show(a)} ${v} bags weigh ${show(total)}. We share ${show(total)} into ${show(a)} equal parts: each bag weighs ${show(result)}.`,
+      )
       text = `${showLin(L, v)} ÷ ${show(a)} = ${show(total)} ÷ ${show(a)}`
     } else {
       const inv = div(q(1), a)
-      say = `La ${v} está multiplicada por ${show(a)}. Multiplicamos los dos lados por ${show(inv)} para dejarla sola.`
+      say = T(
+        `La ${v} está multiplicada por ${show(a)}. Multiplicamos los dos lados por ${show(inv)} para dejarla sola.`,
+        `${v} is multiplied by ${show(a)}. We multiply both sides by ${show(inv)} to get it on its own.`,
+      )
       text = `${showLin(L, v)} × ${show(inv)} = ${show(total)} × ${show(inv)}`
     }
     const groups = isInt(a) && value(a) > 1 && value(a) <= MAX_ITEMS ? value(a) : undefined
     steps.push({ say, ...write(text), visual: balance(pan(L, v, { groups }), pan(R, v, { groups }), groups) })
     L = lin(q(1), ZERO)
     R = lin(ZERO, result)
-    steps.push({ say: `¡Encontramos el peso de la bolsa! ${eqText()}.`, ...write(eqText(), 'result'), visual: balance(pan(L, v), pan(R, v)) })
+    steps.push({ say: T(`¡Encontramos el peso de la bolsa! ${eqText()}.`, `We found the weight of the bag! ${eqText()}.`), ...write(eqText(), 'result'), visual: balance(pan(L, v), pan(R, v)) })
   }
 
   // Comprobar en la ecuacion original
@@ -284,15 +317,19 @@ export function equationScript(e: Equation): BoardScript {
   const lv = evalSide(e.left)
   const rv = evalSide(e.right)
   steps.push({
-    say: `Comprobamos: cambiamos la ${v} por ${show(x)} en la ecuación del principio. ` +
-      `${sideText(e.left)} = ${show(lv)} y del otro lado ${show(rv)}. ¡Pesan lo mismo! ✔`,
+    say: T(
+      `Comprobamos: cambiamos la ${v} por ${show(x)} en la ecuación del principio. ` +
+        `${sideText(e.left)} = ${show(lv)} y del otro lado ${show(rv)}. ¡Pesan lo mismo! ✔`,
+      `Let's check: we replace ${v} with ${show(x)} in the original equation. ` +
+        `${sideText(e.left)} = ${show(lv)} and on the other side ${show(rv)}. They weigh the same! ✔`,
+    ),
     ...write(`${sideText(e.left)} = ${sideText(e.right)}  ✔`.replace(/-/g, '−'), 'muted'),
   })
-  return finish(steps, row, `${v} = ${show(x)}`, e)
+  return finish(steps, row, `${v} = ${show(x)}`, e, lang)
 }
 
-function finish(steps: BoardStep[], rows: number, answer: string, e: Equation): BoardScript {
-  steps.push({ say: `¡Listo! ${answer}. 🎉`, add: [] })
+function finish(steps: BoardStep[], rows: number, answer: string, e: Equation, lang: Lang): BoardScript {
+  steps.push({ say: pick(lang)(`¡Listo! ${answer}. 🎉`, `Done! ${answer}. 🎉`), add: [] })
   const longest = Math.max(...steps.flatMap(s => s.add).map(i => (i.kind === 'text' ? i.text.length : 0)), 10)
   return { title: e.text, cols: Math.ceil(longest / 1.6) + 1, rows: Math.max(rows, 1), steps, answer }
 }

@@ -4,7 +4,7 @@ use crate::ai::limits::{check_image, check_text, MAX_CONTEXT_CHARS, MAX_MESSAGE_
 use crate::types::{AppSettings, MathProblem};
 
 #[tauri::command]
-pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_image: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_image: Option<String>, language: Option<String>) -> Result<serde_json::Value, String> {
     check_text("El problema", &problem_text, MAX_PROBLEM_CHARS)?;
     if let Some(image) = problem_image.as_deref().filter(|i| !i.is_empty()) {
         check_image(image)?;
@@ -24,7 +24,7 @@ pub async fn solve_problem(app: tauri::AppHandle, problem_text: String, problem_
         models.get_active_local_model()
     };
 
-    let problem = MathProblem { text: problem_text, image: problem_image.filter(|i| !i.is_empty()) };
+    let problem = MathProblem { text: problem_text, image: problem_image.filter(|i| !i.is_empty()), language: language.filter(|l| l == "en" || l == "es") };
     let solution = crate::ai::engine::AIEngine::solve_with_settings(&problem, &settings, local_model)
         .await
         .map_err(|e| {
@@ -75,7 +75,7 @@ pub struct ChatMessage {
 /// Responde una pregunta sobre los pasos de la pizarra. `context` describe el problema y los pasos
 /// numerados; `messages` es la conversacion (el ultimo es la pregunta nueva).
 #[tauri::command]
-pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: Vec<ChatMessage>) -> Result<String, String> {
+pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: Vec<ChatMessage>, language: Option<String>) -> Result<String, String> {
     check_text("El contexto de la pizarra", &context, MAX_CONTEXT_CHARS)?;
     for m in &messages {
         check_text("El mensaje", &m.content, MAX_MESSAGE_CHARS)?;
@@ -93,7 +93,8 @@ pub async fn ask_about_steps(app: tauri::AppHandle, context: String, messages: V
         .map(|m| (m.role, m.content))
         .collect();
     let turns = turns[turns.len().saturating_sub(12)..].to_vec();
-    crate::ai::engine::AIEngine::answer_question(&context, turns, local_model.as_ref(), active_id.as_deref())
+    let language = language.filter(|l| l == "en" || l == "es");
+    crate::ai::engine::AIEngine::answer_question(&context, turns, local_model.as_ref(), active_id.as_deref(), language.as_deref())
         .await
         .map_err(|e| {
             log::error!("No se pudo responder la pregunta del chat: {}", e);

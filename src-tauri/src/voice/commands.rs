@@ -18,6 +18,7 @@ pub fn list_voices(app: tauri::AppHandle) -> Result<Vec<VoiceInfo>, String> {
                 name: v.name.into(),
                 description: v.description.into(),
                 size_mb: v.pack.size_mb,
+                lang: v.lang.into(),
                 is_downloaded: is_installed(&dir, v.pack),
                 is_downloading: progress.is_some(),
                 download_progress: progress.unwrap_or(0.0),
@@ -60,12 +61,12 @@ pub async fn get_system_voice() -> Result<super::system::SystemVoiceInfo, String
 
 /// Audio (WAV) de lo que dice la maestra, como bytes crudos (sin pasar por JSON)
 #[tauri::command]
-pub async fn synthesize_speech(app: tauri::AppHandle, voice_id: String, text: String) -> Result<tauri::ipc::Response, String> {
+pub async fn synthesize_speech(app: tauri::AppHandle, voice_id: String, text: String, language: Option<String>) -> Result<tauri::ipc::Response, String> {
     if voice_id == "system" {
         if text.chars().count() > MAX_TEXT_CHARS {
             return Err("El texto es demasiado largo para leerlo".into());
         }
-        let wav = tauri::async_runtime::spawn_blocking(move || super::system::synthesize(&text))
+        let wav = tauri::async_runtime::spawn_blocking(move || super::system::synthesize(&text, language.as_deref().unwrap_or("es")))
             .await
             .map_err(|e| e.to_string())?
             .map_err(|e| {

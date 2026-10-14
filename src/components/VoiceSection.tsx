@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import Switch from './Switch'
 import { logUi } from '../lib/applog'
-import { useT, type MessageKey } from '../lib/i18n'
+import { useI18n, useT, type MessageKey } from '../lib/i18n'
 import { SYSTEM_VOICE, speak, stopSpeaking, type VoiceInfo } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
 
@@ -17,7 +17,7 @@ interface VoiceSectionProps {
 }
 
 export default function VoiceSection({ voice, onChange, readAloud, onReadAloudChange }: VoiceSectionProps) {
-  const t = useT()
+  const { t, lang } = useI18n()
   const system = useSystemVoice()
   const [voices, setVoices] = useState<VoiceInfo[]>([])
   const [error, setError] = useState('')
@@ -117,7 +117,7 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
   const test = async (voiceId: string, name: string) => {
     setTesting(voiceId)
     setStatus(t('voice.statusTesting', { name }))
-    const result = await speak(t('voice.sample'), voiceId)
+    const result = await speak(t('voice.sample'), voiceId, lang)
     setTesting(null)
     setStatus(result === 'failed' ? t('voice.errPlay', { name }) : '')
     if (result === 'failed') {
@@ -160,7 +160,8 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
           onSelect={() => onChange(SYSTEM_VOICE)}
           onTest={() => void test(SYSTEM_VOICE, t('voice.systemShort'))}
         />
-        {voices.map(v => (
+        {/* Solo las voces del idioma de la app: una voz en español no lee bien el inglés */}
+        {voices.filter(v => (v.lang ?? 'es') === lang).map(v => (
           <VoiceRow
             key={v.id}
             id={v.id}

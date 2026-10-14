@@ -136,6 +136,25 @@ test.describe('Idioma', () => {
     await context.close()
   })
 
+  test('la narración de la pizarra se traduce, también al cambiar de idioma con la pizarra abierta', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('.input-section')
+    await page.getByLabel('Tu problema matemático').fill('2x + 4 = 10')
+    await page.getByRole('button', { name: /resolver problema/i }).click()
+    await page.getByRole('button', { name: 'Pausa' }).click()
+    await expect(page.locator('.chalk-narration')).toContainText('balanza')
+
+    await page.getByRole('group', { name: 'Idioma de la app' }).getByRole('button', { name: 'English' }).click()
+    await expect(page.locator('.chalk-narration')).toContainText('balance')
+    await expect(page.locator('.chalk-narration')).not.toContainText('balanza')
+    await expect(page.getByText(/Step 1 of/)).toBeVisible()
+
+    // Un problema nuevo ya sale en inglés de entrada
+    await page.getByLabel('Your math problem').fill('47 + 38')
+    await page.getByRole('button', { name: /solve problem/i }).click()
+    await expect(page.locator('.chalk-narration')).not.toContainText(/Escribimos|sumamos/i)
+  })
+
   test('el inglés también cumple accesibilidad', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('lang', 'en'))
     await page.goto('/')

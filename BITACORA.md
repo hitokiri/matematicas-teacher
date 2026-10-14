@@ -527,10 +527,7 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 ### Idioma, registro, accesibilidad y seguridad (2026-10-13)
 - **Idioma es/en** (`src/lib/i18n/`): diccionarios `es.ts`/`en.ts` (TypeScript obliga a que tengan las mismas claves, y
   una prueba revisa los `{parametros}`), `I18nProvider` + `useT()`. Se escoge en Configuración o con el botón del
-  encabezado; sin elección se usa `navigator.language`. Cambia `<html lang>`. **Pendiente (etapa 2)**: la narración de la
-  pizarra (`src/lib/board/*`, ~cientos de frases con `say`), las respuestas del modelo (pedirle el idioma en el prompt),
-  los textos de error del backend y las voces en inglés. Los ejemplos de los temas se quedan en español porque el
-  analizador los entiende así.
+  encabezado; sin elección se usa `navigator.language`. Cambia `<html lang>`. Etapa 2 (hecha, ver abajo): narración de la pizarra, modelo y voces.
 - **Registro** (`src-tauri/src/applog.rs`): `log` + buffer de 500 entradas + `logs/app.log` (rota a 512 KB). Comandos
   `get_logs`, `clear_logs`, `log_from_ui`. Sección en Configuración (`LogSection.tsx`). No se registran problemas ni dibujos.
 - **Accesibilidad**: `Modal.tsx` (dialogo, foco atrapado, Esc, fondo `inert`), enlace de salto, etiquetas y roles,
@@ -543,4 +540,20 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
   Las descargas de modelos GGUF desde Hugging Face no verifican hash (el catálogo no lo trae).
 - Build: si `cargo` falla con `File exists` en `llama-cpp-sys-2`, hay enlaces rotos en `target/debug/deps`; se arreglan con
   `find src-tauri/target/debug -maxdepth 2 -xtype l -delete`.
+
+### Etapa 2 del idioma: narración, modelo y voces (2026-10-13)
+- Los guiones de la pizarra reciben `lang` (`boardFor(text, lang)`, `equationScript(e, lang)`...; por defecto `'es'`, idéntico
+  al anterior). Texto con `pick(lang)` de `src/lib/board/lang.ts`: `T('español', 'English')`. `MainApp` guarda de dónde salió la
+  pizarra (`BoardSource`) y la vuelve a armar al cambiar de idioma (vuelve al paso 1).
+- `src/lib/board/english.test.ts`: para ~45 problemas de todos los tipos comprueba que el inglés no deje acentos ni palabras
+  españolas y que tenga los mismos pasos que el español. Un tema nuevo en la pizarra debe pasar por aquí.
+- Modelo: `solve_problem` y `ask_about_steps` reciben `language`; en inglés se agrega un aviso al final del prompt
+  (`AIEngine::language_note`). El aviso de `CHAT_PROMPT` cambia "Responde en espanol" por inglés.
+- Voz: `spokenMath(text, lang)` (números, fracciones, letras en inglés). Voces nuevas: Piper Lessac (US, `piper-en`, 64 MB),
+  Kokoro Heart (sid 3) y Michael (sid 16) con `lang: "en-us"`. Cada idioma recuerda su voz (`voice` / `voiceEn`) y solo se
+  ofrecen las del idioma de la app. El motor Kokoro se recarga si cambia el idioma.
+- Voz del sistema: `espeak-ng` por el backend (`voice/system.rs`) porque el WebKitGTK de Ubuntu 24.04 se compila sin voz
+  (`speechSynthesis` no existe aunque haya speech-dispatcher + espeak-ng). `get_system_voice` detecta distribución e instalación.
+- No traducido todavía: mensajes de error del backend, las etiquetas del contexto que se le manda al modelo
+  (`boardContext`), y el analizador de problemas no entiende frases en inglés ("3 plus 4").
 

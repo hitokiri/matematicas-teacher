@@ -99,7 +99,7 @@ fn rewrap(wav: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Texto -> WAV con la voz del sistema (bloqueante)
-pub fn synthesize(text: &str) -> Result<Vec<u8>> {
+pub fn synthesize(text: &str, lang: &str) -> Result<Vec<u8>> {
     let text = text.trim();
     if text.is_empty() {
         return Err(anyhow!("No hay texto para leer"));
@@ -110,7 +110,7 @@ pub fn synthesize(text: &str) -> Result<Vec<u8>> {
     let bin = find_engine().ok_or_else(|| anyhow!("No hay una voz del sistema instalada (falta espeak-ng)"))?;
     let mut child = Command::new(bin)
         // el texto va como argumento (sin shell) tras `--`, asi un texto que empiece con "-" no es una opcion
-        .args(["-v", "es-419", "-s", "155", "--stdout", "--"])
+        .args(["-v", if lang == "en" { "en-us" } else { "es-419" }, "-s", "155", "--stdout", "--"])
         .arg(text)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

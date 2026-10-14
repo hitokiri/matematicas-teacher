@@ -2,6 +2,7 @@
 // app paso a paso. Las raices no exactas se encuentran por tanteo, como se ensena en la escuela.
 
 import type { BoardItem, BoardScript, BoardStep, Tone } from './types'
+import { pick, type Lang } from './lang'
 
 type Node =
   | { k: 'num'; v: number; approx?: boolean }
@@ -23,7 +24,9 @@ const ROOT_SYM: Record<number, string> = { 2: '√', 3: '∛', 4: '∜' }
 const ORDINALS = ['', '', 'cuadrada', 'cúbica', 'cuarta', 'quinta', 'sexta', 'séptima', 'octava', 'novena', 'décima']
 /** Simbolo de la raiz: √ ∛ ∜, o el indice en superindice (⁵√) */
 const rootSym = (n: number) => ROOT_SYM[n] ?? `${[...String(n)].map(d => SUPERSCRIPT[Number(d)]).join('')}√`
-const rootName = (n: number) => `raíz ${ORDINALS[n] ?? `de índice ${n}`}`
+const ORDINALS_EN = ['', '', 'square', 'cube', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
+const rootName = (n: number, lang: Lang = 'es') =>
+  lang === 'en' ? (ORDINALS_EN[n] ? `${ORDINALS_EN[n]} root` : `root of index ${n}`) : `raíz ${ORDINALS[n] ?? `de índice ${n}`}`
 const ORDINAL_INDEX: Record<string, number> = {
   cuadrada: 2, cubica: 3, cuarta: 4, quinta: 5, sexta: 6, septima: 7, octava: 8, novena: 9, decima: 10,
 }
@@ -264,9 +267,10 @@ const power = (b: number, n: number) => b ** n
 const product = (b: string, n: number) => Array(n).fill(b).join(' × ')
 
 /** Busca la raiz n-esima por tanteo: enteros, decimas y centesimas */
-function rootByTrial(x: number, n: number): { value: number; exact: boolean; substeps: Array<{ lines: string[]; say: string }> } {
+function rootByTrial(x: number, n: number, lang: Lang = 'es'): { value: number; exact: boolean; substeps: Array<{ lines: string[]; say: string }> } {
+  const T = pick(lang)
   const sym = rootSym(n)
-  const name = rootName(n)
+  const name = rootName(n, lang)
   const substeps: Array<{ lines: string[]; say: string }> = []
   const negative = x < 0 && n % 2 === 1
   const a = Math.abs(x)
@@ -282,43 +286,60 @@ function rootByTrial(x: number, n: number): { value: number; exact: boolean; sub
   if (power(k, n) === a) {
     substeps.push({
       lines: intLines.slice(-3),
-      say: `Buscamos un número que multiplicado por sí mismo ${n === 2 ? '2 veces' : `${n} veces`} dé ${fmt(a)}. ¡${product(String(k), n)} = ${fmt(a)} justo!`,
+      say: T(
+        `Buscamos un número que multiplicado por sí mismo ${n === 2 ? '2 veces' : `${n} veces`} dé ${fmt(a)}. ¡${product(String(k), n)} = ${fmt(a)} justo!`,
+        `We look for a number that, multiplied by itself ${n} times, gives ${fmt(a)}. ${product(String(k), n)} = ${fmt(a)}, exactly!`,
+      ),
     })
     return { value: sign * k, exact: true, substeps }
   }
   intLines.push(`${product(String(k + 1), n)} = ${fmt(power(k + 1, n))}`)
   substeps.push({
     lines: intLines.slice(-3),
-    say: `Buscamos un número que multiplicado por sí mismo ${n === 2 ? '2 veces' : `${n} veces`} dé ${fmt(a)}. ` +
+    say: T(
+      `Buscamos un número que multiplicado por sí mismo ${n === 2 ? '2 veces' : `${n} veces`} dé ${fmt(a)}. ` +
       `Probamos con enteros: ${fmt(a)} está entre ${fmt(power(k, n))} y ${fmt(power(k + 1, n))}, así que la ${name} está entre ${k} y ${k + 1}.`,
+      `We look for a number that, multiplied by itself ${n} times, gives ${fmt(a)}. ` +
+      `We try whole numbers: ${fmt(a)} is between ${fmt(power(k, n))} and ${fmt(power(k + 1, n))}, so the ${name} is between ${k} and ${k + 1}.`,
+    ),
   })
 
   // Decimas y centesimas
   let low = k
-  for (const [stepSize, label] of [[0.1, 'décimas'], [0.01, 'centésimas']] as const) {
+  for (const [stepSize, label] of [[0.1, T('décimas', 'tenths')], [0.01, T('centésimas', 'hundredths')]] as const) {
     let d = low
     while (power(round(d + stepSize), n) <= a) d = round(d + stepSize)
     const hi = round(d + stepSize)
     const pd = power(d, n)
     const ph = power(hi, n)
     if (pd === a) {
-      substeps.push({ lines: [`${product(fmt(d), n)} = ${fmt(pd)}`], say: `Probamos con ${label}: ¡${product(fmt(d), n)} = ${fmt(a)} justo!` })
+      substeps.push({
+        lines: [`${product(fmt(d), n)} = ${fmt(pd)}`],
+        say: T(`Probamos con ${label}: ¡${product(fmt(d), n)} = ${fmt(a)} justo!`, `We try ${label}: ${product(fmt(d), n)} = ${fmt(a)}, exactly!`),
+      })
       return { value: sign * d, exact: true, substeps }
     }
     substeps.push({
       lines: [
-        `${product(fmt(d), n)} = ${fmt(pd)}  (le falta)`,
-        `${product(fmt(hi), n)} = ${fmt(ph)}  (se pasa)`,
+        `${product(fmt(d), n)} = ${fmt(pd)}  ${T('(le falta)', '(too small)')}`,
+        `${product(fmt(hi), n)} = ${fmt(ph)}  ${T('(se pasa)', '(too big)')}`,
       ],
-      say: `Ahora probamos con ${label}: ${fmt(d)} da ${fmt(pd)}, que es un poco menos que ${fmt(a)}, y ${fmt(hi)} da ${fmt(ph)}, que se pasa. ` +
+      say: T(
+        `Ahora probamos con ${label}: ${fmt(d)} da ${fmt(pd)}, que es un poco menos que ${fmt(a)}, y ${fmt(hi)} da ${fmt(ph)}, que se pasa. ` +
         `Entonces ${sym}${fmt(a)} está entre ${fmt(d)} y ${fmt(hi)}.`,
+        `Now we try ${label}: ${fmt(d)} gives ${fmt(pd)}, which is a little less than ${fmt(a)}, and ${fmt(hi)} gives ${fmt(ph)}, which is too big. ` +
+        `So ${sym}${fmt(a)} is between ${fmt(d)} and ${fmt(hi)}.`,
+      ),
     })
     low = d
-    if (label === 'centésimas') {
+    if (stepSize === 0.01) {
       const best = a - pd <= ph - a ? d : hi
       substeps.push({
         lines: [],
-        say: `El que queda más cerca de ${fmt(a)} es ${fmt(best)}. Así que ${sym}${fmt(a)} es aproximadamente ${fmt(best)}.`,
+        say: T(
+          `El que queda más cerca de ${fmt(a)} es ${fmt(best)}. Así que ${sym}${fmt(a)} es aproximadamente ${fmt(best)}.`,
+          `The one closest to ${fmt(a)} is ${fmt(best)}. So ${sym}${fmt(a)} is about ${fmt(best)}.`,
+        ),
       })
       return { value: sign * best, exact: false, substeps }
     }
@@ -331,7 +352,9 @@ function round(v: number) {
 }
 
 /** Reduce la primera operacion lista (de adentro hacia afuera, de izquierda a derecha) */
-function reduceOnce(node: Node, ctx: { first: Record<string, boolean> }): { node: Node; red: Reduction } | null {
+function reduceOnce(node: Node, ctx: { first: Record<string, boolean>; lang?: Lang }): { node: Node; red: Reduction } | null {
+  const lang = ctx.lang ?? 'es'
+  const T = pick(lang)
   const done = (value: number, approx: boolean, say: string, extra: Partial<Reduction> = {}) => {
     const n: Node = { k: 'num', v: value, approx }
     return { node: n, red: { node: n, say, substeps: [], ...extra } }
@@ -354,11 +377,13 @@ function reduceOnce(node: Node, ctx: { first: Record<string, boolean> }): { node
       const approx = !!node.l.approx || !!node.r.approx
       const group = node.op === '*' || node.op === '/' ? 'muldiv' : 'addsub'
       const intro = !ctx.first[group]
-        ? group === 'muldiv' ? 'Primero las multiplicaciones y divisiones: ' : 'Ahora las sumas y restas: '
-        : 'Seguimos: '
+        ? group === 'muldiv'
+          ? T('Primero las multiplicaciones y divisiones: ', 'First the multiplications and divisions: ')
+          : T('Ahora las sumas y restas: ', 'Now the additions and subtractions: ')
+        : T('Seguimos: ', 'Next: ')
       ctx.first[group] = true
       if (node.op === '/' && b === 0) {
-        return { node, red: { node, say: 'No se puede dividir entre 0.', substeps: [], error: 'No se puede dividir entre 0' } }
+        return { node, red: { node, say: T('No se puede dividir entre 0.', 'We cannot divide by 0.'), substeps: [], error: T('No se puede dividir entre 0', 'Cannot divide by 0') } }
       }
       const v = node.op === '+' ? a + b : node.op === '-' ? a - b : node.op === '*' ? a * b : a / b
       const inexact = node.op === '/' && Math.round(v * 1000) / 1000 !== v
@@ -371,9 +396,12 @@ function reduceOnce(node: Node, ctx: { first: Record<string, boolean> }): { node
       if (node.base.k !== 'num') return null
       const b = node.base.v
       const v = b ** node.exp
-      const what = node.exp === 2 ? 'al cuadrado' : node.exp === 3 ? 'al cubo' : `a la ${node.exp}`
+      const what = node.exp === 2 ? T('al cuadrado', 'squared') : node.exp === 3 ? T('al cubo', 'cubed') : T(`a la ${node.exp}`, `to the power of ${node.exp}`)
       return done(v, !!node.base.approx,
-        `${fmt(b)} ${what} significa multiplicarlo por sí mismo: ${product(fmt(b), node.exp)} = ${fmt(v)}.`)
+        T(
+          `${fmt(b)} ${what} significa multiplicarlo por sí mismo: ${product(fmt(b), node.exp)} = ${fmt(v)}.`,
+          `${fmt(b)} ${what} means multiplying it by itself: ${product(fmt(b), node.exp)} = ${fmt(v)}.`,
+        ))
     }
     case 'root': {
       const r = reduceOnce(node.arg, ctx)
@@ -381,31 +409,36 @@ function reduceOnce(node: Node, ctx: { first: Record<string, boolean> }): { node
       if (node.arg.k !== 'num') return null
       const x = node.arg.v
       if (x < 0 && node.n % 2 === 0) {
-        return { node, red: { node, say: `No hay ningún número que multiplicado por sí mismo dé un número negativo, así que ${rootSym(node.n)}${fmt(x)} no tiene solución con los números que conocemos.`, substeps: [], error: 'No tiene solución' } }
+        return { node, red: { node, say: T(`No hay ningún número que multiplicado por sí mismo dé un número negativo, así que ${rootSym(node.n)}${fmt(x)} no tiene solución con los números que conocemos.`, `No number multiplied by itself gives a negative number, so ${rootSym(node.n)}${fmt(x)} has no solution with the numbers we know.`), substeps: [], error: T('No tiene solución', 'No solution') } }
       }
-      const res = rootByTrial(x, node.n)
+      const res = rootByTrial(x, node.n, lang)
       const approx = !res.exact || !!node.arg.approx
       return done(res.value, approx,
-        `Entonces ${rootSym(node.n)}${fmt(x)} ${approx ? '≈' : '='} ${fmt(res.value)}.`,
+        T(`Entonces ${rootSym(node.n)}${fmt(x)} ${approx ? '≈' : '='} ${fmt(res.value)}.`, `So ${rootSym(node.n)}${fmt(x)} ${approx ? '≈' : '='} ${fmt(res.value)}.`),
         { substeps: res.substeps })
     }
   }
 }
 
 /** Guion de pizarra para una expresion: un renglon por operacion, con el tanteo de las raices */
-export function expressionScript(root: Node, original?: string): BoardScript {
+export function expressionScript(root: Node, original?: string, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   let n = 0
   const item = (row: number, col: number, text: string, tone: Tone, parts?: Array<{ text: string; tone?: Tone }>): BoardItem =>
     ({ id: `e${n++}`, kind: 'text', row, col, text, tone, align: 'start', parts })
   const title = print(root).map(p => p.text).join('')
   const steps: BoardStep[] = [{
-    say: 'Para resolverlo seguimos un orden: primero lo que está dentro de paréntesis y raíces, después potencias, ' +
-      'luego multiplicaciones y divisiones, y al final sumas y restas.',
+    say: T(
+      'Para resolverlo seguimos un orden: primero lo que está dentro de paréntesis y raíces, después potencias, ' +
+        'luego multiplicaciones y divisiones, y al final sumas y restas.',
+      'To solve it we follow an order: first what is inside parentheses and roots, then powers, ' +
+        'then multiplications and divisions, and finally additions and subtractions.',
+    ),
     add: [item(0, 0, title, 'op')],
   }]
   let row = 1
   let node = root
-  const ctx = { first: {} as Record<string, boolean> }
+  const ctx = { first: {} as Record<string, boolean>, lang }
   let error: string | undefined
   for (let guard = 0; guard < 40; guard++) {
     const r = reduceOnce(node, ctx)
@@ -435,7 +468,7 @@ export function expressionScript(root: Node, original?: string): BoardScript {
   }
 
   const answer = error ?? (node.k === 'num' ? `${node.approx ? '≈ ' : ''}${fmt(node.v)}` : title)
-  steps.push({ say: error ? `${error}.` : `¡Listo! ${title} ${answer.startsWith('≈') ? answer : `= ${answer}`}. 🎉`, add: [] })
+  steps.push({ say: error ? `${error}.` : `${T('¡Listo!', 'Done!')} ${title} ${answer.startsWith('≈') ? answer : `= ${answer}`}. 🎉`, add: [] })
   const longest = Math.max(...steps.flatMap(s => s.add).map(i => (i.kind === 'text' ? i.text.length + i.col * 2 : 0)), 10)
   return {
     title: original ?? title,

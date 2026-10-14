@@ -22,7 +22,7 @@ describe('voz neuronal', () => {
     mockInvoke.mockResolvedValue(new ArrayBuffer(8))
     await expect(speak('2x + 3y = 6', 'piper-claude')).resolves.toBe('done')
     expect(mockInvoke).toHaveBeenCalledWith('synthesize_speech', {
-      voiceId: 'piper-claude', text: 'dos equis más tres ye igual a seis',
+      voiceId: 'piper-claude', text: 'dos equis más tres ye igual a seis', language: 'es',
     })
   })
 
@@ -60,7 +60,7 @@ describe('voz del sistema', () => {
       : new ArrayBuffer(8)))
     await getSystemVoice(true)
     await expect(speak('Hola', SYSTEM_VOICE)).resolves.toBe('done')
-    expect(mockInvoke).toHaveBeenCalledWith('synthesize_speech', { voiceId: 'system', text: 'Hola' })
+    expect(mockInvoke).toHaveBeenCalledWith('synthesize_speech', { voiceId: 'system', text: 'Hola', language: 'es' })
   })
 
   it('sin espeak-ng ni navegador con voz falla sin lanzar', async () => {

@@ -4,6 +4,14 @@
 import type { Arithmetic } from './parse'
 import { OP_SYMBOL, placeName } from './parse'
 import type { BoardItem, BoardScript, BoardStep, Tone } from './types'
+import { pick, type Lang } from './lang'
+
+const PLACES_EN = ['ones', 'tens', 'hundreds', 'thousands', 'ten thousands', 'hundred thousands', 'millions', 'ten millions', 'hundred millions']
+
+/** Nombre de una columna segun el idioma: "las decenas" / "the tens column" (sin articulo en espanol) */
+function colName(lang: Lang, position: number): string {
+  return lang === 'en' ? `${PLACES_EN[position] ?? `position ${position + 1}`} column` : placeName(position)
+}
 
 function makeBuilder() {
   let n = 0
@@ -28,16 +36,18 @@ function writeNumber(b: ReturnType<typeof makeBuilder>, row: number, right: numb
   return [...n].map((d, k) => b.text(row, right - (n.length - 1 - k), d, tone))
 }
 
-export function buildArithmetic(p: Arithmetic): BoardScript {
+export function buildArithmetic(p: Arithmetic, lang: Lang = 'es'): BoardScript {
   switch (p.op) {
-    case '+': return additionScript(p.numbers)
-    case '-': return subtractionScript(p.a, p.b)
-    case '*': return multiplicationScript(p.a, p.b)
-    case '/': return divisionScript(p.a, p.b)
+    case '+': return additionScript(p.numbers, lang)
+    case '-': return subtractionScript(p.a, p.b, lang)
+    case '*': return multiplicationScript(p.a, p.b, lang)
+    case '/': return divisionScript(p.a, p.b, lang)
   }
 }
 
-export function additionScript(numbers: string[]): BoardScript {
+export function additionScript(numbers: string[], lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
+  const place = (j: number) => colName(lang, j)
   const b = makeBuilder()
   const total = numbers.reduce((s, n) => s + BigInt(n), 0n).toString()
   const maxLen = Math.max(...numbers.map(n => n.length))
@@ -48,7 +58,8 @@ export function additionScript(numbers: string[]): BoardScript {
   const steps: BoardStep[] = []
 
   steps.push({
-    say: 'Escribimos los números uno debajo del otro, con las unidades bien alineadas a la derecha.',
+    say: T('Escribimos los números uno debajo del otro, con las unidades bien alineadas a la derecha.',
+      'We write the numbers one under the other, with the ones lined up on the right.'),
     add: [
       ...numbers.flatMap((n, i) => writeNumber(b, 1 + i, R, n)),
       b.text(lastRow, 0, OP_SYMBOL['+'], 'op'),
@@ -63,22 +74,28 @@ export function additionScript(numbers: string[]): BoardScript {
       .filter((x): x is { d: number; row: number } => x.d !== null)
     const sum = present.reduce((s, x) => s + x.d, 0) + carry
     const last = j === maxLen - 1
-    const terms = present.map(x => x.d).join(' + ') + (carry ? ` + ${carry} (que llevábamos)` : '')
+    const terms = present.map(x => x.d).join(' + ') + (carry ? ` + ${carry} ${T('(que llevábamos)', '(that we carried)')}` : '')
     const focus: Array<[number, number]> = present.map(x => [x.row, R - j])
     if (carry) focus.push([0, R - j])
     const add: BoardItem[] = []
     let say: string
     if (present.length === 1 && !carry) {
-      say = `En las ${placeName(j)} solo está el ${sum}, así que lo bajamos.`
+      say = T(`En las ${placeName(j)} solo está el ${sum}, así que lo bajamos.`,
+        `In the ${place(j)} there is only ${sum}, so we bring it down.`)
       add.push(b.text(resultRow, R - j, String(sum), 'result'))
     } else if (last) {
-      say = `En las ${placeName(j)}: ${terms} = ${sum}. Escribimos ${sum}.`
+      say = T(`En las ${placeName(j)}: ${terms} = ${sum}. Escribimos ${sum}.`,
+        `In the ${place(j)}: ${terms} = ${sum}. We write ${sum}.`)
       add.push(...writeNumber(b, resultRow, R - j, String(sum), 'result'))
     } else {
       const digit = sum % 10
       const next = Math.floor(sum / 10)
-      say = `En las ${placeName(j)}: ${terms} = ${sum}. Escribimos el ${digit}` +
-        (next ? ` y llevamos ${next} a las ${placeName(j + 1)}.` : '.')
+      say = T(
+        `En las ${placeName(j)}: ${terms} = ${sum}. Escribimos el ${digit}` +
+          (next ? ` y llevamos ${next} a las ${placeName(j + 1)}.` : '.'),
+        `In the ${place(j)}: ${terms} = ${sum}. We write ${digit}` +
+          (next ? ` and carry ${next} to the ${place(j + 1)}.` : '.'),
+      )
       add.push(b.text(resultRow, R - j, String(digit), 'result'))
       if (next) add.push(b.text(0, R - j - 1, String(next), 'carry', true))
       carry = next
@@ -88,14 +105,16 @@ export function additionScript(numbers: string[]): BoardScript {
 
   const expr = numbers.join(' + ')
   steps.push({
-    say: `¡Listo! ${expr} = ${total}. 🎉`,
+    say: T(`¡Listo! ${expr} = ${total}. 🎉`, `Done! ${expr} = ${total}. 🎉`),
     add: [],
     focus: [...total].map((_, k) => [resultRow, R - k] as [number, number]),
   })
   return { title: `${expr} = ?`, cols, rows: resultRow + 1, steps, answer: total }
 }
 
-export function subtractionScript(a: string, b0: string): BoardScript {
+export function subtractionScript(a: string, b0: string, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
+  const place = (j: number) => colName(lang, j)
   const negative = BigInt(a) < BigInt(b0)
   const [top, bottom] = negative ? [b0, a] : [a, b0]
   const b = makeBuilder()
@@ -106,8 +125,10 @@ export function subtractionScript(a: string, b0: string): BoardScript {
 
   steps.push({
     say: (negative
-      ? `Como ${b0} es mayor que ${a}, restamos ${b0} − ${a} y al final le ponemos el signo menos. `
-      : '') + 'Escribimos el número grande arriba y el chico abajo, con las unidades alineadas.',
+      ? T(`Como ${b0} es mayor que ${a}, restamos ${b0} − ${a} y al final le ponemos el signo menos. `,
+        `Since ${b0} is bigger than ${a}, we subtract ${b0} − ${a} and put the minus sign at the end. `)
+      : '') + T('Escribimos el número grande arriba y el chico abajo, con las unidades alineadas.',
+      'We write the big number on top and the small one below, with the ones lined up.'),
     add: [...writeNumber(b, 1, R, top), ...writeNumber(b, 2, R, bottom), b.text(2, 0, OP_SYMBOL['-'], 'op'), b.line(2, 0, R)],
   })
 
@@ -142,8 +163,10 @@ export function subtractionScript(a: string, b0: string): BoardScript {
       changes.push(change(j, t + 10))
       steps.push({
         say: k === j + 1
-          ? `No podemos quitarle ${d} a ${t}. Le pedimos prestado 1 a las ${placeName(k)}: el ${lender} se vuelve ${lender - 1} y el ${t} se vuelve ${t + 10}.`
-          : `No podemos quitarle ${d} a ${t}, y en las ${placeName(j + 1)} hay un 0. Pedimos prestado a las ${placeName(k)}: el ${lender} se vuelve ${lender - 1}, los ceros se vuelven 9 y el ${t} se vuelve ${t + 10}.`,
+          ? T(`No podemos quitarle ${d} a ${t}. Le pedimos prestado 1 a las ${placeName(k)}: el ${lender} se vuelve ${lender - 1} y el ${t} se vuelve ${t + 10}.`,
+            `We can't take ${d} away from ${t}. We borrow 1 from the ${place(k)}: the ${lender} becomes ${lender - 1} and the ${t} becomes ${t + 10}.`)
+          : T(`No podemos quitarle ${d} a ${t}, y en las ${placeName(j + 1)} hay un 0. Pedimos prestado a las ${placeName(k)}: el ${lender} se vuelve ${lender - 1}, los ceros se vuelven 9 y el ${t} se vuelve ${t + 10}.`,
+            `We can't take ${d} away from ${t}, and in the ${place(j + 1)} there is a 0. We borrow from the ${place(k)}: the ${lender} becomes ${lender - 1}, the zeros become 9 and the ${t} becomes ${t + 10}.`),
         add: changes.flatMap(c => c.add),
         remove: changes.flatMap(c => c.remove),
         focus: [[1, R - j], [1, R - k]],
@@ -157,12 +180,15 @@ export function subtractionScript(a: string, b0: string): BoardScript {
     let say: string
     const add: BoardItem[] = []
     if (leadingZero) {
-      say = `En las ${placeName(j)}: ${t} − ${d ?? 0} = 0. Un cero a la izquierda no se escribe.`
+      say = T(`En las ${placeName(j)}: ${t} − ${d ?? 0} = 0. Un cero a la izquierda no se escribe.`,
+        `In the ${place(j)}: ${t} − ${d ?? 0} = 0. We don't write a zero on the left.`)
     } else if (d === null) {
-      say = `En las ${placeName(j)} solo queda el ${t}, así que lo bajamos.`
+      say = T(`En las ${placeName(j)} solo queda el ${t}, así que lo bajamos.`,
+        `In the ${place(j)} only the ${t} is left, so we bring it down.`)
       add.push(b.text(3, R - j, String(r), 'result'))
     } else {
-      say = `En las ${placeName(j)}: ${t} − ${d} = ${r}. Escribimos ${r}.`
+      say = T(`En las ${placeName(j)}: ${t} − ${d} = ${r}. Escribimos ${r}.`,
+        `In the ${place(j)}: ${t} − ${d} = ${r}. We write ${r}.`)
       add.push(b.text(3, R - j, String(r), 'result'))
     }
     steps.push({ say, add, focus })
@@ -171,14 +197,16 @@ export function subtractionScript(a: string, b0: string): BoardScript {
   const answer = negative ? `-${diff}` : diff
   const finalAdd: BoardItem[] = negative ? [b.text(3, R - diff.length, '−', 'result')] : []
   steps.push({
-    say: `¡Listo! ${a} − ${b0} = ${answer}. 🎉`,
+    say: T(`¡Listo! ${a} − ${b0} = ${answer}. 🎉`, `Done! ${a} − ${b0} = ${answer}. 🎉`),
     add: finalAdd,
     focus: [...diff].map((_, k) => [3, R - k] as [number, number]),
   })
   return { title: `${a} − ${b0} = ?`, cols, rows: 4, steps, answer }
 }
 
-export function multiplicationScript(a: string, b0: string): BoardScript {
+export function multiplicationScript(a: string, b0: string, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
+  const place = (j: number) => colName(lang, j)
   // Arriba va el numero mas largo (menos filas que sumar)
   const swap = b0.length > a.length
   const [top, bottom] = swap ? [b0, a] : [a, b0]
@@ -200,8 +228,9 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
   const steps: BoardStep[] = []
 
   steps.push({
-    say: (swap ? `Ponemos arriba el ${top}, que es el número más largo. ` : '') +
-      `Escribimos ${top} arriba y ${bottom} abajo, con las unidades alineadas.`,
+    say: (swap ? T(`Ponemos arriba el ${top}, que es el número más largo. `, `We put ${top} on top, because it is the longer number. `) : '') +
+      T(`Escribimos ${top} arriba y ${bottom} abajo, con las unidades alineadas.`,
+        `We write ${top} on top and ${bottom} below, with the ones lined up.`),
     add: [...writeNumber(b, 1, R, top), ...writeNumber(b, 2, R, bottom), b.text(2, 0, OP_SYMBOL['*'], 'op'), b.line(2, 0, R)],
   })
 
@@ -220,8 +249,10 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
     if (!single) {
       steps.push({
         say: j === 0
-          ? `Primero multiplicamos ${top} por el ${bd} de las unidades.`
-          : `Ahora multiplicamos ${top} por el ${bd} de las ${placeName(j)}. Como es de las ${placeName(j)}, empezamos a escribir ${j === 1 ? 'un lugar' : `${j} lugares`} más a la izquierda.`,
+          ? T(`Primero multiplicamos ${top} por el ${bd} de las unidades.`,
+            `First we multiply ${top} by the ${bd} in the ones place.`)
+          : T(`Ahora multiplicamos ${top} por el ${bd} de las ${placeName(j)}. Como es de las ${placeName(j)}, empezamos a escribir ${j === 1 ? 'un lugar' : `${j} lugares`} más a la izquierda.`,
+            `Now we multiply ${top} by the ${bd} in the ${place(j)}. Since it is in the ${place(j)}, we start writing ${j === 1 ? 'one place' : `${j} places`} further to the left.`),
         add: [],
         remove: carryIds,
         focus: [[2, R - j]],
@@ -230,7 +261,8 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
     }
     if (bd === 0) {
       steps.push({
-        say: `Cualquier número por 0 da 0, así que esta fila es toda de ceros.`,
+        say: T('Cualquier número por 0 da 0, así que esta fila es toda de ceros.',
+          'Any number times 0 is 0, so this whole row is zeros.'),
         add: [...top].map((_, i) => put(row, R - j - i, 0, tone)),
         focus: [[2, R - j]],
       })
@@ -245,11 +277,11 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
       const add: BoardItem[] = []
       const focus: Array<[number, number]> = [[2, R - j], [1, R - i]]
       if (carry) focus.push([0, R - i])
-      let say = `${bd} × ${td} = ${prod}` + (carry ? `, más ${carry} que llevábamos, son ${p}` : '')
+      let say = `${bd} × ${td} = ${prod}` + (carry ? T(`, más ${carry} que llevábamos, son ${p}`, `, plus ${carry} that we carried, makes ${p}`) : '')
       if (last) {
         add.push(put(row, R - j - i, p % 10, tone))
         if (p >= 10) add.push(put(row, R - j - i - 1, Math.floor(p / 10), tone))
-        say += `. Escribimos ${p}.`
+        say += T(`. Escribimos ${p}.`, `. We write ${p}.`)
         carry = 0
       } else {
         const next = Math.floor(p / 10)
@@ -258,9 +290,9 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
           const c = b.text(0, R - i - 1, String(next), 'carry', true)
           carryIds.push(c.id)
           add.push(c)
-          say += `. Escribimos el ${p % 10} y llevamos ${next}.`
+          say += T(`. Escribimos el ${p % 10} y llevamos ${next}.`, `. We write ${p % 10} and carry ${next}.`)
         } else {
-          say += `. Escribimos ${p % 10}.`
+          say += T(`. Escribimos ${p % 10}.`, `. We write ${p % 10}.`)
         }
         carry = next
       }
@@ -271,7 +303,8 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
   if (!single) {
     const lastPartial = partialRow(m - 1)
     steps.push({
-      say: 'Ahora sumamos los resultados de cada fila, columna por columna.',
+      say: T('Ahora sumamos los resultados de cada fila, columna por columna.',
+        'Now we add up the results of each row, column by column.'),
       add: [b.text(lastPartial, 0, OP_SYMBOL['+'], 'op'), b.line(lastPartial, 0, R)],
       remove: carryIds,
     })
@@ -283,20 +316,22 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
         .filter(r => grid[r]?.[col] !== undefined)
         .map(r => ({ d: grid[r][col], row: r }))
       const sum = present.reduce((s, x) => s + x.d, 0) + carry
-      const place = placeName(R - col)
-      const terms = present.map(x => x.d).join(' + ') + (carry ? ` + ${carry} (que llevábamos)` : '')
+      const placeEs = placeName(R - col)
+      const placeEn = place(R - col)
+      const terms = present.map(x => x.d).join(' + ') + (carry ? ` + ${carry} ${T('(que llevábamos)', '(that we carried)')}` : '')
       const focus: Array<[number, number]> = present.map(x => [x.row, col])
       const add: BoardItem[] = []
       let say: string
       if (col === leftmost) {
-        say = `En las ${place}: ${terms} = ${sum}. Escribimos ${sum}.`
+        say = T(`En las ${placeEs}: ${terms} = ${sum}. Escribimos ${sum}.`, `In the ${placeEn}: ${terms} = ${sum}. We write ${sum}.`)
         add.push(...writeNumber(b, finalRow, col, String(sum), 'result'))
       } else if (present.length === 1 && !carry) {
-        say = `En las ${place} solo está el ${sum}, lo bajamos.`
+        say = T(`En las ${placeEs} solo está el ${sum}, lo bajamos.`, `In the ${placeEn} there is only ${sum}, so we bring it down.`)
         add.push(b.text(finalRow, col, String(sum), 'result'))
       } else {
         const next = Math.floor(sum / 10)
-        say = `En las ${place}: ${terms} = ${sum}. Escribimos el ${sum % 10}` + (next ? ` y llevamos ${next}.` : '.')
+        say = T(`En las ${placeEs}: ${terms} = ${sum}. Escribimos el ${sum % 10}` + (next ? ` y llevamos ${next}.` : '.'),
+          `In the ${placeEn}: ${terms} = ${sum}. We write ${sum % 10}` + (next ? ` and carry ${next}.` : '.'))
         add.push(b.text(finalRow, col, String(sum % 10), 'result'))
         if (next) add.push(b.text(sumCarryRow, col - 1, String(next), 'carry', true))
         carry = next
@@ -306,14 +341,15 @@ export function multiplicationScript(a: string, b0: string): BoardScript {
   }
 
   steps.push({
-    say: `¡Listo! ${a} × ${b0} = ${product}. 🎉`,
+    say: T(`¡Listo! ${a} × ${b0} = ${product}. 🎉`, `Done! ${a} × ${b0} = ${product}. 🎉`),
     add: [],
     focus: [...product].map((_, k) => [finalRow, R - k] as [number, number]),
   })
   return { title: `${a} × ${b0} = ?`, cols, rows: finalRow + 1, steps, answer: product }
 }
 
-export function divisionScript(a: string, d: string): BoardScript {
+export function divisionScript(a: string, d: string, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   const b = makeBuilder()
   if (BigInt(d) === 0n) {
     return {
@@ -321,10 +357,11 @@ export function divisionScript(a: string, d: string): BoardScript {
       cols: a.length + 4,
       rows: 1,
       steps: [{
-        say: 'No se puede dividir entre 0: no hay forma de repartir algo en 0 grupos.',
+        say: T('No se puede dividir entre 0: no hay forma de repartir algo en 0 grupos.',
+          "We can't divide by 0: there is no way to share something into 0 groups."),
         add: [{ id: 'z', kind: 'text', row: 0, col: 0, text: `${a} ÷ 0 = ✗`, tone: 'op', align: 'start' }],
       }],
-      answer: 'No se puede dividir entre 0',
+      answer: T('No se puede dividir entre 0', "Can't divide by 0"),
     }
   }
   const divisor = BigInt(d)
@@ -336,7 +373,8 @@ export function divisionScript(a: string, d: string): BoardScript {
     Array.from({ length: to - from + 1 }, (_, k) => [1, from + k] as [number, number])
 
   steps.push({
-    say: `Escribimos ${a} dentro de la casita y el ${d} afuera, a la izquierda.`,
+    say: T(`Escribimos ${a} dentro de la casita y el ${d} afuera, a la izquierda.`,
+      `We write ${a} inside the long division bracket and ${d} outside, on the left.`),
     add: [...writeNumber(b, 1, L - 1, d), ...writeNumber(b, 1, cols - 1, a), b.bracket(1, D, a.length)],
   })
 
@@ -355,12 +393,13 @@ export function divisionScript(a: string, d: string): BoardScript {
     rem = cur - prod
     quotient += qd.toString()
     const curLen = cur.toString().length
-    const intro = first && k > 1 ? `Como ${a.slice(0, k - 1)} es menor que ${d}, tomamos ${cur}. ` : ''
+    const intro = first && k > 1 ? T(`Como ${a.slice(0, k - 1)} es menor que ${d}, tomamos ${cur}. `, `Since ${a.slice(0, k - 1)} is smaller than ${d}, we take ${cur}. `) : ''
     first = false
     steps.push({
       say: intro + (qd === 0n
-        ? `El ${d} no cabe en ${cur}, así que escribimos 0 arriba.`
-        : `¿Cuántas veces cabe ${d} en ${cur}? ${qd} veces, porque ${d} × ${qd} = ${prod}. Escribimos ${qd} arriba.`),
+        ? T(`El ${d} no cabe en ${cur}, así que escribimos 0 arriba.`, `${d} doesn't fit into ${cur}, so we write 0 on top.`)
+        : T(`¿Cuántas veces cabe ${d} en ${cur}? ${qd} veces, porque ${d} × ${qd} = ${prod}. Escribimos ${qd} arriba.`,
+          `How many times does ${d} fit into ${cur}? ${qd} times, because ${d} × ${qd} = ${prod}. We write ${qd} on top.`)),
       add: [b.text(0, end, qd.toString(), 'result')],
       focus: curRow === 1 ? dividendCells(end - curLen + 1, end) : Array.from({ length: curLen }, (_, i) => [curRow, end - i] as [number, number]),
     })
@@ -368,7 +407,8 @@ export function divisionScript(a: string, d: string): BoardScript {
     const remRow = prodRow + 1
     const prodStr = prod.toString()
     steps.push({
-      say: `Multiplicamos ${d} × ${qd} = ${prod}, lo escribimos debajo y restamos: ${cur} − ${prod} = ${rem}.`,
+      say: T(`Multiplicamos ${d} × ${qd} = ${prod}, lo escribimos debajo y restamos: ${cur} − ${prod} = ${rem}.`,
+        `We multiply ${d} × ${qd} = ${prod}, write it below and subtract: ${cur} − ${prod} = ${rem}.`),
       add: [
         ...writeNumber(b, prodRow, end, prodStr, 'muted'),
         b.text(prodRow, end - prodStr.length, OP_SYMBOL['-'], 'op'),
@@ -383,18 +423,19 @@ export function divisionScript(a: string, d: string): BoardScript {
     cur = rem * 10n + BigInt(next)
     end += 1
     steps.push({
-      say: `Bajamos el ${next}: ahora tenemos ${cur}.`,
+      say: T(`Bajamos el ${next}: ahora tenemos ${cur}.`, `We bring down the ${next}: now we have ${cur}.`),
       add: [b.text(remRow, end, next, 'normal')],
       focus: [[1, end], [remRow, end]],
     })
   }
 
   const q = BigInt(quotient).toString()
-  const answer = rem === 0n ? q : `${q} y sobran ${rem}`
+  const answer = rem === 0n ? q : T(`${q} y sobran ${rem}`, `${q} remainder ${rem}`)
   steps.push({
     say: rem === 0n
-      ? `¡Listo! ${a} ÷ ${d} = ${q}. No sobra nada. 🎉`
-      : `¡Listo! ${a} ÷ ${d} = ${q} y sobran ${rem}. Ese ${rem} es el residuo. 🎉`,
+      ? T(`¡Listo! ${a} ÷ ${d} = ${q}. No sobra nada. 🎉`, `Done! ${a} ÷ ${d} = ${q}. Nothing is left over. 🎉`)
+      : T(`¡Listo! ${a} ÷ ${d} = ${q} y sobran ${rem}. Ese ${rem} es el residuo. 🎉`,
+        `Done! ${a} ÷ ${d} = ${q} remainder ${rem}. That ${rem} is the remainder. 🎉`),
     add: [],
     focus: [...quotient].map((_, i) => [0, end - i] as [number, number]),
   })

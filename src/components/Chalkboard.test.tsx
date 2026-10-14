@@ -159,8 +159,8 @@ describe('Chalkboard', () => {
       const script = multiplicationScript('10', '20')
       render(<Chalkboard script={script} readAloud voiceId="piper-claude" />)
       await screen.findByText(`Paso 3 de ${script.steps.length}`)
-      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude')
-      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[1].say, 'piper-claude')
+      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude', 'es')
+      expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[1].say, 'piper-claude', 'es')
     })
 
     it('si el usuario pausa, el audio termina pero la pizarra no avanza', async () => {
@@ -186,7 +186,7 @@ describe('Chalkboard', () => {
       const { rerender } = render(<Chalkboard script={script} autoPlay={false} readAloud={false} voiceId="piper-claude" />)
       expect(vi.mocked(speak)).not.toHaveBeenCalled()
       rerender(<Chalkboard script={script} autoPlay={false} readAloud voiceId="piper-claude" />)
-      await waitFor(() => expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude'))
+      await waitFor(() => expect(vi.mocked(speak)).toHaveBeenCalledWith(script.steps[0].say, 'piper-claude', 'es'))
       expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'true')
       rerender(<Chalkboard script={script} autoPlay={false} readAloud={false} voiceId="piper-claude" />)
       expect(screen.getByRole('button', { name: 'Leer en voz alta' })).toHaveAttribute('aria-pressed', 'false')

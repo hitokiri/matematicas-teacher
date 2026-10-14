@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
@@ -15,7 +15,7 @@ import { parseTwoVarEquation, twoVarScript } from '../lib/board/twoVars'
 import { parseSystem, systemScript } from '../lib/board/system'
 import { fractionScript, parseFractions } from '../lib/board/fraction'
 import type { BoardScript } from '../lib/board/types'
-import { detectLang, rich, translate, useT, type Lang } from '../lib/i18n'
+import { detectLang, rich, translate, useI18n, type Lang } from '../lib/i18n'
 
 interface AppSettings {
   active_model_id: string | null
@@ -40,19 +40,27 @@ interface MainAppProps {
 
 /** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
  *  ecuaciones de primer grado con balanza, sistemas de dos ecuaciones y fracciones con pizzas */
-export function boardFor(text: string): BoardScript | null {
+export function boardFor(text: string, lang: Lang = 'es'): BoardScript | null {
   const arithmetic = parseArithmetic(text)
-  if (arithmetic) return buildArithmetic(arithmetic)
+  if (arithmetic) return buildArithmetic(arithmetic, lang)
   const expression = parseExpression(text)
-  if (expression) return expressionScript(expression, text.trim())
+  if (expression) return expressionScript(expression, text.trim(), lang)
   const system = parseSystem(text)
-  if (system) return systemScript(system)
+  if (system) return systemScript(system, lang)
   const equation = parseEquation(text)
-  if (equation) return equationScript(equation)
+  if (equation) return equationScript(equation, lang)
   const twoVars = parseTwoVarEquation(text)
-  if (twoVars) return twoVarScript(twoVars)
+  if (twoVars) return twoVarScript(twoVars, lang)
   const fractions = parseFractions(text)
-  return fractions ? fractionScript(fractions) : null
+  return fractions ? fractionScript(fractions, lang) : null
+}
+
+/** De donde sale la pizarra: la pizarra se vuelve a armar si cambia el idioma */
+type BoardSource = { text: string } | { result: Solution }
+
+function buildBoard(source: BoardSource, lang: Lang): BoardScript | null {
+  if ('text' in source) return boardFor(source.text, lang)
+  return boardFor(source.result.problem, lang) ?? solutionScript(source.result, lang)
 }
 
 /** Dos signos seguidos ("+*") suelen ser un error al escribir: mejor preguntar que adivinar */
@@ -63,16 +71,16 @@ export function typoHint(text: string, lang: Lang = detectLang()): string | null
 }
 
 function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: MainAppProps) {
-  const t = useT()
-  const lang = detectLang()
+  const { t, lang } = useI18n()
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
-  const [board, setBoard] = useState<BoardScript | null>(null)
+  const [source, setSource] = useState<BoardSource | null>(null)
+  const board = useMemo(() => (source ? buildBoard(source, lang) : null), [source, lang])
   // Cada problema nuevo monta una pizarra nueva (empieza en el paso 1)
   const [boardKey, setBoardKey] = useState(0)
-  const showBoard = (script: BoardScript) => {
+  const showBoard = (next: BoardSource) => {
     setBoardKey(k => k + 1)
-    setBoard(script)
+    setSource(next)
   }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -94,7 +102,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
   async function solveText(text: string) {
     setError('')
     setSolution(null)
-    setBoard(null)
+    setSource(null)
 
     const typo = typoHint(text, lang)
     if (typo) {
@@ -103,18 +111,17 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     }
 
     // Las cuentas y expresiones numericas las resuelve la app en la pizarra, al instante
-    const own = boardFor(text)
-    if (own) {
-      showBoard(own)
+    if (boardFor(text, lang)) {
+      showBoard({ text })
       return
     }
 
     setLoading(true)
     setLoadingMessage(t('main.thinking'))
     try {
-      const result = await invoke<Solution>('solve_problem', { problemText: text.trim(), problemImage: null })
-      const read = boardFor(result.problem)
-      showBoard(read ?? solutionScript(result))
+      const result = await invoke<Solution>('solve_problem', { problemText: text.trim(), problemImage: null, language: lang })
+      const read = boardFor(result.problem, lang)
+      showBoard({ result })
       if (!read) setSolution(result)
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e?.message || t('main.errSolve'))
@@ -130,7 +137,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     // Dibujo: primero el modelo solo lo lee; se muestra lo que leyo para poder corregirlo
     setError('')
     setSolution(null)
-    setBoard(null)
+    setSource(null)
     setReadText(null)
     setLoading(true)
     setLoadingMessage(`👀 ${t('main.reading')}`)
@@ -249,7 +256,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           showAllPages={uiPrefs.boards === 'all'}
           fontScale={uiPrefs.fontScale}
           onFontScaleChange={onUiPrefsChange ? f => onUiPrefsChange({ ...uiPrefs, fontScale: f }) : undefined}
-          voiceId={uiPrefs.voice}
+          voiceId={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
           readAloud={uiPrefs.readAloud}
           onReadAloudChange={onUiPrefsChange ? on => onUiPrefsChange({ ...uiPrefs, readAloud: on }) : undefined}
           onStepChange={setViewStep}

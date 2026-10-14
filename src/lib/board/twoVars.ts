@@ -5,6 +5,7 @@ import { fromLatex } from './expression'
 import type { Q } from './rational'
 import { add, div, eq, isInt, isZero, mul, neg, q, show, sub, value } from './rational'
 import type { BoardItem, BoardScript, BoardStep } from './types'
+import { pick, type Lang } from './lang'
 
 export interface TwoVarEquation {
   /** a·x + b·y = c (x, y en orden alfabetico) */
@@ -95,7 +96,8 @@ function constMinus(c: Q, k: Q, v: string): string {
   return `${txt(c)} ${value(k) > 0 ? '−' : '+'} ${abs}`
 }
 
-export function twoVarScript(e: TwoVarEquation): BoardScript {
+export function twoVarScript(e: TwoVarEquation, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   const { a, b, c, x, y } = e
   let n = 0
   let row = 0
@@ -108,8 +110,12 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   const original = e.text.replace(/\s*=\s*/, ' = ')
 
   steps.push({
-    say: `Esta ecuación tiene dos letras: la ${x} y la ${y}. Con una sola ecuación no hay un único resultado: ` +
-      `hay muchas parejas de números que la cumplen. Vamos a despejar la ${y} y después buscar parejas.`,
+    say: T(
+      `Esta ecuación tiene dos letras: la ${x} y la ${y}. Con una sola ecuación no hay un único resultado: ` +
+        `hay muchas parejas de números que la cumplen. Vamos a despejar la ${y} y después buscar parejas.`,
+      `This equation has two letters: ${x} and ${y}. With only one equation there is no single answer: ` +
+        `many pairs of numbers make it true. We are going to solve for ${y} and then look for pairs.`,
+    ),
     ...write(original, 'op'),
   })
 
@@ -117,7 +123,10 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   const norm = (t: string) => t.replace(/\s/g, '').replace(/−/g, '-')
   if (norm(ordered) !== norm(original)) {
     steps.push({
-      say: `Acomodamos la ecuación: las letras de un lado y el número solo del otro.`,
+      say: T(
+        `Acomodamos la ecuación: las letras de un lado y el número solo del otro.`,
+        `We rearrange the equation: the letters on one side and the number alone on the other.`,
+      ),
       ...write(ordered),
     })
   }
@@ -129,18 +138,27 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   const ax = term(value(a) < 0 ? neg(a) : a, x)
   steps.push({
     say: value(a) > 0
-      ? `Queremos la ${y} sola. Quitamos ${ax} de los dos lados, así la ecuación sigue en equilibrio.`
-      : `Queremos la ${y} sola. Sumamos ${ax} a los dos lados para cancelarlo.`,
+      ? T(
+          `Queremos la ${y} sola. Quitamos ${ax} de los dos lados, así la ecuación sigue en equilibrio.`,
+          `We want ${y} on its own. We take away ${ax} from both sides, so the equation stays balanced.`,
+        )
+      : T(
+          `Queremos la ${y} sola. Sumamos ${ax} a los dos lados para cancelarlo.`,
+          `We want ${y} on its own. We add ${ax} to both sides to cancel it.`,
+        ),
     ...write(`${lhs} ${value(a) > 0 ? '−' : '+'} ${ax} = ${txt(c)} ${value(a) > 0 ? '−' : '+'} ${ax}`),
   })
-  steps.push({ say: `Nos queda ${term(k, y)} = ${constMinus(rc, rx, x)}.`, ...write(`${term(k, y)} = ${constMinus(rc, rx, x)}`) })
+  steps.push({ say: T(`Nos queda ${term(k, y)} = ${constMinus(rc, rx, x)}.`, `We are left with ${term(k, y)} = ${constMinus(rc, rx, x)}.`), ...write(`${term(k, y)} = ${constMinus(rc, rx, x)}`) })
 
   if (value(k) < 0) {
     k = neg(k)
     rc = neg(rc)
     rx = neg(rx)
     steps.push({
-      say: `La ${y} tiene signo menos. Cambiamos el signo de todo (multiplicamos los dos lados por −1).`,
+      say: T(
+        `La ${y} tiene signo menos. Cambiamos el signo de todo (multiplicamos los dos lados por −1).`,
+        `${y} has a minus sign. We change the sign of everything (we multiply both sides by −1).`,
+      ),
       ...write(`${term(k, y)} = ${constMinus(rc, rx, x)}`),
     })
   }
@@ -149,11 +167,20 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   const formula = isOne ? `${y} = ${constMinus(rc, rx, x)}` : `${y} = (${constMinus(rc, rx, x)}) ÷ ${txt(k)}`
   if (!isOne) {
     steps.push({
-      say: `Hay ${txt(k)} ${y}. Dividimos los dos lados entre ${txt(k)} para dejar una sola ${y}.`,
+      say: T(
+        `Hay ${txt(k)} ${y}. Dividimos los dos lados entre ${txt(k)} para dejar una sola ${y}.`,
+        `There are ${txt(k)} ${y}'s. We divide both sides by ${txt(k)} to leave a single ${y}.`,
+      ),
       ...write(formula, 'result'),
     })
   } else {
-    steps.push({ say: `¡La ${y} ya está sola! Esta regla nos da la ${y} para cualquier ${x}.`, ...write(formula, 'result') })
+    steps.push({
+      say: T(
+        `¡La ${y} ya está sola! Esta regla nos da la ${y} para cualquier ${x}.`,
+        `${y} is on its own now! This rule gives us ${y} for any ${x}.`,
+      ),
+      ...write(formula, 'result'),
+    })
   }
 
   // Buscar parejas: cambiar la x por un numero y hacer las cuentas una por una
@@ -161,15 +188,19 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
   const wrap = (s: string) => (isOne ? s : `(${s}) ÷ ${txt(k)}`)
   const yOf = (xv: Q) => div(sub(rc, mul(rx, xv)), k)
   const inside = constMinus(rc, rx, x)
-  const where = isOne ? inside : `lo de adentro del paréntesis (${inside})`
+  const where = isOne ? inside : T(`lo de adentro del paréntesis (${inside})`, `what is inside the parentheses (${inside})`)
 
   // Por que se escoge cada numero: primero el 0, despues el que deja la y en 0 o una division exacta
   const choose = (first: boolean): Q => {
     if (first) {
       steps.push({
-        say: `Ahora buscamos parejas. La ${x} puede valer cualquier número, así que escogemos el más fácil: el 0. ` +
-          `¿Por qué? Porque cualquier número por 0 da 0, y así la ${x} desaparece de la cuenta.`,
-        ...write(`¿Por qué ${x} = 0? Todo número × 0 = 0, es el más fácil`, 'muted'),
+        say: T(
+          `Ahora buscamos parejas. La ${x} puede valer cualquier número, así que escogemos el más fácil: el 0. ` +
+            `¿Por qué? Porque cualquier número por 0 da 0, y así la ${x} desaparece de la cuenta.`,
+          `Now we look for pairs. ${x} can be any number, so we pick the easiest one: 0. ` +
+            `Why? Because any number times 0 is 0, so ${x} disappears from the calculation.`,
+        ),
+        ...write(T(`¿Por qué ${x} = 0? Todo número × 0 = 0, es el más fácil`, `Why ${x} = 0? Any number × 0 = 0, it is the easiest`), 'muted'),
       })
       return ZERO
     }
@@ -178,19 +209,32 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
       const m = value(rx) < 0 ? neg(rx) : rx
       const target = value(rx) < 0 ? neg(rc) : rc
       steps.push({
-        say: `Para otra pareja buscamos la ${x} que hace que la ${y} valga 0, porque así las cuentas quedan muy fáciles. ` +
-          `Para eso ${where} tiene que valer 0.`,
-        ...write(`¿Qué ${x} hace ${y} = 0?  ${inside} = 0`, 'muted'),
+        say: T(
+          `Para otra pareja buscamos la ${x} que hace que la ${y} valga 0, porque así las cuentas quedan muy fáciles. ` +
+            `Para eso ${where} tiene que valer 0.`,
+          `For another pair we look for the ${x} that makes ${y} equal 0, because that makes the math very easy. ` +
+            `For that, ${where} has to equal 0.`,
+        ),
+        ...write(T(`¿Qué ${x} hace ${y} = 0?  ${inside} = 0`, `Which ${x} makes ${y} = 0?  ${inside} = 0`), 'muted'),
       })
       steps.push({
         say: value(rx) > 0
-          ? `Para que ${inside} dé 0, ${term(m, x)} tiene que valer lo mismo que ${txt(rc)}.`
-          : `Para que ${inside} dé 0, ${term(m, x)} tiene que valer ${txt(target)}.`,
+          ? T(
+              `Para que ${inside} dé 0, ${term(m, x)} tiene que valer lo mismo que ${txt(rc)}.`,
+              `For ${inside} to equal 0, ${term(m, x)} has to equal ${txt(rc)}.`,
+            )
+          : T(
+              `Para que ${inside} dé 0, ${term(m, x)} tiene que valer ${txt(target)}.`,
+              `For ${inside} to equal 0, ${term(m, x)} has to equal ${txt(target)}.`,
+            ),
         ...write(`${term(m, x)} = ${txt(target)}`, 'muted'),
       })
       if (!eq(m, ONE)) {
         steps.push({
-          say: `Repartimos ${txt(target)} entre ${txt(m)}: ${txt(target)} ÷ ${txt(m)} = ${txt(root)}. ¡Ya tenemos la ${x}!`,
+          say: T(
+            `Repartimos ${txt(target)} entre ${txt(m)}: ${txt(target)} ÷ ${txt(m)} = ${txt(root)}. ¡Ya tenemos la ${x}!`,
+            `We share ${txt(target)} among ${txt(m)}: ${txt(target)} ÷ ${txt(m)} = ${txt(root)}. Now we have ${x}!`,
+          ),
           ...write(`${x} = ${txt(target)} ÷ ${txt(m)} = ${txt(root)}`, 'muted'),
         })
       }
@@ -198,15 +242,21 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
     }
     if (isOne) {
       steps.push({
-        say: `Para otra pareja escogemos otro número fácil para la ${x}: el 1. Como no hay que dividir, cualquier número sirve.`,
-        ...write(`Otra pareja: escogemos ${x} = 1, otro número fácil`, 'muted'),
+        say: T(
+          `Para otra pareja escogemos otro número fácil para la ${x}: el 1. Como no hay que dividir, cualquier número sirve.`,
+          `For another pair we pick another easy number for ${x}: 1. Since there is nothing to divide, any number works.`,
+        ),
+        ...write(T(`Otra pareja: escogemos ${x} = 1, otro número fácil`, `Another pair: we pick ${x} = 1, another easy number`), 'muted'),
       })
       return ONE
     }
     // Probar numeros chicos hasta que la division entre k salga exacta
     steps.push({
-      say: `Para otra pareja queremos que la división entre ${txt(k)} salga exacta. Probamos números pequeños para la ${x}.`,
-      ...write(`Buscamos una ${x} con ${inside} que se divida exacto entre ${txt(k)}`, 'muted'),
+      say: T(
+        `Para otra pareja queremos que la división entre ${txt(k)} salga exacta. Probamos números pequeños para la ${x}.`,
+        `For another pair we want the division by ${txt(k)} to come out exact. We try small numbers for ${x}.`,
+      ),
+      ...write(T(`Buscamos una ${x} con ${inside} que se divida exacto entre ${txt(k)}`, `We look for an ${x} where ${inside} divides evenly by ${txt(k)}`), 'muted'),
     })
     const tries = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6].map(n => q(n))
     const found = tries.find(t => isInt(yOf(t)))
@@ -214,26 +264,35 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
     for (const t of tries) {
       if (found && eq(t, found)) break
       if (shown++ === 3) {
-        steps.push({ say: 'Seguimos probando más números...', ...write('…', 'muted') })
+        steps.push({ say: T('Seguimos probando más números...', 'We keep trying more numbers...'), ...write('…', 'muted') })
         break
       }
       const r = sub(rc, mul(rx, t))
       steps.push({
-        say: `Con ${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no sale exacto. Probamos otro.`,
-        ...write(`${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no es exacto ✗`, 'muted'),
+        say: T(
+          `Con ${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no sale exacto. Probamos otro.`,
+          `With ${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} does not come out exact. We try another one.`,
+        ),
+        ...write(T(`${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} no es exacto ✗`, `${x} = ${txt(t)}: ${txt(r)} ÷ ${txt(k)} is not exact ✗`), 'muted'),
       })
     }
     if (!found) {
       steps.push({
-        say: `Ningún número pequeño da una división exacta, así que usamos ${x} = 1 y la ${y} saldrá en fracción.`,
-        ...write(`Usamos ${x} = 1 (la ${y} sale en fracción)`, 'muted'),
+        say: T(
+          `Ningún número pequeño da una división exacta, así que usamos ${x} = 1 y la ${y} saldrá en fracción.`,
+          `No small number gives an exact division, so we use ${x} = 1 and ${y} will come out as a fraction.`,
+        ),
+        ...write(T(`Usamos ${x} = 1 (la ${y} sale en fracción)`, `We use ${x} = 1 (${y} comes out as a fraction)`), 'muted'),
       })
       return ONE
     }
     const r = sub(rc, mul(rx, found))
     steps.push({
-      say: `Con ${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí sale exacto. ¡Usamos ese!`,
-      ...write(`${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí es exacto ✔`, 'muted'),
+      say: T(
+        `Con ${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí sale exacto. ¡Usamos ese!`,
+        `With ${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} does come out exact. We use that one!`,
+      ),
+      ...write(T(`${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} sí es exacto ✔`, `${x} = ${txt(found)}: ${txt(r)} ÷ ${txt(k)} is exact ✔`), 'muted'),
     })
     return found
   }
@@ -247,32 +306,45 @@ export function twoVarScript(e: TwoVarEquation): BoardScript {
     const absRx = value(rx) < 0 ? neg(rx) : rx
     const absProd = value(rx) < 0 ? neg(prod) : prod
     steps.push({
-      say: `Cambiamos la ${x} por ${txt(xv)} en la regla ${formula}. Donde decía ${term(absRx, x)} ahora dice ${txt(absRx)} × ${inner(xv)}.`,
-      ...write(`Si ${x} = ${txt(xv)}:  ${y} = ${wrap(`${txt(rc)} ${op} ${txt(absRx)} × ${inner(xv)}`)}`),
+      say: T(
+        `Cambiamos la ${x} por ${txt(xv)} en la regla ${formula}. Donde decía ${term(absRx, x)} ahora dice ${txt(absRx)} × ${inner(xv)}.`,
+        `We replace ${x} with ${txt(xv)} in the rule ${formula}. Where it said ${term(absRx, x)} it now says ${txt(absRx)} × ${inner(xv)}.`,
+      ),
+      ...write(`${T('Si', 'If')} ${x} = ${txt(xv)}:  ${y} = ${wrap(`${txt(rc)} ${op} ${txt(absRx)} × ${inner(xv)}`)}`),
     })
     steps.push({
-      say: `Primero la multiplicación: ${txt(absRx)} × ${inner(xv)} = ${txt(absProd)}.`,
+      say: T(
+        `Primero la multiplicación: ${txt(absRx)} × ${inner(xv)} = ${txt(absProd)}.`,
+        `First the multiplication: ${txt(absRx)} × ${inner(xv)} = ${txt(absProd)}.`,
+      ),
       ...write(`${y} = ${wrap(`${txt(rc)} ${op} ${inner(absProd)}`)}`),
     })
     steps.push({
-      say: `Ahora ${txt(rc)} ${op} ${inner(absProd)} = ${txt(rest)}.`,
+      say: T(`Ahora ${txt(rc)} ${op} ${inner(absProd)} = ${txt(rest)}.`, `Now ${txt(rc)} ${op} ${inner(absProd)} = ${txt(rest)}.`),
       ...write(isOne ? `${y} = ${txt(rest)}` : `${y} = ${txt(rest)} ÷ ${txt(k)}`, isOne ? 'result' : 'line-text'),
     })
     if (!isOne) {
-      steps.push({ say: `Y ${txt(rest)} ÷ ${txt(k)} = ${txt(yv)}.`, ...write(`${y} = ${txt(yv)}`, 'result') })
+      steps.push({ say: T(`Y ${txt(rest)} ÷ ${txt(k)} = ${txt(yv)}.`, `And ${txt(rest)} ÷ ${txt(k)} = ${txt(yv)}.`), ...write(`${y} = ${txt(yv)}`, 'result') })
     }
     steps.push({
-      say: `Comprobamos: en la ecuación del principio cambiamos la ${x} por ${txt(xv)} y la ${y} por ${txt(yv)}. ` +
-        `${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}. ¡Se cumple! Una pareja es ${x} = ${txt(xv)}, ${y} = ${txt(yv)}. ✔`,
+      say: T(
+        `Comprobamos: en la ecuación del principio cambiamos la ${x} por ${txt(xv)} y la ${y} por ${txt(yv)}. ` +
+          `${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}. ¡Se cumple! Una pareja es ${x} = ${txt(xv)}, ${y} = ${txt(yv)}. ✔`,
+        `Let's check: in the original equation we replace ${x} with ${txt(xv)} and ${y} with ${txt(yv)}. ` +
+          `${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}. It works! One pair is ${x} = ${txt(xv)}, ${y} = ${txt(yv)}. ✔`,
+      ),
       ...write(`${txt(a)} × ${inner(xv)} + ${inner(b)} × ${inner(yv)} = ${txt(c)}  ✔`, 'muted'),
     })
     pairs.push([xv, yv])
   }
 
-  const ex = pairs.map(([xv, yv]) => `${x} = ${txt(xv)}, ${y} = ${txt(yv)}`).join(' o ')
-  const answer = `${formula} (por ejemplo ${ex})`
+  const ex = pairs.map(([xv, yv]) => `${x} = ${txt(xv)}, ${y} = ${txt(yv)}`).join(T(' o ', ' or '))
+  const answer = T(`${formula} (por ejemplo ${ex})`, `${formula} (for example ${ex})`)
   steps.push({
-    say: `¡Listo! La regla es ${formula}. Con cualquier ${x} sale su ${y}; por ejemplo ${ex}. 🎉`,
+    say: T(
+      `¡Listo! La regla es ${formula}. Con cualquier ${x} sale su ${y}; por ejemplo ${ex}. 🎉`,
+      `Done! The rule is ${formula}. Any ${x} gives its ${y}; for example ${ex}. 🎉`,
+    ),
     ...write(`✔ ${answer}`, 'result'),
   })
 

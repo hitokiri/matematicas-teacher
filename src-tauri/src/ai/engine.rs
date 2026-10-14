@@ -54,6 +54,19 @@ impl AIEngine {
         engine.solve(problem, local_model).await
     }
 
+    /// Aviso al final de las instrucciones cuando el nino usa la app en ingles
+    pub(crate) fn language_note(language: Option<&str>) -> &'static str {
+        match language {
+            Some("en") => "\n\nIMPORTANT: The child uses the app in English. Write EVERY explanation, step title and the final answer in English (keep the same JSON format and keys).",
+            _ => "",
+        }
+    }
+
+    /// Instrucciones del modelo para este problema (con el idioma elegido)
+    fn system_prompt_for(problem: &MathProblem) -> String {
+        format!("{}{}", Self::build_system_prompt(), Self::language_note(problem.language.as_deref()))
+    }
+
     fn build_system_prompt() -> String {
         r#"Eres una maestra de primaria paciente y carinosa. Explicas a ninos de 7 a 12 anos como resolver problemas de matematicas, paso a paso.
 
@@ -254,7 +267,7 @@ REGLAS:
             .post(format!("{}/v1/chat/completions", base))
             .json(&serde_json::json!({
                 "messages": [
-                    { "role": "system", "content": Self::build_system_prompt() },
+                    { "role": "system", "content": Self::system_prompt_for(problem) },
                     { "role": "user", "content": Self::user_content(problem) },
                 ],
                 "max_tokens": 4096,
@@ -287,8 +300,9 @@ REGLAS:
         };
         let files = files.clone();
         let user = Self::user_prompt(problem);
+        let system = Self::system_prompt_for(problem);
         let generation = tokio::task::spawn_blocking(move || {
-            crate::ai::local::generate(&files, &Self::build_system_prompt(), &user, image.as_deref(), Self::solution_grammar())
+            crate::ai::local::generate(&files, &system, &user, image.as_deref(), Self::solution_grammar())
         })
         .await??;
         crate::ai::local::record_speed(generation.tokens_per_second);
@@ -332,14 +346,20 @@ REGLAS:
     }
 
     /// Responde una pregunta del nino sobre los pasos de la pizarra (chat)
-    pub async fn answer_question(context: &str, turns: Vec<crate::ai::local::Turn>, local_model: Option<&LocalModel>, active_id: Option<&str>) -> Result<String> {
+    pub async fn answer_question(context: &str, turns: Vec<crate::ai::local::Turn>, local_model: Option<&LocalModel>, active_id: Option<&str>, language: Option<&str>) -> Result<String> {
         let Some(files) = local_model else {
             return Err(anyhow::anyhow!(match active_id {
                 Some(_) => "El modelo activo no esta descargado. Descargalo en Configuracion.",
                 None => "Para hacer preguntas selecciona un modelo en Configuracion.",
             }));
         };
-        let system = format!("{}\n\nEsto es lo que el nino esta viendo en la pizarra:\n{}", CHAT_PROMPT, context);
+        let rules = if language == Some("en") { CHAT_PROMPT.replace("Responde en espanol", "Responde en ingles (English)") } else { CHAT_PROMPT.to_string() };
+        let system = format!(
+            "{}\n\nEsto es lo que el nino esta viendo en la pizarra:\n{}{}",
+            rules,
+            context,
+            if language == Some("en") { "\n\nIMPORTANT: Answer in English." } else { "" }
+        );
         let files = files.clone();
         let generation = tokio::task::spawn_blocking(move || {
             crate::ai::local::generate_chat(&files, &system, &turns, None, None, 700)

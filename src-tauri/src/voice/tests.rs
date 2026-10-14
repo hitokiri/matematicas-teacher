@@ -47,7 +47,7 @@ fn rechaza_texto_vacio_o_demasiado_largo() {
 #[ignore]
 fn voz_real_genera_audio_con_piper_y_kokoro() {
     let dir = std::path::PathBuf::from(std::env::var("VOICE_TEST_DIR").expect("VOICE_TEST_DIR"));
-    for id in ["piper-claude", "kokoro-dora", "kokoro-alex"] {
+    for id in ["piper-claude", "kokoro-dora", "kokoro-alex", "piper-lessac", "kokoro-heart", "kokoro-michael"] {
         let v = find_voice(id).unwrap();
         let wav = engine::synthesize(&dir, v, "Dos equis más tres ye igual a seis.").unwrap();
         assert!(wav.len() > 20_000, "{id}: audio demasiado corto ({} bytes)", wav.len());
@@ -75,8 +75,8 @@ fn comando_de_instalacion_segun_la_distribucion() {
 
 #[test]
 fn la_voz_del_sistema_rechaza_texto_vacio_o_enorme() {
-    assert!(system::synthesize("  ").is_err());
-    assert!(system::synthesize(&"a".repeat(MAX_TEXT_CHARS + 1)).is_err());
+    assert!(system::synthesize("  ", "es").is_err());
+    assert!(system::synthesize(&"a".repeat(MAX_TEXT_CHARS + 1), "es").is_err());
 }
 
 #[test]
@@ -86,7 +86,8 @@ fn la_voz_del_sistema_genera_un_wav_valido_si_espeak_esta_instalado() {
         return;
     }
     // un texto que empieza con "-" no debe tomarse como opcion
-    let wav = system::synthesize("-hola, dos equis más tres").unwrap();
+    let wav = system::synthesize("-hola, dos equis más tres", "es").unwrap();
+    assert!(system::synthesize("-hello, two x plus three", "en").unwrap().len() > 10_000);
     assert_eq!(&wav[0..4], b"RIFF");
     let data_len = u32::from_le_bytes(wav[40..44].try_into().unwrap()) as usize;
     assert_eq!(data_len, wav.len() - 44, "la cabecera debe tener el tamaño real");

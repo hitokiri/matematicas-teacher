@@ -64,13 +64,15 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 - **Reproducir la pizarra sola** al resolver.
 - **Mostrar "¿Hasta dónde llega la maestra?"** en la pantalla principal.
 - **Idioma**: español o inglés. Si nunca lo has escogido, la app usa el idioma de tu sistema; se cambia con el botón
-  **ES / EN** del encabezado o en Configuración › Interfaz. Hoy se traduce la interfaz; la narración de la pizarra y
-  las respuestas del modelo siguen en español.
+  **ES / EN** del encabezado o en Configuración › Interfaz. Se traduce la interfaz, la narración de la pizarra, la
+  lectura en voz alta y las respuestas del modelo. Lo que se escribe como problema sigue entendiendo solo símbolos y
+  palabras en español (`entre`, `raíz`...), aunque los símbolos (`+ − × ÷ √ ²`) funcionan igual en inglés.
 - **Tema** claro u oscuro (si no has escogido, el del sistema).
 - **Registro de la app** (Configuración › Registro de la app): lo que hace la app y sus errores, con filtro, botón
   para copiarlo y borrarlo. También se guarda en `logs/app.log` dentro de la carpeta de datos de la app, por si no abre.
 - **Voz de la maestra** (sin internet): en Configuración se descarga una voz natural, Piper (~64 MB, rápida) o
-  Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), o se queda la voz del sistema. La maestra lee las
+  Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), en español o en inglés (según el idioma de la app),
+  o se usa la voz del sistema (`espeak-ng`; la app detecta tu distribución y te dice qué instalar si falta). La maestra lee las
   matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada
   audio. El botón 🔈 junto a la pizarra enciende la lectura.
 

@@ -5,7 +5,7 @@ import { MAX_ROWS_PER_PAGE, pageOf, rowOnPage } from '../lib/board/paginate'
 import BoardVisual from './BoardVisual'
 import { FONT_SCALES } from '../lib/uiPrefs'
 import { logUi } from '../lib/applog'
-import { useT } from '../lib/i18n'
+import { useI18n, useT } from '../lib/i18n'
 import { SYSTEM_VOICE, prefetch, speak, stopSpeaking } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
 
@@ -60,7 +60,7 @@ export default function Chalkboard({
   script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
   fontScale = 1, onFontScaleChange, voiceId = SYSTEM_VOICE, readAloud = false, onReadAloudChange,
 }: ChalkboardProps) {
-  const t = useT()
+  const { t, lang } = useI18n()
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(readAloud)
@@ -107,7 +107,7 @@ export default function Chalkboard({
     const at = Math.min(step, last)
     let cancelled = false
     setVoiceError('')
-    void speak(script.steps[at].say, voiceId).then(result => {
+    void speak(script.steps[at].say, voiceId, lang).then(result => {
       if (cancelled) return
       if (result === 'failed') {
         logUi('warn', 'voz', `No se pudo leer en voz alta con la voz «${voiceId}»`)
@@ -120,12 +120,12 @@ export default function Chalkboard({
       }
     })
     // El audio del paso siguiente se prepara mientras suena este
-    if (at < last) prefetch(script.steps[at + 1].say, voiceId)
+    if (at < last) prefetch(script.steps[at + 1].say, voiceId, lang)
     return () => {
       cancelled = true
       stopSpeaking()
     }
-  }, [voice, voiceId, step, script, last, canSpeak])
+  }, [voice, voiceId, lang, step, script, last, canSpeak])
 
   // Trazos visibles hasta el paso actual; los del paso actual se animan
   const { visible, fresh } = useMemo(() => {

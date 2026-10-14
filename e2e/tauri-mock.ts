@@ -38,11 +38,15 @@ setInterval(() => {
 }, 300);
 
 // Voces de la maestra: id -> descargada (la descarga se simula al instante)
-state.voices = state.voices || { 'piper-claude': false, 'kokoro-dora': false, 'kokoro-alex': false };
+state.voices = state.voices || {};
+for (const id of ['piper-claude', 'kokoro-dora', 'kokoro-alex', 'piper-lessac', 'kokoro-heart', 'kokoro-michael']) if (!(id in state.voices)) state.voices[id] = false;
 const VOICE_INFO = {
   'piper-claude': { name: 'Piper · Claude (México)', description: 'Ligera y rápida.', size_mb: 64 },
   'kokoro-dora': { name: 'Kokoro · Dora (mujer)', description: 'Más expresiva.', size_mb: 334 },
   'kokoro-alex': { name: 'Kokoro · Alex (hombre)', description: 'Más expresiva.', size_mb: 334 },
+  'piper-lessac': { name: 'Piper · Lessac (US)', description: 'Light and fast.', size_mb: 64, lang: 'en' },
+  'kokoro-heart': { name: 'Kokoro · Heart (female)', description: 'More expressive.', size_mb: 334, lang: 'en' },
+  'kokoro-michael': { name: 'Kokoro · Michael (male)', description: 'More expressive.', size_mb: 334, lang: 'en' },
 };
 
 const toInfo = (m) => {
@@ -117,7 +121,7 @@ const mockInvoke = (cmd, args) => {
 
     case 'list_voices':
       return Promise.resolve(Object.entries(VOICE_INFO).map(([id, v]) => ({
-        id, ...v, is_downloaded: !!state.voices[id], is_downloading: false, download_progress: state.voices[id] ? 100 : 0,
+        id, lang: 'es', ...v, is_downloaded: !!state.voices[id], is_downloading: false, download_progress: state.voices[id] ? 100 : 0,
       })));
 
     case 'download_voice':

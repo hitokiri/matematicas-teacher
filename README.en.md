@@ -70,7 +70,8 @@ In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
 - **App log** (Settings › App log): what the app is doing and its errors, with a filter and copy/clear buttons. It is
   also saved to `logs/app.log` in the app data folder, in case the app does not open.
 - **Teacher voice** (offline): in Settings, download a natural voice — Piper (~64 MB, fast) or Kokoro (~334 MB,
-  more expressive, female and male voices) — or keep the system voice. The teacher reads math as words
+  more expressive, female and male voices) — in Spanish or English (following the app language), or use the system voice (`espeak-ng`; the app detects your distro
+  and tells you what to install if it is missing). The teacher reads math as words
   ("2x + 3y = 6" → "dos equis más tres ye igual a seis") and the board advances when each audio clip ends. The 🔈
   button next to the board turns reading on.
 

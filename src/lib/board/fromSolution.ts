@@ -2,6 +2,7 @@
 // de pizarra: cada paso escribe su operacion en un renglon nuevo.
 
 import type { BoardItem, BoardScript, BoardStep } from './types'
+import { pick, type Lang } from './lang'
 
 export interface SolutionLike {
   problem: string
@@ -12,14 +13,15 @@ export interface SolutionLike {
 /** Caracteres aproximados que caben en una columna de la cuadricula */
 const CHARS_PER_COL = 1.6
 
-export function solutionScript(solution: SolutionLike): BoardScript {
+export function solutionScript(solution: SolutionLike, lang: Lang = 'es'): BoardScript {
+  const T = pick(lang)
   let n = 0
   const line = (row: number, text: string, tone: 'op' | 'line-text' | 'result'): BoardItem =>
     ({ id: `s${n++}`, kind: 'text', row, col: 0, text, tone, align: 'start' })
 
   const answer = cleanAnswer(solution.final_answer)
   const steps: BoardStep[] = [{
-    say: 'Este es el problema. ¡Vamos a resolverlo paso a paso!',
+    say: T('Este es el problema. ¡Vamos a resolverlo paso a paso!', "This is the problem. Let's solve it step by step!"),
     add: [line(0, solution.problem, 'op')],
   }]
   let row = 1
@@ -38,7 +40,7 @@ export function solutionScript(solution: SolutionLike): BoardScript {
     })
     row++
   }
-  steps.push({ say: `¡Listo! La respuesta es ${answer}. 🎉`, add: [line(row, `✔ ${answer}`, 'result')] })
+  steps.push({ say: T(`¡Listo! La respuesta es ${answer}. 🎉`, `Done! The answer is ${answer}. 🎉`), add: [line(row, `✔ ${answer}`, 'result')] })
 
   const longest = Math.max(
     ...steps.flatMap(s => s.add).map(i => (i.kind === 'text' ? i.text.length : 0)),
@@ -61,7 +63,7 @@ function shorten(text: string): string {
   return first.length > 60 ? `${first.slice(0, 57)}…` : first
 }
 
-/** "Respuesta final: x = 5" -> "x = 5" */
+/** "Respuesta final: x = 5" -> "x = 5" (tambien "Final answer: ...") */
 function cleanAnswer(text: string): string {
-  return text.replace(/\*+/g, '').replace(/^\s*(respuesta|resultado)\s+final\s*:?\s*/i, '').trim() || text
+  return text.replace(/\*+/g, '').replace(/^\s*(respuesta|resultado|final)\s+(final|answer|result)\s*:?\s*/i, '').trim() || text
 }

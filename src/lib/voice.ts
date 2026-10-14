@@ -3,7 +3,7 @@
 // spokenMath, para que "2x + 3y = 6" suene "dos equis más tres ye igual a seis".
 
 import { invoke } from '@tauri-apps/api/core'
-import { spokenMath } from './spokenMath'
+import { spokenMath, type SpokenLang } from './spokenMath'
 import { logUi } from './applog'
 
 export const SYSTEM_VOICE = 'system'
@@ -17,6 +17,8 @@ export interface VoiceInfo {
   is_downloading: boolean
   /** 0-100 */
   download_progress: number
+  /** Idioma que habla: "es" o "en" */
+  lang: 'es' | 'en'
 }
 
 /** Como termino una lectura: completa, cortada por el usuario o con un error */
@@ -52,11 +54,11 @@ export const systemVoiceAvailable = (): boolean => typeof window !== 'undefined'
 const MAX_CACHE = 8
 const cache = new Map<string, Promise<Blob>>()
 
-function fetchAudio(voiceId: string, text: string): Promise<Blob> {
-  const key = `${voiceId}\u0000${text}`
+function fetchAudio(voiceId: string, text: string, lang: SpokenLang): Promise<Blob> {
+  const key = `${voiceId}\u0000${lang}\u0000${text}`
   const hit = cache.get(key)
   if (hit) return hit
-  const p = invoke<ArrayBuffer>('synthesize_speech', { voiceId, text }).then(
+  const p = invoke<ArrayBuffer>('synthesize_speech', { voiceId, text, language: lang }).then(
     bytes => new Blob([bytes], { type: 'audio/wav' }),
   )
   p.catch(() => cache.delete(key)) // un error no se guarda
@@ -66,9 +68,9 @@ function fetchAudio(voiceId: string, text: string): Promise<Blob> {
 }
 
 /** Prepara el audio de un texto sin reproducirlo (solo voces neuronales) */
-export function prefetch(text: string, voiceId: string): void {
+export function prefetch(text: string, voiceId: string, lang: SpokenLang = 'es'): void {
   if (voiceId === SYSTEM_VOICE && !systemInfo?.available) return
-  fetchAudio(voiceId, spokenMath(text)).catch(() => {})
+  fetchAudio(voiceId, spokenMath(text, lang), lang).catch(() => {})
 }
 
 let audio: HTMLAudioElement | null = null
@@ -83,20 +85,20 @@ export function stopSpeaking(): void {
 }
 
 /** Lee el texto y avisa cuando termina. Nunca lanza: un fallo se devuelve como 'failed'. */
-export function speak(text: string, voiceId: string): Promise<SpeakResult> {
+export function speak(text: string, voiceId: string, lang: SpokenLang = 'es'): Promise<SpeakResult> {
   stopSpeaking()
-  const spoken = spokenMath(text)
+  const spoken = spokenMath(text, lang)
   if (!spoken) return Promise.resolve('done')
-  if (voiceId !== SYSTEM_VOICE) return speakWithNeural(spoken, voiceId)
+  if (voiceId !== SYSTEM_VOICE) return speakWithNeural(spoken, voiceId, lang)
   // Voz del sistema: primero el programa del sistema (espeak-ng); si no, la del navegador
-  return getSystemVoice().then(info => (info.available ? speakWithNeural(spoken, SYSTEM_VOICE) : speakWithSystem(spoken)))
+  return getSystemVoice().then(info => (info.available ? speakWithNeural(spoken, SYSTEM_VOICE, lang) : speakWithSystem(spoken, lang)))
 }
 
-function speakWithSystem(spoken: string): Promise<SpeakResult> {
+function speakWithSystem(spoken: string, lang: SpokenLang): Promise<SpeakResult> {
   if (!systemVoiceAvailable()) return Promise.resolve('failed')
   return new Promise(resolve => {
     const u = new SpeechSynthesisUtterance(spoken)
-    u.lang = 'es-MX'
+    u.lang = lang === 'en' ? 'en-US' : 'es-MX'
     u.onend = () => resolve('done')
     u.onerror = e => resolve(e.error === 'canceled' || e.error === 'interrupted' ? 'stopped' : 'failed')
     cancelCurrent = () => resolve('stopped')
@@ -104,7 +106,7 @@ function speakWithSystem(spoken: string): Promise<SpeakResult> {
   })
 }
 
-async function speakWithNeural(spoken: string, voiceId: string): Promise<SpeakResult> {
+async function speakWithNeural(spoken: string, voiceId: string, lang: SpokenLang): Promise<SpeakResult> {
   let stopped = false
   cancelCurrent = () => {
     stopped = true
@@ -113,7 +115,7 @@ async function speakWithNeural(spoken: string, voiceId: string): Promise<SpeakRe
   }
   const mine = cancelCurrent
   try {
-    const blob = await fetchAudio(voiceId, spoken)
+    const blob = await fetchAudio(voiceId, spoken, lang)
     if (stopped) return 'stopped'
     if (url) URL.revokeObjectURL(url)
     url = URL.createObjectURL(blob)

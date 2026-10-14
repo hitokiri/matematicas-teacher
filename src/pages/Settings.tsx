@@ -6,7 +6,7 @@ import UiPrefsSection from '../components/UiPrefsSection';
 import VoiceSection from '../components/VoiceSection';
 import LogSection from '../components/LogSection';
 import type { UiPrefs } from '../lib/uiPrefs';
-import { useT } from '../lib/i18n';
+import { useI18n } from '../lib/i18n';
 
 interface ModelInfo {
   id: string;
@@ -36,7 +36,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, onThemeChange }: SettingsProps) {
-  const t = useT();
+  const { t, lang } = useI18n();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [computeDevice, setComputeDevice] = useState<string | null>(null);
 
@@ -172,9 +172,13 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
 
       {uiPrefs && onUiPrefsChange && (
         <VoiceSection
-          voice={uiPrefs.voice}
-          // Elegir una voz natural es pedir que la maestra lea: se enciende la lectura
-          onChange={voice => onUiPrefsChange({ ...uiPrefs, voice, readAloud: uiPrefs.readAloud || voice !== 'system' })}
+          voice={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
+          // Cada idioma recuerda su voz. Elegir una voz natural es pedir que la maestra lea: se enciende la lectura
+          onChange={voice => onUiPrefsChange({
+            ...uiPrefs,
+            [lang === 'en' ? 'voiceEn' : 'voice']: voice,
+            readAloud: uiPrefs.readAloud || voice !== 'system',
+          })}
           readAloud={uiPrefs.readAloud}
           onReadAloudChange={readAloud => onUiPrefsChange({ ...uiPrefs, readAloud })}
         />

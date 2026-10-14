@@ -157,7 +157,7 @@ fn test_parse_response_markdown_steps_and_final_answer() {
 #[test]
 fn test_with_transcription_uses_problema_line_for_drawings() {
     use crate::types::MathProblem;
-    let problem = MathProblem { text: String::new(), image: Some("data:image/png;base64,AAAA".to_string()) };
+    let problem = MathProblem { text: String::new(), image: Some("data:image/png;base64,AAAA".to_string()), language: None };
     let content = "**Problema:** 3 x 10\n\nPaso 1: Multiplicamos\n\nRespuesta final: 30";
     let sol = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
     assert_eq!(sol.problem, "3 x 10");
@@ -221,7 +221,7 @@ fn test_render_jinja_disables_thinking() {
 
 #[test]
 fn test_transcription_on_following_lines() {
-    let problem = crate::types::MathProblem { text: String::new(), image: Some("data:image/png;base64,AA==".into()) };
+    let problem = crate::types::MathProblem { text: String::new(), image: Some("data:image/png;base64,AA==".into()), language: None };
     let content = "Problema:  \nResuelve la ecuación:  \n3x + 4 = 19\n\n---\n\nx = 5";
     let solution = AIEngine::with_transcription(AIEngine::parse_response(content, "Problema dibujado"), content, &problem);
     assert_eq!(solution.problem, "Resuelve la ecuación: 3x + 4 = 19");
@@ -229,7 +229,7 @@ fn test_transcription_on_following_lines() {
 
 #[test]
 fn test_parse_structured_solution() {
-    let problem = crate::types::MathProblem { text: "2x + 3 = 7".into(), image: None };
+    let problem = crate::types::MathProblem { text: "2x + 3 = 7".into(), image: None, language: None };
     let content = r#"{"problema": "2x + 3 = 7", "pasos": [
         {"titulo": "Quitamos el 3", "explicacion": "Restamos 3 a los dos lados.", "operacion": "2x = 7 - 3 = 4"},
         {"titulo": "Dividimos entre 2", "explicacion": "Así x queda sola.", "operacion": ""}
@@ -245,7 +245,7 @@ fn test_parse_structured_solution() {
 
 #[test]
 fn test_parse_structured_rejects_free_text() {
-    let problem = crate::types::MathProblem { text: "2+2".into(), image: None };
+    let problem = crate::types::MathProblem { text: "2+2".into(), image: None, language: None };
     assert!(AIEngine::parse_structured("Paso 1: sumamos\nRespuesta final: 4", &problem).is_none());
 }
 
@@ -265,7 +265,7 @@ fn test_embedded_model_structured_explanation() {
         mmproj: None,
     };
     let grammar = llama_cpp_2::json_schema_to_grammar(&AIEngine::solution_schema().to_string()).unwrap();
-    let problem = crate::types::MathProblem { text: std::env::var("PROBLEMA").unwrap_or("2x + 3 = 7".into()), image: None };
+    let problem = crate::types::MathProblem { text: std::env::var("PROBLEMA").unwrap_or("2x + 3 = 7".into()), image: None, language: None };
     let g = crate::ai::local::generate(&files, &AIEngine::system_prompt_for_tests(),
         &format!("Explica paso a paso como resolver este problema:\n\n{}", problem.text), None, Some(&grammar)).unwrap();
     println!("{:.1} tokens/s\n{}", g.tokens_per_second, g.text);
@@ -302,7 +302,14 @@ async fn test_chat_answers_question_about_step() {
     };
     let context = "Problema: √x = 4\nPaso 1: √x = 4 — Este es el problema.\nPaso 2: (√x)² = 4² — Elevamos al cuadrado los dos lados.\nPaso 3: x = 16 — Simplificamos: el cuadrado de la raíz es el número mismo, y 4 al cuadrado es 16.\nRespuesta: x = 16\nEl niño está viendo el paso 3.";
     let turns = vec![("user".to_string(), "no entiendo que paso con la raiz cuadrada en el paso 3".to_string())];
-    let answer = AIEngine::answer_question(context, turns, Some(&files), None).await.expect("debe responder");
+    let answer = AIEngine::answer_question(context, turns, Some(&files), None, None).await.expect("debe responder");
     println!("RESPUESTA:\n{}", answer);
     assert!(!answer.is_empty());
+}
+
+#[test]
+fn el_aviso_de_idioma_solo_se_agrega_en_ingles() {
+    assert_eq!(AIEngine::language_note(None), "");
+    assert_eq!(AIEngine::language_note(Some("es")), "");
+    assert!(AIEngine::language_note(Some("en")).contains("English"));
 }
