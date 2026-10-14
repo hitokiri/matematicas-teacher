@@ -88,7 +88,7 @@ jobs:
 
   macos:
     name: macOS (Apple Silicon, Metal)
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v5

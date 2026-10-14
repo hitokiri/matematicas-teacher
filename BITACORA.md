@@ -606,3 +606,6 @@ Como Handy con whisper: llama.cpp va enlazado en el binario (`llama-cpp-2`), sin
 - v0.4.2 (macOS): pasó `cpp-httplib` pero `ggml-metal.cpp` falló con `no template named 'unique_ptr' in namespace 'std'`: el libc++
   de LLVM 23 (Homebrew) ya no incluye `<memory>` de forma transitiva. El wrapper de `clang++` ahora usa los headers de libc++
   del SDK (`-nostdinc++ -isystem $(xcrun --show-sdk-path)/usr/include/c++/v1`).
+- v0.4.2 (macOS): `ggml-metal-device.m` falló con `unknown type name 'MTLResidencySetDescriptor'`: esa API es del SDK de macOS 15
+  y `macos-14` trae Xcode 15.4. El job de macOS pasa a `macos-15` (Xcode 16). Los comentarios sobre Xcode 15.4 en el workflow
+  describen los errores que se vieron antes; los wrappers de clang se mantienen hasta comprobar que Apple clang 16 ya no los necesita.
