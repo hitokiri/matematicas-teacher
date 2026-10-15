@@ -3,6 +3,7 @@
 // incluye en el paquete, en la carpeta donde la app las busca al arrancar:
 //   - Linux (.deb / AppImage): en /usr/lib/matematicas-teacher/
 //   - macOS (.app / .dmg): en Contents/Resources/ (el binario las busca con @rpath)
+//   - Windows (.exe NSIS): junto al ejecutable (el loader de Windows busca las DLL ahi); sin rpath
 //   - llama.cpp: libllama, libggml*, libmtmd (compartidas, porque los backends son dinamicos)
 //   - voz de la maestra: libsherpa-onnx-c-api y libonnxruntime
 //   - backends/: modulos de CPU (todas las variantes), CUDA (Linux con GPU) y Metal (macOS)
@@ -14,10 +15,12 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const gpu = process.argv.includes('--gpu')
 const darwin = process.platform === 'darwin'
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const win = process.platform === 'win32'
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const release = path.join(root, 'src-tauri', 'target', 'release')
 const stage = path.join(release, 'lib-bundle')
 
@@ -113,6 +116,43 @@ if (darwin) {
   fs.writeFileSync(out, JSON.stringify({ bundle: { resources } }, null, 2))
   const mb = Object.values(resources).reduce((s, r) => s + fs.statSync(path.join(stage, r)).size, 0) / 1e6
   console.log(`✓ ${Object.keys(resources).length} archivos (${mb.toFixed(0)} MB) para macOS (Metal)`)
+  console.log(`✓ ${path.relative(root, out)}`)
+  process.exit(0)
+}
+
+// ---- Windows (.exe NSIS): el loader busca las DLL junto al ejecutable, no hace falta rpath ----
+if (win) {
+  const libs = fs.readdirSync(release).filter(f => /^(?:lib)?(llama|ggml|mtmd)[\w-]*\.dll$/i.test(f))
+  if (!libs.length) fail('No se encontraron las DLL de llama.cpp en target/release')
+  for (const f of libs) fs.copyFileSync(path.join(release, f), path.join(stage, f))
+
+  const voice = fs.readdirSync(release).filter(f => /^(?:lib)?(sherpa[\w-]*|onnxruntime)[\w-]*\.dll$/i.test(f))
+  if (!voice.length) fail('No se encontro la DLL de sherpa/onnxruntime en target/release (voz de la maestra)')
+  for (const f of voice) fs.copyFileSync(path.join(release, f), path.join(stage, f))
+
+  const backendsDir = path.join(release, 'backends')
+  const backends = fs.existsSync(backendsDir) ? fs.readdirSync(backendsDir).filter(f => f.endsWith('.dll')) : []
+  if (!backends.some(f => /ggml-cpu/i.test(f))) fail('No se encontraron los backends de CPU')
+  for (const f of backends) fs.copyFileSync(path.join(backendsDir, f), path.join(stage, 'backends', f))
+
+  // Tauri resources: origen (relativo a src-tauri) -> destino junto al ejecutable
+  const resources = {}
+  const walk = dir => {
+    for (const f of fs.readdirSync(dir)) {
+      const full = path.join(dir, f)
+      if (fs.statSync(full).isDirectory()) walk(full)
+      else {
+        const rel = path.posix.relative(stage, full)
+        resources[path.posix.join('target/release/lib-bundle', rel)] = rel
+      }
+    }
+  }
+  walk(stage)
+  const windows = base.bundle?.windows ?? {}
+  fs.writeFileSync(out, JSON.stringify({ bundle: { resources, windows } }, null, 2))
+
+  const mb = Object.values(resources).reduce((s, r) => s + fs.statSync(path.join(stage, r)).size, 0) / 1e6
+  console.log(`✓ ${Object.keys(resources).length} archivos (${mb.toFixed(0)} MB) para Windows (solo CPU)`)
   console.log(`✓ ${path.relative(root, out)}`)
   process.exit(0)
 }
