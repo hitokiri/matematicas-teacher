@@ -107,7 +107,7 @@ if (darwin) {
       const full = path.join(dir, f)
       if (fs.statSync(full).isDirectory()) walk(full)
       else {
-        const rel = path.posix.relative(stage, full)
+        const rel = path.relative(stage, full).split(path.sep).join('/')
         resources[path.posix.join('target/release/lib-bundle', rel)] = rel
       }
     }
@@ -142,7 +142,7 @@ if (win) {
       const full = path.join(dir, f)
       if (fs.statSync(full).isDirectory()) walk(full)
       else {
-        const rel = path.posix.relative(stage, full)
+        const rel = path.relative(stage, full).split(path.sep).join('/')
         resources[path.posix.join('target/release/lib-bundle', rel)] = rel
       }
     }
