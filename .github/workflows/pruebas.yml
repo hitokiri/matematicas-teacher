@@ -41,6 +41,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # el build script de sherpa-onnx descarga aqui sus librerias; si el cache lo marca como
+          # hecho pero esta carpeta no vuelve, falla el enlace (-lsherpa-onnx-c-api)
+          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
       # tauri::generate_context! necesita la carpeta del frontend compilado
       - run: mkdir -p dist
       # el cache puede traer enlaces viejos de llama.cpp que hacen panicar al build.rs ("File exists")
