@@ -165,6 +165,7 @@ jobs:
         with:
           workspaces: src-tauri
           key: windows
+          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
 
       - name: Dependencias de npm
         run: npm ci
