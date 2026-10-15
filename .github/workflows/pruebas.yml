@@ -43,6 +43,9 @@ jobs:
           workspaces: src-tauri
       # tauri::generate_context! necesita la carpeta del frontend compilado
       - run: mkdir -p dist
+      # el cache puede traer enlaces viejos de llama.cpp que hacen panicar al build.rs ("File exists")
+      - name: Limpiar enlaces viejos de llama.cpp
+        run: node scripts/clean-llama-libs.mjs debug
       - name: Pruebas
         working-directory: src-tauri
         run: cargo test --no-default-features
