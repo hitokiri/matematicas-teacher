@@ -142,6 +142,14 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 240
     steps:
+      # Como hace Handy: el FileTracker de MSBuild no soporta rutas >260 caracteres y el arbol
+      # de cmake de llama.cpp es profundo; activar rutas largas evita FTK1011/MSB3491
+      - name: Rutas largas (Windows)
+        shell: pwsh
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+          git config --system core.longpaths true
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
