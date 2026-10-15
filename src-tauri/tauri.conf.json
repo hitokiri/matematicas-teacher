@@ -52,12 +52,6 @@
       "minimumSystemVersion": "14.0",
       "signingIdentity": "-",
       "hardenedRuntime": false
-    },
-    "windows": {
-      "nsis": {
-        "language": "Spanish",
-        "installMode": "currentUser"
-      }
     }
   }
 }

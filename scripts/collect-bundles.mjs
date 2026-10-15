@@ -1,22 +1,21 @@
 #!/usr/bin/env node
 // Copia los instaladores generados a ./instaladores con un nombre que dice la version:
-//   matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb / ..._solo-CPU.AppImage / ..._macOS.dmg / ..._Windows.exe
+//   matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb / ..._solo-CPU.AppImage / ..._macOS.dmg
 //
-// Uso: node scripts/collect-bundles.mjs gpu|cpu|mac|win
+// Uso: node scripts/collect-bundles.mjs gpu|cpu|mac
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 const variant = process.argv[2]
-if (!['gpu', 'cpu', 'mac', 'win'].includes(variant)) {
-  console.error('Uso: node scripts/collect-bundles.mjs gpu|cpu|mac|win')
+if (!['gpu', 'cpu', 'mac'].includes(variant)) {
+  console.error('Uso: node scripts/collect-bundles.mjs gpu|cpu|mac')
   process.exit(1)
 }
-const suffix = variant === 'gpu' ? 'con-GPU-NVIDIA' : variant === 'cpu' ? 'solo-CPU' : variant === 'mac' ? 'macOS' : 'Windows'
-const arch = variant === 'mac' ? 'arm64' : variant === 'win' ? 'x64' : 'amd64'
-const targets = variant === 'mac' ? [['dmg', '.dmg']] : variant === 'win' ? [['nsis', '.exe']] : [['deb', '.deb'], ['appimage', '.AppImage']]
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const suffix = variant === 'gpu' ? 'con-GPU-NVIDIA' : variant === 'cpu' ? 'solo-CPU' : 'macOS'
+const arch = variant === 'mac' ? 'arm64' : 'amd64'
+const targets = variant === 'mac' ? [['dmg', '.dmg']] : [['deb', '.deb'], ['appimage', '.AppImage']]
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const bundleDir = path.join(root, 'src-tauri', 'target', 'release', 'bundle')
 const outDir = path.join(root, 'instaladores')
 const version = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri', 'tauri.conf.json'), 'utf8')).version

@@ -6,8 +6,6 @@
 #   - Linux solo CPU: mas ligera; funciona en cualquier PC pero nunca usa la GPU.
 #   - macOS (Apple Silicon): un .dmg con la app; usa la GPU integrada Metal. Se compila en un
 #     runner de macOS, por eso va en un job aparte.
-#   - Windows (x64, solo CPU): un instalador .exe (NSIS). Los runners de GitHub no tienen GPU,
-#     por eso la version de Windows es solo CPU por ahora. Va en un job aparte.
 #
 # Se ejecuta a mano (Actions -> Instaladores -> Run workflow) o al subir una etiqueta v* (v0.2.0),
 # que ademas publica un Release con los instaladores.
@@ -137,42 +135,9 @@ jobs:
           path: instaladores/*
           if-no-files-found: error
 
-  windows:
-    name: Windows (x64, solo CPU)
-    runs-on: windows-latest
-    timeout-minutes: 240
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-          key: windows
-
-      - name: Dependencias de npm
-        run: npm ci
-
-      - name: Compilar y empaquetar
-        env:
-          CMAKE_BUILD_PARALLEL_LEVEL: 4
-        run: npm run package:win
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: matematicas-teacher-Windows
-          path: instaladores/*
-          if-no-files-found: error
-
   release:
     name: Publicar Release
-    needs: [build, macos, windows]
+    needs: [build, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -194,11 +159,9 @@ jobs:
             | **con-GPU-NVIDIA** | PCs con tarjeta NVIDIA: la usa automáticamente (mucho más rápido). Si la PC no tiene NVIDIA, funciona igual con la CPU. | Grande (incluye CUDA) |
             | **solo-CPU** | PCs sin NVIDIA o si prefieres una descarga ligera. Nunca usa la GPU. | Pequeña |
             | **macOS** | Macs con Apple Silicon (M1–M4). Usa la GPU integrada (Metal). | Mediana |
-            | **Windows** | PCs con Windows 10/11 (x64). Solo CPU por ahora. | Pequeña |
 
             - `.deb`: Ubuntu / Debian → `sudo apt install ./matematicas-teacher_*.deb`
             - `.AppImage`: cualquier Linux → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
             - `.dmg`: macOS → abre el `.dmg`, arrastra **Matemáticas Teacher** a *Aplicaciones*. Como no está firmada por Apple, macOS la bloquea la primera vez: en macOS 15 (Sequoia) ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*; en macOS 14, clic derecho → *Abrir*. También funciona en Terminal: `xattr -dr com.apple.quarantine "/Applications/Matematicas Teacher.app"`.
-            - `.exe`: Windows → ejecuta el instalador. Como no está firmado, SmartScreen puede avisar: *Más información* → *Run anyway*.
 
             Para la versión con GPU solo hace falta el driver de NVIDIA (`nvidia-smi` debe funcionar); no hay que instalar CUDA.
