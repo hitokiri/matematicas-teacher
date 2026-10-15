@@ -41,11 +41,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      # el cache restaura el build script de sherpa-onnx como "hecho" pero no la carpeta que descarga
-      # (target/sherpa-onnx-prebuilt); sin esto falla el enlace (-lsherpa-onnx-c-api). Se fuerza a correr.
+      # el cache deja el build script de sherpa-onnx como "hecho" y/o target/sherpa-onnx-prebuilt
+      # vacia (enlace roto: -lsherpa-onnx-c-api, o "No shared runtime libraries found"). Se borra
+      # para que se descargue completa.
       - name: Forzar la descarga de sherpa-onnx
         working-directory: src-tauri
-        run: cargo clean -p sherpa-onnx-sys
+        shell: bash
+        run: |
+          rm -rf target/sherpa-onnx-prebuilt
+          cargo clean -p sherpa-onnx-sys
       # tauri::generate_context! necesita la carpeta del frontend compilado
       - run: mkdir -p dist
       # el cache puede traer enlaces viejos de llama.cpp que hacen panicar al build.rs ("File exists")
