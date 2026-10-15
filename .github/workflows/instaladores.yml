@@ -74,7 +74,12 @@ jobs:
         with:
           workspaces: src-tauri
           key: ${{ matrix.variant }}
-          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
+
+      # el cache restaura el build script de sherpa-onnx como "hecho" pero no la carpeta que descarga
+      # (target/sherpa-onnx-prebuilt); sin esto falla el enlace (-lsherpa-onnx-c-api). Se fuerza a correr.
+      - name: Forzar la descarga de sherpa-onnx
+        working-directory: src-tauri
+        run: cargo clean -p sherpa-onnx-sys --release
 
       - name: Dependencias de npm
         run: npm ci
@@ -111,7 +116,12 @@ jobs:
         with:
           workspaces: src-tauri
           key: macos
-          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
+
+      # el cache restaura el build script de sherpa-onnx como "hecho" pero no la carpeta que descarga
+      # (target/sherpa-onnx-prebuilt); sin esto falla el enlace (-lsherpa-onnx-c-api). Se fuerza a correr.
+      - name: Forzar la descarga de sherpa-onnx
+        working-directory: src-tauri
+        run: cargo clean -p sherpa-onnx-sys --release
 
       - name: Dependencias de npm
         run: npm ci
@@ -165,7 +175,12 @@ jobs:
         with:
           workspaces: src-tauri
           key: windows
-          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
+
+      # el cache restaura el build script de sherpa-onnx como "hecho" pero no la carpeta que descarga
+      # (target/sherpa-onnx-prebuilt); sin esto falla el enlace (-lsherpa-onnx-c-api). Se fuerza a correr.
+      - name: Forzar la descarga de sherpa-onnx
+        working-directory: src-tauri
+        run: cargo clean -p sherpa-onnx-sys --release
 
       - name: Dependencias de npm
         run: npm ci
