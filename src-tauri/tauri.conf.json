@@ -55,7 +55,7 @@
     },
     "windows": {
       "nsis": {
-        "languages": ["Spanish"],
+        "language": "Spanish",
         "installMode": "currentUser"
       }
     }
