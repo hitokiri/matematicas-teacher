@@ -23,12 +23,6 @@ fn copy_llama_libs() {
     let Some(profile_dir) = out_dir.ancestors().nth(3) else { return };
 
     copy_shared_libs(&lib_dir, profile_dir);
-    // En Windows CMake instala los .dll en out/bin; out/lib solo tiene los .lib de importacion
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        if let Some(out) = lib_dir.parent() {
-            copy_shared_libs(&out.join("bin"), profile_dir);
-        }
-    }
     copy_shared_libs(&backends, &profile_dir.join("backends"));
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
