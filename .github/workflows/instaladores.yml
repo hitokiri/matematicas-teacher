@@ -182,7 +182,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: windows
+          # cambiar la clave invalida el cache de llama.cpp compilado con OpenSSL
+          key: windows-sin-openssl
 
       # el cache deja el build script de sherpa-onnx como "hecho" y/o target/sherpa-onnx-prebuilt
       # vacia (enlace roto: -lsherpa-onnx-c-api, o "No shared runtime libraries found"). Se borra
@@ -200,7 +201,17 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          # El runner trae OpenSSL y llama.cpp (cpp-httplib) lo enlazaba: la app pedia
+          # libcrypto-3-x64.dll, que no va en el instalador. No usamos HTTPS desde llama.cpp.
+          CMAKE_DISABLE_FIND_PACKAGE_OpenSSL: 'ON'
         run: npm run package:win
+
+      - name: Verificar que no dependa de OpenSSL
+        shell: pwsh
+        run: |
+          $bins = Get-ChildItem src-tauri/target/release -File | Where-Object { $_.Extension -in '.exe', '.dll' }
+          $bad = $bins | Where-Object { Select-String -Path $_.FullName -Pattern 'libcrypto|libssl' -Quiet }
+          if ($bad) { Write-Error "Dependen de OpenSSL: $($bad.Name -join ', ')"; exit 1 }
 
       - uses: actions/upload-artifact@v7
         with:
