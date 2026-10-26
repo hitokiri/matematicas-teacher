@@ -1,6 +1,6 @@
 {
   "name": "matematicas-teacher",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "AI-powered math problem solver with step-by-step explanations",
   "scripts": {
     "dev": "vite",
