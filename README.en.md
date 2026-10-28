@@ -124,7 +124,7 @@ chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
    ```bash
    sudo apt update
    sudo apt install -y build-essential curl wget file pkg-config cmake clang libclang-dev \
-     libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
+     libwebkit2gtk-4.1-dev libssl-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev \
      patchelf libfuse2t64
    ```
 

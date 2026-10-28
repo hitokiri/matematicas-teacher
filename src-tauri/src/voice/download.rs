@@ -129,7 +129,7 @@ fn extract(archive: &Path, voices_dir: &Path, tmp_name: &str, pack: &Pack) -> Re
     tar.set_unpack_xattrs(false);
     tar.unpack(&tmp)?;
     let extracted = tmp.join(pack.dir);
-    if !extracted.join("tokens.txt").is_file() {
+    if !super::has_model_files(&extracted) {
         return Err(anyhow!("El paquete descargado no trae los archivos esperados"));
     }
     let dest = pack_path(voices_dir, pack);

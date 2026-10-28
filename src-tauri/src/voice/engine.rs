@@ -38,6 +38,7 @@ fn config_for(voices_dir: &Path, voice: &Voice) -> Result<OfflineTtsConfig> {
                 ..Default::default()
             }
         }
+        Kind::Whisper => return Err(anyhow!("Ese paquete no es una voz")),
         Kind::Kokoro => OfflineTtsModelConfig {
             kokoro: OfflineTtsKokoroModelConfig {
                 model: file("model.onnx"),

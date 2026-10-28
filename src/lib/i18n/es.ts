@@ -193,6 +193,32 @@ export const es = {
   'voice.errAction': 'No se pudo completar la acción',
   'voice.systemShort': 'del sistema',
 
+  // Micrófono (reconocimiento de voz)
+  'mic.title': 'Micrófono',
+  'mic.hint': 'Habla con la maestra en vez de escribir. El audio se procesa en tu computadora, sin internet. Descarga un modelo la primera vez.',
+  'mic.whisper-turbo.name': 'Whisper Turbo',
+  'mic.whisper-turbo.desc': 'Equilibrado: entiende bien y va rápido en casi cualquier computadora.',
+  'mic.whisper-small.name': 'Whisper Small',
+  'mic.whisper-small.desc': 'Ligero para computadoras modestas; un poco menos preciso.',
+  'mic.download': 'Descargar',
+  'mic.downloadAria': 'Descargar el modelo de voz {name}',
+  'mic.cancel': 'Cancelar',
+  'mic.cancelAria': 'Cancelar descarga de {name}',
+  'mic.deleteAria': 'Eliminar el modelo de voz {name}',
+  'mic.deleteConfirm': '¿Eliminar el modelo "{name}"? Podrás descargarlo otra vez.',
+  'mic.size': 'Descarga de {mb} MB.',
+  'mic.downloading': 'Descargando {name}',
+  'mic.errDownload': 'No se pudo descargar el modelo de voz: {message}',
+  'mic.errUnknown': 'error desconocido',
+  'mic.errAction': 'No se pudo completar la acción',
+
+  'chat.mic': 'Hablar',
+  'chat.micStop': 'Dejar de hablar',
+  'chat.micBusy': 'Escribiendo lo que dijiste…',
+  'chat.micRecording': 'Te escucho…',
+  'chat.micNeedModel': 'Para usar el micrófono descarga un modelo de voz en Configuración.',
+  'chat.micErr': 'No se pudo usar el micrófono.',
+
   // Registro
   'log.title': 'Registro de la app',
   'log.hint': 'Aquí aparece lo que hace la app. Si algo falla, abre el registro, copia lo que dice y compártelo para saber qué pasó.',

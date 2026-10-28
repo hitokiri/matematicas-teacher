@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS pide permiso explicito antes de abrir el microfono (reconocimiento de voz local). -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Se usa el microfono para que puedas hablarle a la maestra en vez de escribir. El audio se procesa en tu computadora y no se envia a internet.</string>
+</dict>
+</plist>

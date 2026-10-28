@@ -24,12 +24,51 @@ fn las_voces_apuntan_a_un_paquete_conocido() {
 }
 
 #[test]
+fn los_modelos_de_microfono_apuntan_a_un_paquete_conocido() {
+    for pack in STT_PACKS.iter() {
+        assert!(find_stt_pack(pack.id).is_some());
+        assert_eq!(pack.kind, Kind::Whisper);
+        assert!(pack.url.starts_with("https://"));
+        assert_eq!(pack.sha256.len(), 64);
+    }
+    assert!(find_stt_pack("no-existe").is_none());
+}
+
+#[test]
+fn reconoce_un_paquete_whisper_aunque_el_tokens_lleve_prefijo() {
+    let dir = tempfile::tempdir().unwrap();
+    let pack = find_stt_pack("whisper-turbo").unwrap();
+    let path = pack_path(dir.path(), pack);
+    std::fs::create_dir_all(&path).unwrap();
+    std::fs::write(path.join("turbo-encoder.int8.onnx"), "x").unwrap();
+    assert!(!is_installed(dir.path(), pack), "falta el tokens");
+    std::fs::write(path.join("turbo-tokens.txt"), "x").unwrap();
+    assert!(is_installed(dir.path(), pack));
+}
+
+/// Prueba real con el modelo descargado:
+/// `STT_TEST_DIR=<carpeta stt> cargo test whisper_real -- --ignored`
+#[test]
+#[ignore]
+fn whisper_real_transcribe_un_wav_del_paquete() {
+    let dir = std::path::PathBuf::from(std::env::var("STT_TEST_DIR").expect("STT_TEST_DIR"));
+    let pack = find_stt_pack("whisper-turbo").unwrap();
+    let wav = pack_path(&dir, pack).join("test_wavs").join("0.wav");
+    let wave = sherpa_onnx::Wave::read(wav.to_str().unwrap()).expect("leer el wav de prueba");
+    let text = stt::transcribe(&dir, pack, wave.samples(), wave.sample_rate(), "en").unwrap();
+    assert!(!text.trim().is_empty(), "no se reconoció nada");
+    std::fs::write(dir.join("transcripcion.txt"), &text).unwrap();
+}
+
+#[test]
 fn un_paquete_a_medias_no_cuenta_como_instalado() {
     let dir = tempfile::tempdir().unwrap();
     assert!(!is_installed(dir.path(), &PIPER));
     std::fs::create_dir_all(pack_path(dir.path(), &PIPER)).unwrap();
     assert!(!is_installed(dir.path(), &PIPER));
     std::fs::write(pack_path(dir.path(), &PIPER).join("tokens.txt"), "x").unwrap();
+    assert!(!is_installed(dir.path(), &PIPER), "falta el modelo .onnx");
+    std::fs::write(pack_path(dir.path(), &PIPER).join("model.onnx"), "x").unwrap();
     assert!(is_installed(dir.path(), &PIPER));
 }
 

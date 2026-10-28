@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import ModelBrowser from '../components/ModelBrowser';
 import UiPrefsSection from '../components/UiPrefsSection';
 import VoiceSection from '../components/VoiceSection';
+import MicSection from '../components/MicSection';
 import LogSection from '../components/LogSection';
 import type { UiPrefs } from '../lib/uiPrefs';
 import { useI18n } from '../lib/i18n';
@@ -183,6 +184,8 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
           onReadAloudChange={readAloud => onUiPrefsChange({ ...uiPrefs, readAloud })}
         />
       )}
+
+      <MicSection />
 
       <div className="provider-section">
         <h2><span aria-hidden="true">💻</span> {t('settings.hardware')}</h2>

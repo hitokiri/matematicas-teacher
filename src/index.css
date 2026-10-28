@@ -1444,6 +1444,19 @@ body {
   font: inherit;
 }
 
+.chat-mic { padding-inline: 12px; }
+.chat-mic-recording {
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: chalk-pulse 1s infinite;
+}
+
+.chat-mic-status {
+  margin: -4px 14px 12px;
+  font-size: 0.85rem;
+  color: var(--muted, var(--text));
+}
+
 /* ¿Hasta dónde llega la maestra? */
 .levels-panel {
   margin-top: 20px;

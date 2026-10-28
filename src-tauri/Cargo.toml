@@ -51,6 +51,8 @@ flate2 = "1.0"
 sha2 = "0.10"
 # Voz natural de la maestra (TTS local con Piper/Kokoro, sin internet)
 sherpa-onnx = { version = "1.13.8", default-features = false, features = ["shared"] }
+# Microfono: captura de audio nativa (webkit2gtk no trae getUserMedia fiable)
+cpal = "0.18"
 bzip2 = "0.5"
 minijinja = { version = "2", features = ["loader", "json"] }
 minijinja-contrib = { version = "2", features = ["pycompat"] }

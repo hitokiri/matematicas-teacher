@@ -4,6 +4,7 @@
 pub mod commands;
 pub mod download;
 pub mod engine;
+pub mod stt;
 pub mod system;
 
 #[cfg(test)]
@@ -17,6 +18,8 @@ pub enum Kind {
     /// Piper (VITS)
     Piper,
     Kokoro,
+    /// Reconocimiento de voz (Whisper)
+    Whisper,
 }
 
 /// Un paquete de modelo descargable (varias voces pueden compartir el mismo)
@@ -101,6 +104,32 @@ pub static KOKORO: Pack = Pack {
     size_mb: 334.0,
 };
 
+/// Modelos de reconocimiento de voz (Whisper). El pequeño va mejor en computadoras modestas;
+/// el turbo es el equilibrio por defecto cuando hay CPU de sobra.
+pub static WHISPER_TURBO: Pack = Pack {
+    id: "whisper-turbo",
+    kind: Kind::Whisper,
+    dir: "sherpa-onnx-whisper-turbo",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-turbo.tar.bz2",
+    sha256: "b11acbbcd660b44a8e0df33724feb5aaa709cf65668f2823d59f656312544f22",
+    size_mb: 538.0,
+};
+
+pub static WHISPER_SMALL: Pack = Pack {
+    id: "whisper-small",
+    kind: Kind::Whisper,
+    dir: "sherpa-onnx-whisper-small",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2",
+    sha256: "486a46afbb7ba798507190ffe02fea2dd726049af212e774537efac6afb210a6",
+    size_mb: 610.0,
+};
+
+pub static STT_PACKS: [&Pack; 2] = [&WHISPER_TURBO, &WHISPER_SMALL];
+
+pub fn find_stt_pack(id: &str) -> Option<&'static Pack> {
+    STT_PACKS.iter().copied().find(|p| p.id == id)
+}
+
 pub static VOICES: [Voice; 8] = [
     Voice {
         id: "piper-claude",
@@ -180,9 +209,32 @@ pub fn pack_path(voices_dir: &Path, pack: &Pack) -> PathBuf {
     voices_dir.join(pack.dir)
 }
 
+/// Un paquete esta completo si tiene al menos un `.onnx` y su `tokens.txt`
+/// (Whisper los nombra `<prefijo>-tokens.txt`).
+pub fn has_model_files(dir: &Path) -> bool {
+    if !dir.is_dir() {
+        return false;
+    }
+    let mut onnx = false;
+    let mut tokens = false;
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|e| e == "onnx") {
+            onnx = true;
+        }
+        if path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with("tokens.txt")) {
+            tokens = true;
+        }
+        if onnx && tokens {
+            return true;
+        }
+    }
+    false
+}
+
 /// El paquete esta completo: se extrae en una carpeta temporal y se renombra al final
 pub fn is_installed(voices_dir: &Path, pack: &Pack) -> bool {
-    pack_path(voices_dir, pack).join("tokens.txt").is_file()
+    has_model_files(&pack_path(voices_dir, pack))
 }
 
 #[derive(Debug, Clone, Serialize)]

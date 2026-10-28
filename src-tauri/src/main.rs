@@ -109,6 +109,14 @@ fn main() {
             voice::commands::delete_voice,
             voice::commands::synthesize_speech,
             voice::commands::get_system_voice,
+            // Microfono (STT)
+            voice::stt::list_mic_models,
+            voice::stt::download_mic_model,
+            voice::stt::cancel_mic_download,
+            voice::stt::delete_mic_model,
+            voice::stt::start_listening,
+            voice::stt::stop_listening,
+            voice::stt::mic_listening,
             // Registro
             applog::get_logs,
             applog::clear_logs,

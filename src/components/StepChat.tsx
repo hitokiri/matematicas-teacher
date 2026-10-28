@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../lib/i18n'
 import { logUi } from '../lib/applog'
 import { SYSTEM_VOICE, notifyVoiceInterrupt, plainSpeech, speak, stopSpeaking } from '../lib/voice'
+import { listMicModels, onMicEvents, startListening, stopListening, type MicState } from '../lib/mic'
 import { useSystemVoice } from '../lib/useSystemVoice'
 import type { BoardScript } from '../lib/board/types'
 
@@ -68,6 +69,9 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [mic, setMic] = useState<MicState>('idle')
+  const [micReady, setMicReady] = useState(false)
+  const [micError, setMicError] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -80,6 +84,25 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   useEffect(() => {
     listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
+
+  // La pregunta dictada se lanza como si se hubiera escrito (el ref evita cerrar sobre estado viejo)
+  const askRef = useRef<(question: string) => void>(() => {})
+  useEffect(() => {
+    Promise.resolve(listMicModels())
+      .then(models => setMicReady(Array.isArray(models) && models.some(m => m.is_downloaded)))
+      .catch(() => setMicReady(false))
+    return onMicEvents({
+      onState: state => setMic(state),
+      onTranscript: text => {
+        setMicError('')
+        askRef.current(text)
+      },
+      onError: message => setMicError(message || t('chat.micErr')),
+    })
+  }, [t])
+
+  // Al salir del chat se deja de escuchar
+  useEffect(() => () => { Promise.resolve(stopListening()).catch(() => {}) }, [])
 
   /** Lee una respuesta de la maestra; si ya se estaba leyendo, la detiene */
   const say = useCallback(async (text: string, index: number) => {
@@ -124,6 +147,34 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
       setError(typeof e === 'string' ? e : e?.message || t('chat.errAnswer'))
     } finally {
       setLoading(false)
+    }
+  }
+  askRef.current = ask
+
+  /** Hablar / dejar de hablar. Al empezar a escuchar se calla a la maestra (barge-in). */
+  async function toggleMic() {
+    setMicError('')
+    if (mic === 'recording') {
+      Promise.resolve(stopListening()).catch(() => {})
+      return
+    }
+    if (mic === 'transcribing') return
+    // Puede haberse descargado un modelo en Configuración con el chat ya abierto
+    const ready = micReady
+      || await Promise.resolve(listMicModels())
+        .then(models => Array.isArray(models) && models.some(m => m.is_downloaded))
+        .catch(() => false)
+    if (!ready) {
+      setMicError(t('chat.micNeedModel'))
+      return
+    }
+    if (!micReady) setMicReady(true)
+    stopSpeaking()
+    notifyVoiceInterrupt()
+    try {
+      await startListening(lang)
+    } catch (e: any) {
+      setMicError(typeof e === 'string' ? e : e?.message || t('chat.micErr'))
     }
   }
 
@@ -172,7 +223,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
             <div className="chat-bubble chat-typing" role="status">{t('chat.thinking')}</div>
           </div>
         )}
-        {error && <div className="error-message" role="alert">{error}</div>}
+        {(error || micError) && <div className="error-message" role="alert">{error || micError}</div>}
       </div>
 
       <div className="step-chat-quick">
@@ -197,8 +248,24 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
             }
           }}
         />
+        <button
+          type="button"
+          className={`btn btn-secondary chat-mic chat-mic-${mic}`}
+          onClick={() => void toggleMic()}
+          disabled={mic === 'transcribing'}
+          aria-pressed={mic === 'recording'}
+          aria-label={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
+          title={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
+        >
+          <span aria-hidden="true">{mic === 'recording' ? '⏹' : mic === 'transcribing' ? '…' : '🎤'}</span>
+        </button>
         <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>{t('chat.send')}</button>
       </form>
+      {(mic === 'recording' || mic === 'transcribing') && (
+        <p className="chat-mic-status" role="status">
+          {mic === 'recording' ? t('chat.micRecording') : t('chat.micBusy')}
+        </p>
+      )}
     </aside>
   )
 }

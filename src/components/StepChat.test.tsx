@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import StepChat, { boardContext } from './StepChat'
-import { mockInvoke } from '../test-setup'
+import { mockInvoke, mockListen } from '../test-setup'
 import { parseEquation, equationScript } from '../lib/board/equation'
 import { speak, stopSpeaking } from '../lib/voice'
 
@@ -16,6 +16,7 @@ const script = equationScript(parseEquation('2x + 4 = 10')!)
 describe('StepChat', () => {
   beforeEach(() => {
     mockInvoke.mockReset()
+    vi.mocked(mockListen).mockClear()
     vi.mocked(speak).mockReset()
     vi.mocked(speak).mockResolvedValue('done')
     vi.mocked(stopSpeaking).mockReset()
@@ -97,6 +98,63 @@ describe('StepChat', () => {
       vi.mocked(stopSpeaking).mockClear()
       await askQuestion()
       expect(stopSpeaking).toHaveBeenCalled()
+    })
+  })
+
+  describe('micrófono', () => {
+    const handler = (event: string) => {
+      const call = (vi.mocked(mockListen).mock.calls as unknown as Array<[string, (e: any) => void]>)
+        .find(c => c[0] === event)
+      return call?.[1]
+    }
+
+    it('avisa si todavía no hay un modelo de voz descargado', async () => {
+      mockInvoke.mockResolvedValue([])
+      render(<StepChat script={script} currentStep={0} />)
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('list_mic_models'))
+      fireEvent.click(screen.getByRole('button', { name: 'Hablar' }))
+      expect(await screen.findByText(/descarga un modelo de voz en Configuración/)).toBeInTheDocument()
+    })
+
+    it('al hablar pide al backend que escuche y corta la voz de la maestra', async () => {
+      mockInvoke.mockImplementation(async (cmd: string) =>
+        cmd === 'list_mic_models' ? [{ id: 'whisper-turbo', is_downloaded: true }] : undefined
+      )
+      render(<StepChat script={script} currentStep={0} />)
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('list_mic_models'))
+      fireEvent.click(screen.getByRole('button', { name: 'Hablar' }))
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('start_listening', { language: 'es', modelId: undefined }))
+      expect(stopSpeaking).toHaveBeenCalled()
+    })
+
+    it('lo que dicta el niño se pregunta como si lo hubiera escrito', async () => {
+      mockInvoke.mockImplementation(async (cmd: string) =>
+        cmd === 'list_mic_models'
+          ? [{ id: 'whisper-turbo', is_downloaded: true }]
+          : 'Porque restamos lo mismo en los dos lados.'
+      )
+      render(<StepChat script={script} currentStep={1} />)
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('list_mic_models'))
+      const onTranscript = handler('mic-transcript')
+      expect(onTranscript).toBeTruthy()
+      act(() => onTranscript!({ payload: { text: '¿por qué se resta cuatro?' } }))
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('ask_about_steps', expect.objectContaining({
+        messages: [{ role: 'user', content: '¿por qué se resta cuatro?' }],
+      })))
+    })
+
+    it('el botón cambia a dejar de hablar mientras graba', async () => {
+      mockInvoke.mockImplementation(async (cmd: string) =>
+        cmd === 'list_mic_models' ? [{ id: 'whisper-turbo', is_downloaded: true }] : undefined
+      )
+      render(<StepChat script={script} currentStep={0} />)
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('list_mic_models'))
+      const onState = handler('mic-state')
+      act(() => onState!({ payload: { state: 'recording' } }))
+      expect(screen.getByRole('button', { name: 'Dejar de hablar' })).toBeInTheDocument()
+      expect(screen.getByText('Te escucho…')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Dejar de hablar' }))
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('stop_listening'))
     })
   })
 })
