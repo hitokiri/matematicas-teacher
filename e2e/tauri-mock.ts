@@ -51,6 +51,13 @@ const VOICE_INFO = {
   'kokoro-michael': { name: 'Kokoro · Michael (male)', description: 'More expressive.', size_mb: 334, lang: 'en' },
 };
 
+// Modelos de micrófono (STT): el turbo viene descargado para probar el dictado
+state.micModels = state.micModels || { 'whisper-turbo': true, 'whisper-small': false };
+const MIC_INFO = {
+  'whisper-turbo': { name: 'Whisper Turbo', description: 'Rápido y preciso para dictar.', size_mb: 538 },
+  'whisper-small': { name: 'Whisper Small', description: 'Ligero para equipos modestos.', size_mb: 610 },
+};
+
 const toInfo = (m) => {
   const d = downloads[m.id];
   const downloading = !!d && d.progress < 100 && !m.downloaded;
@@ -140,6 +147,38 @@ const mockInvoke = (cmd, args) => {
     case 'cancel_voice_download':
       return Promise.resolve(undefined);
 
+    case 'list_mic_models':
+      return Promise.resolve(Object.entries(MIC_INFO).map(([id, m]) => ({
+        id, ...m, is_downloaded: !!state.micModels[id], is_downloading: false,
+        download_progress: state.micModels[id] ? 100 : 0,
+      })));
+
+    case 'download_mic_model':
+      state.micModels[args.modelId] = true;
+      persist();
+      deliverEvent('mic-models-updated', null);
+      return Promise.resolve(undefined);
+
+    case 'delete_mic_model':
+      state.micModels[args.modelId] = false;
+      persist();
+      deliverEvent('mic-models-updated', null);
+      return Promise.resolve(undefined);
+
+    case 'cancel_mic_download':
+      return Promise.resolve(undefined);
+
+    case 'start_listening':
+      deliverEvent('mic-state', { state: 'recording' });
+      return Promise.resolve(undefined);
+
+    case 'stop_listening':
+      deliverEvent('mic-state', { state: 'idle' });
+      return Promise.resolve(undefined);
+
+    case 'mic_listening':
+      return Promise.resolve(false);
+
     case 'synthesize_speech':
       return Promise.reject('Sin motor de voz en las pruebas');
 
@@ -194,14 +233,43 @@ const mockInvoke = (cmd, args) => {
       });
     }
 
+    case 'plugin:event|listen':
+      eventNames.set(args.handler, args.event);
+      return Promise.resolve(args.handler);
+
+    case 'plugin:event|unlisten':
+      eventCallbacks.delete(args.eventId);
+      eventNames.delete(args.eventId);
+      return Promise.resolve(undefined);
+
     default:
       return Promise.resolve(undefined);
   }
 };
 
+// Bus de eventos: `@tauri-apps/api/event` registra el handler con transformCallback
+// y después invoca `plugin:event|listen`. Sin esto, `listen` llamaba al handler al
+// registrarlo y dejaba un error visible en las pruebas.
+const eventCallbacks = new Map();
+const eventNames = new Map();
+let nextCallbackId = 1;
+
+const deliverEvent = (event, payload) => {
+  for (const [id, name] of eventNames) {
+    if (name !== event) continue;
+    eventCallbacks.get(id)?.({ event, id, payload });
+  }
+};
+
 const mockListen = (event, callback) => {
+  const id = nextCallbackId++;
+  eventCallbacks.set(id, callback);
+  eventNames.set(id, event);
   return Promise.resolve({
-    unlisten: () => {},
+    unlisten: () => {
+      eventCallbacks.delete(id);
+      eventNames.delete(id);
+    },
   });
 };
 
@@ -216,18 +284,28 @@ const mockConvertFileSrc = (path) => {
 // Set up the Tauri globals
 window.__TAURI_INTERNALS__ = {
   transformCallback: (callback) => {
-    const promise = new Promise((resolve) => {
-      resolve(callback?.());
-    });
-    return {
-      id: Date.now(),
-      promise,
-    };
+    const id = nextCallbackId++;
+    if (typeof callback === 'function') eventCallbacks.set(id, callback);
+    return id;
   },
-  unregisterCallback: () => {},
+  unregisterCallback: (id) => {
+    eventCallbacks.delete(id);
+    eventNames.delete(id);
+  },
   invoke: mockInvoke,
   convertFileSrc: mockConvertFileSrc,
 };
+
+// `@tauri-apps/api/event` lo usa antes de pedir `plugin:event|unlisten`
+window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+  unregisterListener: (_event, id) => {
+    eventCallbacks.delete(id);
+    eventNames.delete(id);
+  },
+};
+
+// Para que las pruebas y las capturas puedan simular eventos del backend
+window.__emitTauriEvent = deliverEvent;
 
 window.__TAURI__ = {
   core: { invoke: mockInvoke },

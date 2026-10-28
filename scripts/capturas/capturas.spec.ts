@@ -1,4 +1,4 @@
-import { test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const DIR = 'docs/capturas';
 
@@ -68,4 +68,30 @@ test('configuracion de la interfaz', async ({ page }) => {
   await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
   await page.waitForSelector('.ui-prefs');
   await page.locator('.provider-section').first().screenshot({ path: `${DIR}/configuracion.png` });
+});
+
+test('modelos de voz para el microfono', async ({ page }) => {
+  await open(page);
+  await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
+  const section = page.locator('.provider-section').filter({
+    has: page.getByRole('heading', { name: /micrófono/i }),
+  });
+  await expect(section).toBeVisible();
+  await section.scrollIntoViewIfNeeded();
+  await section.screenshot({ path: `${DIR}/microfono.png` });
+});
+
+test('dictado en el chat', async ({ page }) => {
+  await open(page);
+  await solve(page, '2x + 4 = 10');
+  const chat = page.locator('.step-chat');
+  await expect(chat).toBeVisible();
+  await chat.getByRole('button', { name: /no entendí el paso 1/i }).click();
+  await expect(chat.locator('.chat-msg.assistant')).toBeVisible();
+  const mic = chat.locator('.chat-mic');
+  await expect(mic).toBeEnabled();
+  await chat.scrollIntoViewIfNeeded();
+  await mic.click();
+  await expect(chat.locator('.chat-mic-status')).toBeVisible();
+  await chat.screenshot({ path: `${DIR}/chat-microfono.png` });
 });

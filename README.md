@@ -14,6 +14,7 @@ Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a r
 - **Pizarras de una en una**: los procesos largos se reparten en varias pizarras y se ve una a la vez (o todas juntas, si se pide).
 - **Visuales**: balanza para ecuaciones, pizzas y rectángulos para fracciones.
 - **Chat de preguntas** sobre cada paso (`StepChat`).
+- **Micrófono**: dicta tus preguntas en voz alta; Whisper transcribe el audio en la propia computadora, sin internet. El modelo de voz se descarga desde Configuración › Micrófono.
 - **Lienzo de dibujo**: lee lo que el niño escribe/dibuja con modelos con visión (mtmd) y permite corregirlo.
 - **IA local con llama.cpp** integrado en la app (como Handy con whisper): sin servidor ni puertos; backends CPU/CUDA/Vulkan se cargan en tiempo de ejecución según el hardware.
 - **Gestor de modelos** (Llama, Qwen, Phi, Gemma, Mistral): descarga desde HuggingFace, selección del modelo activo y eliminación.
@@ -48,9 +49,17 @@ Los sistemas se escriben con una ecuación por renglón (también sirven `;` o `
 | **¿Hasta dónde llega la maestra?** Los ejemplos se escriben en el cuadro al pulsarlos. | **Ecuación con una letra**: la balanza muestra lo que se quita de cada lado. |
 | ![Pizarras de una en una](docs/capturas/pizarras.png) | ![Configuración de la interfaz](docs/capturas/configuracion.png) |
 | **Pizarras de una en una**: los botones *Pizarra N* cambian de pizarra y *Ver todas* las junta. | **Configuración › Interfaz**: pizarras, reproducción automática, panel de temas y tema. |
+| ![Micrófono](docs/capturas/microfono.png) | ![Dictado en el chat](docs/capturas/chat-microfono.png) |
+| **Configuración › Micrófono**: descarga el modelo de voz una vez; el audio no sale del equipo. | **Hablar en el chat**: pulsa 🎤, habla y el dictado se envía como pregunta. |
 
 Las capturas se generan con `npm run capturas` (Playwright con el backend simulado de los e2e) y se guardan en
 `docs/capturas/`.
+
+## Micrófono
+
+1. En **⚙️ Configuración › 🎤 Micrófono**, descarga un modelo de voz (Whisper Turbo o Small) la primera vez.
+2. En el chat de un paso, pulsa **🎤** y habla; al detectar silencio, el audio se transcribe.
+3. El texto se envía como pregunta y la maestra responde. Todo se procesa en la computadora, sin internet.
 
 ## Configuración de la interfaz
 

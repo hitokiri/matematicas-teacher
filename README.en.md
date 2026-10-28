@@ -14,6 +14,7 @@ A desktop app (Tauri v2 + React/TypeScript) that teaches kids to solve math prob
 - **One board at a time**: long solutions are split across several boards and you see one at a time (or all together, if you ask).
 - **Visuals**: balance scale for equations, pizzas and rectangles for fractions.
 - **Question chat** about each step (`StepChat`).
+- **Microphone**: ask your questions out loud; Whisper transcribes the audio on the device, with no internet. The speech model is downloaded from Settings › Microphone.
 - **Drawing canvas**: reads what the child writes/draws using vision models (mtmd) and lets them correct it.
 - **Local AI with llama.cpp** embedded in the app (like Handy with whisper): no server, no ports; CPU/CUDA/Vulkan backends are loaded at runtime depending on the hardware.
 - **Model manager** (Llama, Qwen, Phi, Gemma, Mistral): download from HuggingFace, select the active model, and delete.
@@ -48,9 +49,17 @@ Systems are written with one equation per line (`;` or `, ` also work).
 | **How far can the teacher go?** Clicking an example types it into the box. | **One-letter equation**: the scale shows what is removed from each side. |
 | ![One board at a time](docs/capturas/pizarras.png) | ![Interface settings](docs/capturas/configuracion.png) |
 | **One board at a time**: the *Pizarra N* buttons switch boards and *Ver todas* shows them together. | **Settings › Interface**: boards, autoplay, topics panel, and theme. |
+| ![Microphone](docs/capturas/microfono.png) | ![Dictation in the chat](docs/capturas/chat-microfono.png) |
+| **Settings › Microphone**: download the speech model once; audio never leaves the device. | **Talking in the chat**: press 🎤, speak, and the dictation is sent as your question. |
 
 Screenshots are generated with `npm run capturas` (Playwright with the e2e mocked backend) and saved to
 `docs/capturas/`.
+
+## Microphone
+
+1. In **⚙️ Configuración › 🎤 Micrófono**, download a speech model (Whisper Turbo or Small) the first time.
+2. In a step's chat, press **🎤** and speak; when silence is detected, the audio is transcribed.
+3. The text is sent as your question and the teacher answers. Everything runs on the computer, with no internet.
 
 ## Interface settings
 
