@@ -76,6 +76,9 @@ export function prefetch(text: string, voiceId: string, lang: SpokenLang = 'es')
 let audio: HTMLAudioElement | null = null
 let url: string | null = null
 let cancelCurrent: (() => void) | null = null
+// Cada lectura nueva (o cada corte) sube el contador: una lectura vieja que sigue esperando algo
+// asincrono ve que ya no es la vigente y no suena, asi nunca se oyen dos audios encimados
+let generation = 0
 
 /** Texto de una respuesta del chat sin marcas de formato (**negrita**, listas, encabezados) para leerlo */
 export function plainSpeech(text: string): string {
@@ -98,6 +101,7 @@ export function onVoiceInterrupt(callback: () => void): () => void {
 
 /** Corta lo que se este leyendo */
 export function stopSpeaking(): void {
+  generation++
   cancelCurrent?.()
   cancelCurrent = null
   if (systemVoiceAvailable()) window.speechSynthesis.cancel()
@@ -106,11 +110,15 @@ export function stopSpeaking(): void {
 /** Lee el texto y avisa cuando termina. Nunca lanza: un fallo se devuelve como 'failed'. */
 export function speak(text: string, voiceId: string, lang: SpokenLang = 'es'): Promise<SpeakResult> {
   stopSpeaking()
+  const mine = generation
   const spoken = spokenMath(text, lang)
   if (!spoken) return Promise.resolve('done')
-  if (voiceId !== SYSTEM_VOICE) return speakWithNeural(spoken, voiceId, lang)
+  if (voiceId !== SYSTEM_VOICE) return speakWithNeural(spoken, voiceId, lang, mine)
   // Voz del sistema: primero el programa del sistema (espeak-ng); si no, la del navegador
-  return getSystemVoice().then(info => (info.available ? speakWithNeural(spoken, SYSTEM_VOICE, lang) : speakWithSystem(spoken, lang)))
+  return getSystemVoice().then(info => {
+    if (mine !== generation) return 'stopped' as SpeakResult
+    return info.available ? speakWithNeural(spoken, SYSTEM_VOICE, lang, mine) : speakWithSystem(spoken, lang)
+  })
 }
 
 function speakWithSystem(spoken: string, lang: SpokenLang): Promise<SpeakResult> {
@@ -125,7 +133,7 @@ function speakWithSystem(spoken: string, lang: SpokenLang): Promise<SpeakResult>
   })
 }
 
-async function speakWithNeural(spoken: string, voiceId: string, lang: SpokenLang): Promise<SpeakResult> {
+async function speakWithNeural(spoken: string, voiceId: string, lang: SpokenLang, mineGen: number): Promise<SpeakResult> {
   let stopped = false
   cancelCurrent = () => {
     stopped = true
@@ -135,7 +143,7 @@ async function speakWithNeural(spoken: string, voiceId: string, lang: SpokenLang
   const mine = cancelCurrent
   try {
     const blob = await fetchAudio(voiceId, spoken, lang)
-    if (stopped) return 'stopped'
+    if (stopped || mineGen !== generation) return 'stopped'
     if (url) URL.revokeObjectURL(url)
     url = URL.createObjectURL(blob)
     audio = new Audio(url)

@@ -63,6 +63,19 @@ describe('voz del sistema', () => {
     expect(mockInvoke).toHaveBeenCalledWith('synthesize_speech', { voiceId: 'system', text: 'Hola', language: 'es' })
   })
 
+  it('si el paso cambia mientras se consulta la voz, la lectura vieja no suena', async () => {
+    mockInvoke.mockImplementation(async (cmd: string) => (cmd === 'get_system_voice'
+      ? { available: true, engine: 'espeak-ng', os: 'Ubuntu', install_command: null }
+      : new ArrayBuffer(8)))
+    await getSystemVoice(true)
+    const old = speak('Paso uno', SYSTEM_VOICE)
+    const current = speak('Paso dos', SYSTEM_VOICE)
+    await expect(old).resolves.toBe('stopped')
+    await expect(current).resolves.toBe('done')
+    const spoken = mockInvoke.mock.calls.filter(c => c[0] === 'synthesize_speech').map(c => c[1].text)
+    expect(spoken).toEqual(['Paso dos'])
+  })
+
   it('sin espeak-ng ni navegador con voz falla sin lanzar', async () => {
     mockInvoke.mockImplementation(async () => ({ available: false, engine: null, os: '', install_command: null }))
     await getSystemVoice(true)
