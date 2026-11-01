@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseArithmetic } from './parse'
 import { buildArithmetic, additionScript, subtractionScript, multiplicationScript, divisionScript } from './arithmetic'
-import { solutionScript } from './fromSolution'
+import { solutionScript, narration } from './fromSolution'
 import type { BoardItem, BoardScript } from './types'
 
 /** Aplica todos los pasos y devuelve los trazos que quedan en la pizarra */
@@ -166,4 +166,19 @@ it('la explicacion del modelo no repite renglones y cada paso escribe algo', () 
   const texts = finalItems(s).map(i => (i.kind === 'text' ? i.text : ''))
   expect(texts).toEqual(['√x = 4', 'Este es el problema', '(√x)² = 4²', 'El cuadrado de la raíz es el número mismo.', '✔ x = 16'])
   expect(s.steps.every(st => st.add.length > 0)).toBe(true)
+})
+
+describe('narracion de los pasos del modelo', () => {
+  it('no repite el titulo cuando la explicacion ya lo dice', () => {
+    expect(narration('Quitamos el 3 de los dos lados', 'Quitamos el 3 de los dos lados para dejar sola la x.'))
+      .toBe('Quitamos el 3 de los dos lados para dejar sola la x.')
+    expect(narration('Elevamos al cuadrado', 'Así se va la raíz.')).toBe('Elevamos al cuadrado. Así se va la raíz.')
+  })
+
+  it('no dice dos veces la misma frase y salta pasos repetidos', () => {
+    expect(narration(undefined, 'Elevamos al cuadrado. Elevamos al cuadrado! Se va la raíz.')).toBe('Elevamos al cuadrado. Se va la raíz.')
+    const step = { step: 1, title: 'A', explanation: 'Hacemos esto.', calculation: 'x = 1' }
+    const script = solutionScript({ problem: 'p', final_answer: 'x = 1', steps: [step, { ...step, step: 2 }] })
+    expect(script.steps).toHaveLength(3)
+  })
 })

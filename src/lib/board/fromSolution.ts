@@ -26,7 +26,12 @@ export function solutionScript(solution: SolutionLike, lang: Lang = 'es'): Board
   }]
   let row = 1
   const written = [norm(solution.problem)]
+  const seen = new Set<string>()
   for (const s of solution.steps) {
+    // Un paso que el modelo repite tal cual no se vuelve a explicar
+    const key = norm(`${s.calculation ?? ''}|${s.explanation}`)
+    if (seen.has(key)) continue
+    seen.add(key)
     const title = s.title?.trim()
     const calc = s.calculation?.trim()
     // Lo que se escribe: la operacion; si repite lo de arriba, el titulo; si no, la explicacion corta
@@ -34,7 +39,7 @@ export function solutionScript(solution: SolutionLike, lang: Lang = 'es'): Board
     const text = options.find(t => norm(t) !== written[written.length - 1]) ?? options[0] ?? '…'
     written.push(norm(text))
     steps.push({
-      say: title ? `${title}. ${s.explanation}` : s.explanation,
+      say: narration(title, s.explanation),
       add: [line(row, text, 'line-text')],
       focus: [[row, 0]],
     })
@@ -54,6 +59,28 @@ export function solutionScript(solution: SolutionLike, lang: Lang = 'es'): Board
     answer,
   }
 }
+
+/** Lo que dice la maestra: titulo y explicacion sin decir dos veces lo mismo */
+export function narration(title: string | undefined, explanation: string): string {
+  const sentences = explanation.split(/(?<=[.!?])\s+/).map(t => t.trim()).filter(Boolean)
+  const kept: string[] = []
+  const said = new Set<string>()
+  for (const sentence of sentences) {
+    const key = words(sentence).join(' ')
+    if (key && said.has(key)) continue
+    said.add(key)
+    kept.push(sentence)
+  }
+  const body = kept.join(' ')
+  if (!title) return body
+  // El titulo sobra si la explicacion ya lo dice (casi todas sus palabras estan en ella)
+  const t = words(title)
+  const inBody = new Set(words(body))
+  const covered = t.length > 0 && t.filter(w => inBody.has(w)).length / t.length >= 0.7
+  return covered ? body : `${title.replace(/[.!?]+$/, '')}. ${body}`
+}
+
+const words = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean)
 
 const norm = (t: string) => t.replace(/\s+/g, '').toLowerCase()
 

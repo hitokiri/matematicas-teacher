@@ -78,7 +78,7 @@ REGLAS:
 2. Cada paso hace UNA sola operacion. Nunca juntes dos cuentas en el mismo paso: por ejemplo, en 3/4 + 10 primero convierte 10 = 40/4 (un paso) y despues suma 3/4 + 40/4 = 43/4 (otro paso).
 3. No te saltes los pasos "faciles": buscar el denominador comun, convertir fracciones, pasar un numero al otro lado, multiplicar, simplificar. Usa todos los pasos que hagan falta (hasta 12).
 4. "titulo": maximo 6 palabras (por ejemplo "Quitamos el 3 de los dos lados").
-5. "explicacion": 1 a 3 frases que digan QUE hacemos y POR QUE.
+5. "explicacion": 1 a 3 frases que digan QUE hacemos y POR QUE. No repitas el titulo ni frases que ya dijiste en otro paso: la maestra lee en voz alta el titulo y la explicacion seguidos.
 6. "operacion": la cuenta de ese paso en texto plano, por ejemplo "2x = 7 - 3 = 4" o "3 × 3 = 9". Sin LaTeX ni simbolos $. Vacia ("") si el paso no tiene cuenta.
 7. "problema": el enunciado tal cual (si viene en una imagen, transcribelo).
 8. "respuesta_final": solo el resultado, por ejemplo "x = 5" o "18". Si el problema tiene fracciones, da el resultado como fraccion (y si quieres tambien en decimal: "43/4 = 10.75").
