@@ -54,8 +54,13 @@ interface Listeners {
   onError?: (message: string) => void
 }
 
+// Quien activo el micro: el texto dictado es solo para el (el chat y la caja del problema escuchan los mismos eventos)
+let claimedBy: string | null = null
+export const claimMic = (owner: string | null): void => { claimedBy = owner }
+
 /** Se suscribe a los eventos del micrófono; devuelve la función para desuscribirse */
-export function onMicEvents(listeners: Listeners): () => void {
+export function onMicEvents(listeners: Listeners, owner?: string): () => void {
+  const mine = () => !owner || claimedBy === null || claimedBy === owner
   const unlisteners: Array<() => void> = []
   let disposed = false
   const add = (event: string, handler: (payload: any) => void) => {
@@ -69,16 +74,22 @@ export function onMicEvents(listeners: Listeners): () => void {
   }
   add(MIC_STATE, payload => {
     const state = payload?.state
+    // Despues del texto (o del error) el backend siempre avisa 'idle': ahi se suelta el micro
+    if (state === 'idle') {
+      const was = mine()
+      claimedBy = null
+      if (!was) return
+    } else if (!mine()) return
     if (state === 'idle' || state === 'recording' || state === 'transcribing' || state === 'empty') {
       listeners.onState?.(state)
     }
   })
   add(MIC_TRANSCRIPT, payload => {
     const text = typeof payload?.text === 'string' ? payload.text : ''
-    if (text) listeners.onTranscript?.(text)
+    if (text && mine()) listeners.onTranscript?.(text)
   })
   add(MIC_ERROR, payload => {
-    listeners.onError?.(typeof payload?.message === 'string' ? payload.message : '')
+    if (mine()) listeners.onError?.(typeof payload?.message === 'string' ? payload.message : '')
   })
   return () => {
     disposed = true

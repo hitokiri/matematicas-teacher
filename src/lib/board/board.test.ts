@@ -182,3 +182,23 @@ describe('narracion de los pasos del modelo', () => {
     expect(script.steps).toHaveLength(3)
   })
 })
+
+describe('cuentas dichas con palabras', () => {
+  it('"divide 300 entre 50" y los numeros en letras se resuelven en la casita', () => {
+    for (const text of ['divide 300 entre 50', 'divide trescientos entre cincuenta', 'Divide trescientos entre cincuenta.']) {
+      expect(parseArithmetic(text)).toEqual({ op: '/', a: '300', b: '50' })
+    }
+  })
+
+  it('multiplicar, sumar y restar con verbo', () => {
+    expect(parseArithmetic('multiplica doce por tres')).toEqual({ op: '*', a: '12', b: '3' })
+    expect(parseArithmetic('suma cuatro y cinco')).toEqual({ op: '+', numbers: ['4', '5'] })
+    expect(parseArithmetic('resta 5 de 9')).toEqual({ op: '-', a: '9', b: '5' })
+    expect(parseArithmetic('resta veinte menos siete')).toEqual({ op: '-', a: '20', b: '7' })
+  })
+
+  it('números compuestos', () => {
+    expect(parseArithmetic('treinta y cinco por dos mil')).toEqual({ op: '*', a: '35', b: '2000' })
+    expect(parseArithmetic('ciento veintiuno más cien')).toEqual({ op: '+', numbers: ['121', '100'] })
+  })
+})

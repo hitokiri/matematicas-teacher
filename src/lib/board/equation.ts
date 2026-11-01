@@ -8,7 +8,7 @@ import type { BoardItem, BoardScript, BoardStep, PanItem, Visual } from './types
 import { pick, type Lang } from './lang'
 
 /** Expresion lineal: a·x + b */
-interface Lin {
+export interface Lin {
   a: Q
   b: Q
 }
@@ -22,7 +22,7 @@ export interface Equation {
   text: string
 }
 
-const lin = (a: Q, b: Q): Lin => ({ a, b })
+export const lin = (a: Q, b: Q): Lin => ({ a, b })
 const ZERO = q(0)
 
 type Tok = { t: 'num'; v: Q } | { t: 'var' } | { t: 'op'; v: string } | { t: 'lp' } | { t: 'rp' }
@@ -129,7 +129,7 @@ export function parseEquation(input: string): Equation | null {
 }
 
 /** "2x + 4", "x", "−x", "4", "3/2x − 1" */
-function showLin(l: Lin, v: string): string {
+export function showLin(l: Lin, v: string): string {
   const xPart = isZero(l.a) ? '' : eq(l.a, q(1)) ? v : eq(l.a, q(-1)) ? `−${v}` : `${show(l.a).replace('-', '−')}${v}`
   if (!xPart) return show(l.b).replace('-', '−')
   if (isZero(l.b)) return xPart
@@ -139,7 +139,7 @@ function showLin(l: Lin, v: string): string {
 const MAX_ITEMS = 10
 
 /** Cosas de un platillo: bolsas x y pesas (individuales si son pocas, si no un bloque con el numero) */
-function pan(l: Lin, v: string, opts: { removeX?: Q; removeUnits?: Q; groups?: number } = {}): PanItem[] {
+export function pan(l: Lin, v: string, opts: { removeX?: Q; removeUnits?: Q; groups?: number } = {}): PanItem[] {
   const items: PanItem[] = []
   const push = (kind: 'x' | 'unit', amount: Q, removedAmount?: Q) => {
     if (isZero(amount)) return
@@ -164,7 +164,7 @@ function pan(l: Lin, v: string, opts: { removeX?: Q; removeUnits?: Q; groups?: n
   return items
 }
 
-const balance = (left: PanItem[], right: PanItem[], groups?: number): Visual => ({ kind: 'balance', left, right, groups })
+export const balance = (left: PanItem[], right: PanItem[], groups?: number): Visual => ({ kind: 'balance', left, right, groups })
 
 export function equationScript(e: Equation, lang: Lang = 'es'): BoardScript {
   const T = pick(lang)

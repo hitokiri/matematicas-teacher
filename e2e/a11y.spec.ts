@@ -40,12 +40,20 @@ for (const theme of ['light', 'dark'] as const) {
       await audit(page, 'pizarra')
     })
 
+    test('símbolos matemáticos abiertos', async ({ page }) => {
+      await page.getByRole('button', { name: /Símbolos/ }).click()
+      await expect(page.getByRole('group', { name: 'Símbolos matemáticos' })).toBeVisible()
+      await audit(page, 'teclado de símbolos')
+    })
+
     test('chat con una respuesta de la maestra', async ({ page }) => {
       await page.getByLabel('Tu problema matemático').fill('47 + 38')
       await page.getByRole('button', { name: /resolver problema/i }).click()
       await expect(page.locator('.chalk-pages')).toBeVisible()
       await page.getByRole('button', { name: 'Pausa' }).click()
       await page.getByRole('button', { name: /No entendí el paso/ }).click()
+      await audit(page, 'chat preguntando cómo quiere la respuesta')
+      await page.getByRole('button', { name: 'Respuesta aquí' }).click()
       await expect(page.getByRole('button', { name: 'Escuchar esta respuesta' })).toBeVisible()
       await audit(page, 'chat con respuesta')
     })

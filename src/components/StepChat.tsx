@@ -3,8 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../lib/i18n'
 import { logUi } from '../lib/applog'
 import { SYSTEM_VOICE, notifyVoiceInterrupt, plainSpeech, speak, stopSpeaking } from '../lib/voice'
-import { listMicModels, onMicEvents, startListening, stopListening, type MicState } from '../lib/mic'
+import { claimMic, listMicModels, onMicEvents, startListening, stopListening, type MicState } from '../lib/mic'
 import { useSystemVoice } from '../lib/useSystemVoice'
+import { splitBoardTag } from '../lib/board/example'
 import type { BoardScript } from '../lib/board/types'
 
 interface Message {
@@ -22,6 +23,14 @@ interface StepChatProps {
   voiceId?: string
   /** Leer en voz alta cada respuesta de la maestra (nunca lo que escribe el nino) */
   readAloud?: boolean
+  /** Intenta resolver el transcript como problema en la pizarra; devuelve true si lo tom6 */
+  onTranscript?: (text: string) => boolean
+  /** Problema que la app puede resolver dentro de una pregunta (null si no hay) */
+  exampleOf?: (question: string, history: Message[]) => string | null
+  /** Devuelve el problema si la pizarra sabe resolverlo (y no es el que ya esta), para los ejemplos que propone la maestra */
+  canShow?: (problem: string) => string | null
+  /** El nino eligio donde ver el ejemplo: en la pizarra de siempre (borrandola) o en otra aparte */
+  onExample?: (problem: string, where: 'replace' | 'aside') => void
 }
 
 /** Lo que la maestra sabe de la pizarra: problema, pasos numerados y en que paso va el nino */
@@ -56,7 +65,7 @@ function Rich({ text }: { text: string }) {
   )
 }
 
-export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_VOICE, readAloud = false }: StepChatProps) {
+export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_VOICE, readAloud = false, onTranscript, exampleOf, canShow, onExample }: StepChatProps) {
   const { t, lang } = useI18n()
   const systemVoice = useSystemVoice()
   const canSpeak = voiceId !== SYSTEM_VOICE || systemVoice.available
@@ -72,6 +81,8 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   const [mic, setMic] = useState<MicState>('idle')
   const [micReady, setMicReady] = useState(false)
   const [micError, setMicError] = useState('')
+  /** Pregunta con un ejemplo que la maestra puede hacer en la pizarra, esperando que el nino elija */
+  const [offer, setOffer] = useState<{ history: Message[]; stage: 'how' | 'where'; example: string | null } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -95,11 +106,12 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
       onState: state => setMic(state),
       onTranscript: text => {
         setMicError('')
+        if (onTranscript?.(text)) return
         askRef.current(text)
       },
       onError: message => setMicError(message || t('chat.micErr')),
-    })
-  }, [t])
+    }, 'chat')
+  }, [t, onTranscript])
 
   // Al salir del chat se deja de escuchar
   useEffect(() => () => { Promise.resolve(stopListening()).catch(() => {}) }, [])
@@ -133,21 +145,67 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
     setMessages(next)
     setInput('')
     setError('')
+    // Con la pizarra disponible, antes de contestar se pregunta como quiere verlo
+    if (onExample) {
+      setOffer({ history: next, stage: 'how', example: exampleOf?.(q, messages) ?? null })
+      return
+    }
+    setOffer(null)
+    await answer(next)
+  }
+
+  /** Pide la respuesta a la maestra con la conversacion hasta ahora; `forBoard` le pide un problema para la pizarra */
+  async function answer(next: Message[], forBoard = false) {
     setLoading(true)
     try {
-      const answer = await invoke<string>('ask_about_steps', {
+      const asked = forBoard
+        ? next.map((m, i) => (i === next.length - 1 ? { ...m, content: `${m.content}${t('chat.boardAsk')}` } : m))
+        : next
+      const reply = await invoke<string>('ask_about_steps', {
         context: boardContext(script, currentStep),
-        messages: next,
+        messages: asked,
         language: lang,
       })
-      setMessages([...next, { role: 'assistant', content: answer }])
+      // La etiqueta [[PIZARRA: ...]] es para la app, el nino no la ve
+      const { text, problem } = splitBoardTag(reply)
+      const shown = text || reply
+      const history: Message[] = [...next, { role: 'assistant', content: shown }]
+      setMessages(history)
       // Solo se lee lo que contesta la maestra, nunca lo que escribe el nino
-      if (readAloud && canSpeak) void say(answer, next.length)
+      if (readAloud && canSpeak) void say(shown, next.length)
+      const example = forBoard && problem ? canShow?.(problem) : null
+      if (example) setOffer({ history, stage: 'where', example })
     } catch (e: any) {
       setError(typeof e === 'string' ? e : e?.message || t('chat.errAnswer'))
     } finally {
       setLoading(false)
     }
+  }
+
+  /** Primera pregunta: responder aqui o desarrollarlo en la pizarra */
+  function chooseHow(choice: 'chat' | 'board') {
+    if (!offer) return
+    const { history, example } = offer
+    if (choice === 'board' && example) {
+      setOffer({ history, stage: 'where', example })
+      return
+    }
+    setOffer(null)
+    void answer(history, choice === 'board')
+  }
+
+  /** Segunda pregunta: donde poner el ejemplo (o mejor solo responder) */
+  function chooseWhere(choice: 'replace' | 'aside' | 'chat') {
+    if (!offer?.example) return
+    const { history, example } = offer
+    setOffer(null)
+    if (choice === 'chat') {
+      // Si ya hay respuesta de la maestra (vino de pedir el problema), no se repite
+      if (history[history.length - 1].role === 'user') void answer(history)
+      return
+    }
+    onExample?.(example, choice)
+    setMessages([...history, { role: 'assistant', content: t(choice === 'replace' ? 'chat.offerDoneReplace' : 'chat.offerDoneAside') }])
   }
   askRef.current = ask
 
@@ -172,6 +230,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
     stopSpeaking()
     notifyVoiceInterrupt()
     try {
+      claimMic('chat')
       await startListening(lang)
     } catch (e: any) {
       setMicError(typeof e === 'string' ? e : e?.message || t('chat.micErr'))
@@ -217,6 +276,31 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
             </div>
           </div>
         ))}
+        {offer && (
+          <div className="chat-msg assistant">
+            <span className="chat-avatar" aria-hidden="true">👩‍🏫</span>
+            <div className="chat-bubble">
+              {offer.stage === 'how' ? (
+                <>
+                  <p>{t('chat.how')}</p>
+                  <div className="chat-offer">
+                    <button type="button" className="chip" onClick={() => chooseHow('chat')}>{t('chat.howChat')}</button>
+                    <button type="button" className="chip" onClick={() => chooseHow('board')}>{t('chat.howBoard')}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>{t('chat.offer', { example: offer.example ?? '' })}</p>
+                  <div className="chat-offer">
+                    <button type="button" className="chip" onClick={() => chooseWhere('replace')}>{t('chat.offerReplace')}</button>
+                    <button type="button" className="chip" onClick={() => chooseWhere('aside')}>{t('chat.offerAside')}</button>
+                    <button type="button" className="chip" onClick={() => chooseWhere('chat')}>{t('chat.offerAnswer')}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="chat-msg assistant">
             <span className="chat-avatar" aria-hidden="true">👩‍🏫</span>

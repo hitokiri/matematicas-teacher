@@ -143,6 +143,99 @@ describe('StepChat', () => {
       })))
     })
 
+    it('un dictado que la app resuelve sola va a la pizarra, no al chat', async () => {
+      mockInvoke.mockImplementation(async (cmd: string) =>
+        cmd === 'list_mic_models' ? [{ id: 'whisper-turbo', is_downloaded: true }] : undefined
+      )
+      const onTranscript = vi.fn(() => true)
+      render(<StepChat script={script} currentStep={0} onTranscript={onTranscript} />)
+      await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('list_mic_models'))
+      const onMic = handler('mic-transcript')
+      act(() => onMic!({ payload: { text: '2 + 2' } }))
+      expect(onTranscript).toHaveBeenCalledWith('2 + 2')
+      expect(mockInvoke).not.toHaveBeenCalledWith('ask_about_steps', expect.anything())
+    })
+
+    describe('ejemplos en la pizarra', () => {
+      const exampleOf = (q: string) => (q.includes('3/4 + 1/2') ? '3/4 + 1/2' : null)
+      const ask = (q: string) => {
+        fireEvent.change(screen.getByPlaceholderText(/escribe tu pregunta/i), { target: { value: q } })
+        fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+      }
+      const asked = () => mockInvoke.mock.calls.filter(c => c[0] === 'ask_about_steps')
+
+      it('cualquier pregunta: primero pregunta si quiere la respuesta aqui o en la pizarra', async () => {
+        render(<StepChat script={script} currentStep={0} onExample={vi.fn()} />)
+        ask('¿por qué se resta 4?')
+        expect(await screen.findByText(/responda aquí o que lo desarrolle en la pizarra/)).toBeInTheDocument()
+        expect(asked()).toHaveLength(0)
+      })
+
+      it('«Respuesta aquí» contesta con el modelo sin pedir ejemplo', async () => {
+        mockInvoke.mockResolvedValue('Porque quitamos lo mismo.')
+        const onExample = vi.fn()
+        render(<StepChat script={script} currentStep={0} onExample={onExample} />)
+        ask('¿por qué se resta 4?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Respuesta aquí' }))
+        expect(await screen.findByText('Porque quitamos lo mismo.')).toBeInTheDocument()
+        expect(onExample).not.toHaveBeenCalled()
+        expect(asked()[0][1].messages.at(-1).content).not.toContain('PIZARRA')
+      })
+
+      it('si la pregunta trae el problema, «pizarra» pasa directo a borrar o poner aparte', async () => {
+        const onExample = vi.fn()
+        render(<StepChat script={script} currentStep={0} exampleOf={exampleOf} onExample={onExample} />)
+        ask('¿y cómo sería 3/4 + 1/2?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Desarrollarlo en la pizarra' }))
+        expect(await screen.findByText(/Ese ejemplo lo puedo hacer en la pizarra: 3\/4 \+ 1\/2/)).toBeInTheDocument()
+        expect(asked()).toHaveLength(0)
+        fireEvent.click(screen.getByRole('button', { name: 'Ponerlo en otra pizarra' }))
+        expect(onExample).toHaveBeenCalledWith('3/4 + 1/2', 'aside')
+      })
+
+      it('«Borrar y escribir aquí» manda el ejemplo a la pizarra principal', async () => {
+        const onExample = vi.fn()
+        render(<StepChat script={script} currentStep={0} exampleOf={exampleOf} onExample={onExample} />)
+        ask('¿y cómo sería 3/4 + 1/2?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Desarrollarlo en la pizarra' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Borrar y escribir aquí' }))
+        expect(onExample).toHaveBeenCalledWith('3/4 + 1/2', 'replace')
+      })
+
+      it('sin problema en la pregunta, la maestra propone uno con la etiqueta y se oculta', async () => {
+        mockInvoke.mockResolvedValue('Mira, con otros números.\n[[PIZARRA: 3/4 + 1/2]]')
+        const onExample = vi.fn()
+        render(<StepChat script={script} currentStep={0} canShow={p => p} onExample={onExample} />)
+        ask('no entiendo, ¿me das otro parecido?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Desarrollarlo en la pizarra' }))
+        expect(await screen.findByText('Mira, con otros números.')).toBeInTheDocument()
+        expect(screen.queryByText(/PIZARRA:/)).not.toBeInTheDocument()
+        expect(asked()[0][1].messages.at(-1).content).toContain('[[PIZARRA: problema]]')
+        fireEvent.click(await screen.findByRole('button', { name: 'Ponerlo en otra pizarra' }))
+        expect(onExample).toHaveBeenCalledWith('3/4 + 1/2', 'aside')
+      })
+
+      it('si la pizarra no sabe resolver lo que propone la maestra, queda solo su respuesta', async () => {
+        mockInvoke.mockResolvedValue('Es un tema difícil.\n[[PIZARRA: derivada de x²]]')
+        render(<StepChat script={script} currentStep={0} canShow={() => null} onExample={vi.fn()} />)
+        ask('¿qué es una derivada?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Desarrollarlo en la pizarra' }))
+        expect(await screen.findByText('Es un tema difícil.')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Ponerlo en otra pizarra' })).not.toBeInTheDocument()
+      })
+
+      it('«Solo respóndeme» en el segundo paso contesta con el modelo', async () => {
+        mockInvoke.mockResolvedValue('Se busca el denominador común.')
+        const onExample = vi.fn()
+        render(<StepChat script={script} currentStep={0} exampleOf={exampleOf} onExample={onExample} />)
+        ask('¿y cómo sería 3/4 + 1/2?')
+        fireEvent.click(await screen.findByRole('button', { name: 'Desarrollarlo en la pizarra' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Solo respóndeme' }))
+        expect(await screen.findByText('Se busca el denominador común.')).toBeInTheDocument()
+        expect(onExample).not.toHaveBeenCalled()
+      })
+    })
+
     it('el botón cambia a dejar de hablar mientras graba', async () => {
       mockInvoke.mockImplementation(async (cmd: string) =>
         cmd === 'list_mic_models' ? [{ id: 'whisper-turbo', is_downloaded: true }] : undefined

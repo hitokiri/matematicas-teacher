@@ -88,6 +88,8 @@ test.describe('Flujo de resolver problemas', () => {
     await expect(box).toHaveValue('Tengo una duda con el paso 2: ');
     await box.fill('Tengo una duda con el paso 2: ¿por qué quitamos 4?');
     await page.getByRole('button', { name: 'Enviar' }).click();
+    // Antes de contestar, la maestra pregunta si quiere la respuesta aqui o en la pizarra
+    await page.getByRole('button', { name: 'Respuesta aquí' }).click();
 
     await expect(page.locator('.chat-msg.assistant')).toContainText('quitamos la raíz');
     await expect(page.locator('.chat-msg.assistant strong')).toHaveText('quitamos la raíz');
@@ -99,6 +101,7 @@ test.describe('Flujo de resolver problemas', () => {
 
     // Boton rapido sobre el paso actual
     await page.getByRole('button', { name: 'No entendí el paso 3' }).click();
+    await page.getByRole('button', { name: 'Respuesta aquí' }).click();
     await expect(page.locator('.chat-msg.user')).toHaveCount(2);
   });
 

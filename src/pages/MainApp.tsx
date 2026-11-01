@@ -1,10 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import DrawingCanvas from '../components/DrawingCanvas'
 import SolutionDisplay from '../components/SolutionDisplay'
 import Chalkboard from '../components/Chalkboard'
 import StepChat from '../components/StepChat'
+import MathKeypad from '../components/MathKeypad'
+import { useMic } from '../lib/useMic'
+import PracticeBoard from '../components/PracticeBoard'
 import LevelsPanel from '../components/LevelsPanel'
+import { exampleFromChat } from '../lib/board/example'
+import { notifyVoiceInterrupt } from '../lib/voice'
 import { DEFAULT_UI_PREFS, type UiPrefs } from '../lib/uiPrefs'
 import { parseArithmetic } from '../lib/board/parse'
 import { buildArithmetic } from '../lib/board/arithmetic'
@@ -78,13 +83,18 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
   const board = useMemo(() => (source ? buildBoard(source, lang) : null), [source, lang])
   // Cada problema nuevo monta una pizarra nueva (empieza en el paso 1)
   const [boardKey, setBoardKey] = useState(0)
+  // Ejemplo que el nino pidio en el chat y que se ve en otra pizarra, sin tocar la principal
+  const [aside, setAside] = useState<{ text: string; nonce: number } | null>(null)
+  const asideBoard = useMemo(() => (aside ? boardFor(aside.text, lang) : null), [aside, lang])
   const showBoard = (next: BoardSource) => {
+    setAside(null)
     setBoardKey(k => k + 1)
     setSource(next)
   }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'draw'>('text')
+  const [practice, setPractice] = useState(false)
   const [problemImage, setProblemImage] = useState('')
   // Lo que el modelo leyo en el dibujo (editable por si leyo mal un numero)
   const [readText, setReadText] = useState<string | null>(null)
@@ -96,7 +106,65 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     setDraft(d => ({ text: t('chat.draft', { n: step + 1 }), nonce: (d?.nonce ?? 0) + 1 }))
   }, [t])
 
+  // Herramientas junto a la caja de texto: simbolos para quien no los encuentra en el teclado y dictado por voz
+  const problemRef = useRef<HTMLTextAreaElement>(null)
+  const keypadToggle = useRef<HTMLButtonElement>(null)
+  const keypadId = useId()
+  const [keypad, setKeypad] = useState(false)
+  const insertAtCursor = (symbol: string) => {
+    const el = problemRef.current
+    const start = el?.selectionStart ?? problemText.length
+    const end = el?.selectionEnd ?? problemText.length
+    setProblemText(problemText.slice(0, start) + symbol + problemText.slice(end))
+    setError('')
+    // el cursor queda despues del simbolo y el foco no sale de la caja
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(start + symbol.length, start + symbol.length)
+    })
+  }
+  const dictation = useMic('problem', text => {
+    setProblemText(current => (current.trim() ? `${current.trimEnd()} ${text}` : text))
+    setError('')
+    problemRef.current?.focus()
+  })
+  const closeKeypad = () => { setKeypad(false); keypadToggle.current?.focus() }
+
   const hasInput = inputMode === 'draw' ? !!problemImage : !!problemText.trim()
+  const practiceEquation = source ? parseEquation('text' in source ? source.text : source.result.problem) : null
+
+  /** El problema que la app puede resolver dentro de una pregunta del chat (si no es el mismo de la pizarra) */
+  const exampleOf = useCallback((question: string, history: Array<{ role: 'user' | 'assistant'; content: string }>): string | null => {
+    const found = exampleFromChat(question, history, text => !!boardFor(text, lang))
+    const compact = (x: string) => x.replace(/\s+/g, '')
+    return found && board && compact(found) !== compact(board.title) ? found : null
+  }, [lang, board])
+
+  /** Ejemplo escrito por la maestra: solo si la pizarra lo resuelve y no es el problema que ya se ve */
+  const canShow = useCallback((problem: string): string | null => {
+    const compact = (x: string) => x.replace(/\s+/g, '')
+    return boardFor(problem, lang) && !(board && compact(problem) === compact(board.title)) ? problem : null
+  }, [lang, board])
+
+  const showExample = (text: string, where: 'replace' | 'aside') => {
+    if (where === 'replace') {
+      void solveText(text)
+      return
+    }
+    notifyVoiceInterrupt() // la pizarra principal se pausa para que se oiga el ejemplo
+    setAside(a => ({ text, nonce: (a?.nonce ?? 0) + 1 }))
+  }
+
+  /** Lo que se dicta primero es un problema: si la app lo resuelve sola, va a la pizarra */
+  const handleTranscript = useCallback((text: string): boolean => {
+    const t = text.trim()
+    if (!t) return false
+    if (boardFor(t, lang)) {
+      void solveText(t)
+      return true
+    }
+    return false
+  }, [lang])
 
   /** Resuelve un problema en texto: la app si es una cuenta o expresion, si no el modelo */
   async function solveText(text: string) {
@@ -186,6 +254,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           <textarea
             className="problem-input"
             aria-label={t('main.problemLabel')}
+            ref={problemRef}
             maxLength={4000}
             placeholder={t('main.placeholder')}
             value={problemText}
@@ -196,14 +265,57 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         )}
 
         <div className="solve-section">
-          <button
-            className="btn btn-primary btn-large"
-            onClick={solveProblem}
-            disabled={loading || !hasInput}
-          >
-            <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
-          </button>
+          <div className="solve-row">
+            <button
+              className="btn btn-primary btn-large"
+              onClick={solveProblem}
+              disabled={loading || !hasInput}
+            >
+              <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
+            </button>
+            {inputMode === 'text' && (
+              <>
+                <button
+                  type="button"
+                  className={`btn btn-secondary solve-tool chat-mic-${dictation.state}`}
+                  onClick={() => void dictation.toggle()}
+                  disabled={dictation.state === 'transcribing'}
+                  aria-pressed={dictation.state === 'recording'}
+                  aria-label={dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictateLabel')}
+                  title={t('main.dictateTitle')}
+                >
+                  <span aria-hidden="true">{dictation.state === 'recording' ? '⏹' : dictation.state === 'transcribing' ? '…' : '🎤'}</span>{' '}
+                  {dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictate')}
+                </button>
+                <button
+                  type="button"
+                  ref={keypadToggle}
+                  className={`btn btn-secondary solve-tool ${keypad ? 'active' : ''}`}
+                  onClick={() => setKeypad(k => !k)}
+                  aria-expanded={keypad}
+                  aria-controls={keypadId}
+                >
+                  <span aria-hidden="true">➕➗</span> {keypad ? t('keypad.close') : t('keypad.open')}
+                </button>
+              </>
+            )}
+          </div>
+          {inputMode === 'text' && (dictation.state === 'recording' || dictation.state === 'transcribing') && (
+            <p className="chat-mic-status" role="status">
+              {dictation.state === 'recording' ? t('chat.micRecording') : t('chat.micBusy')}
+            </p>
+          )}
+          {inputMode === 'text' && dictation.error && <div className="error-message" role="alert">{dictation.error}</div>}
+          {inputMode === 'text' && keypad && <MathKeypad id={keypadId} onInsert={insertAtCursor} onClose={closeKeypad} />}
         </div>
+
+        {practiceEquation && (
+          <div className="solve-section">
+            <button className={`chip ${practice ? 'active' : ''}`} onClick={() => setPractice(p => !p)}>
+              <span aria-hidden="true">🎤</span> {t('practice.mode')}
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="error-message" role="alert">
@@ -248,7 +360,15 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         </div>
       )}
 
-      {board && !loading && (
+      {board && !loading && (practice && practiceEquation ? (
+        <PracticeBoard
+          key={boardKey}
+          equation={practiceEquation}
+          voiceId={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
+          readAloud={uiPrefs.readAloud}
+          onUnknown={handleTranscript}
+        />
+      ) : (
         <Chalkboard
           key={boardKey}
           script={board}
@@ -262,6 +382,24 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           onStepChange={setViewStep}
           onAskStep={askStep}
         />
+      ))}
+
+      {asideBoard && aside && !loading && (
+        <section className="example-board" aria-label={t('example.title')}>
+          <div className="example-board-header">
+            <h3><span aria-hidden="true">📝</span> {t('example.title')}</h3>
+            <button type="button" className="chip" onClick={() => setAside(null)}>{t('example.close')}</button>
+          </div>
+          <Chalkboard
+            key={aside.nonce}
+            script={asideBoard}
+            autoPlay
+            showAllPages={uiPrefs.boards === 'all'}
+            fontScale={uiPrefs.fontScale}
+            voiceId={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
+            readAloud={uiPrefs.readAloud}
+          />
+        </section>
       )}
 
       {solution && !loading && (
@@ -271,13 +409,16 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         </details>
       )}
     </div>
-    {board && !loading && <StepChat
+    {board && !loading && !(practice && practiceEquation) && <StepChat
       key={boardKey}
       script={board}
       currentStep={viewStep}
       draft={draft}
       voiceId={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
       readAloud={uiPrefs.readAloud}
+      exampleOf={exampleOf}
+      canShow={canShow}
+      onExample={showExample}
     />}
     </div>
   )

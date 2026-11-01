@@ -30,6 +30,12 @@ interface ChalkboardProps {
   onStepChange?: (step: number) => void
   /** Al pulsar el numero de un paso (para preguntar por el en el chat) */
   onAskStep?: (step: number) => void
+  /** Paso controlado desde afuera (modo interactivo): la pizarra no avanza sola */
+  step?: number
+  /** Al terminar el audio del paso actual en modo controlado */
+  onStepDone?: () => void
+  /** Al navegar con los botones en modo controlado */
+  onStepMove?: (step: number) => void
   /** Renglones que caben en una pizarra antes de pasar a la siguiente */
   maxRowsPerPage?: number
   /** Ver todas las pizarras juntas; si no, solo la que se esta viendo (el usuario puede cambiarlo) */
@@ -57,11 +63,14 @@ function stepDuration(script: BoardScript, step: number): number {
 
 
 export default function Chalkboard({
-  script, autoPlay = true, onStepChange, onAskStep, maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
+  script, autoPlay = true, onStepChange, onAskStep, step: stepProp, onStepDone, onStepMove,
+  maxRowsPerPage = MAX_ROWS_PER_PAGE, showAllPages = false,
   fontScale = 1, onFontScaleChange, voiceId = SYSTEM_VOICE, readAloud = false, onReadAloudChange,
 }: ChalkboardProps) {
   const { t, lang } = useI18n()
-  const [step, setStep] = useState(0)
+  const [internalStep, setInternalStep] = useState(0)
+  const controlled = stepProp !== undefined
+  const step = controlled ? stepProp : internalStep
   const [playing, setPlaying] = useState(autoPlay)
   const [voice, setVoice] = useState(readAloud)
   const [voiceError, setVoiceError] = useState('')
@@ -82,20 +91,20 @@ export default function Chalkboard({
 
   // Reiniciar cuando cambia el problema
   useEffect(() => {
-    setStep(0)
+    setInternalStep(0)
     setPlaying(autoPlay)
     setPinned(null)
   }, [script, autoPlay])
 
   useEffect(() => {
-    if (!playing) return
+    if (!playing || controlled) return
     // Con la lectura encendida, el avance lo marca el final del audio de cada paso
     if (voice && canSpeak) return
     if (step >= last) {
       setPlaying(false)
       return
     }
-    const t = window.setTimeout(() => setStep(s => Math.min(s + 1, last)), stepDuration(script, step))
+    const t = window.setTimeout(() => setInternalStep(s => Math.min(s + 1, last)), stepDuration(script, step))
     return () => window.clearTimeout(t)
   }, [playing, step, last, script, voice, canSpeak])
 
@@ -120,8 +129,9 @@ export default function Chalkboard({
         onReadAloudChange?.(false)
         setVoiceError(t('board.voiceError'))
       } else if (result === 'done' && playingRef.current) {
-        if (at >= last) setPlaying(false)
-        else setStep(at + 1)
+        if (controlled) onStepDone?.()
+        else if (at >= last) setPlaying(false)
+        else setInternalStep(at + 1)
       }
     })
     // El audio del paso siguiente se prepara mientras suena este
@@ -130,7 +140,7 @@ export default function Chalkboard({
       cancelled = true
       stopSpeaking()
     }
-  }, [voice, voiceId, lang, step, script, last, canSpeak, replay])
+  }, [voice, voiceId, lang, step, script, last, canSpeak, replay, controlled, onStepDone])
 
   // Trazos visibles hasta el paso actual; los del paso actual se animan
   const { visible, fresh } = useMemo(() => {
@@ -216,8 +226,12 @@ export default function Chalkboard({
   const rowIsText = (r: number) => visible.some(i => i.kind === 'text' && i.row === r && i.align === 'start')
 
   const go = (s: number) => {
-    setPlaying(false)
-    setStep(Math.max(0, Math.min(last, s)))
+    const target = Math.max(0, Math.min(last, s))
+    if (controlled) onStepMove?.(target)
+    else {
+      setPlaying(false)
+      setInternalStep(target)
+    }
   }
 
   return (
@@ -341,7 +355,7 @@ export default function Chalkboard({
       </div>
 
       <div className="chalk-controls">
-        <button className="btn btn-secondary" onClick={() => { setStep(0); setPlaying(true) }} title={t('board.againTitle')}><span aria-hidden="true">⏮</span> {t('board.again')}</button>
+        <button className="btn btn-secondary" onClick={() => { if (controlled) onStepMove?.(0); else { setInternalStep(0); setPlaying(true) } }} title={t('board.againTitle')}><span aria-hidden="true">⏮</span> {t('board.again')}</button>
         <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}><span aria-hidden="true">◀</span> {t('board.prev')}</button>
         <button className="btn btn-primary" onClick={() => { if (!playing && voice) setReplay(r => r + 1); setPlaying(p => !p) }} disabled={step === last && !playing}>
           <span aria-hidden="true">{playing ? '⏸' : '▶'}</span> {playing ? t('board.pause') : t('board.play')}

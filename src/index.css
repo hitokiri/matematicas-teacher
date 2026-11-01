@@ -1877,3 +1877,25 @@ body {
   vertical-align: middle;
 }
 .chat-listen[aria-pressed='true'] { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.chat-offer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.example-board { margin-top: 16px; border: 2px dashed var(--primary); border-radius: 12px; padding: 10px; }
+.example-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.example-board-header h3 { margin: 0; font-size: 1rem; }
+
+.solve-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.solve-row .btn-large { flex: 1 1 220px; width: auto; }
+.solve-tool { transition: none; min-height: 48px; min-width: 48px; padding-inline: 16px; font-weight: 600; white-space: nowrap; }
+.solve-tool.active, .solve-tool.active:hover { border-color: var(--primary); background: var(--primary); color: #fff; }
+.solve-tool.active:hover { background: var(--primary-hover); }
+.solve-tool:focus-visible, .math-key:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.math-keypad { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: left; }
+.math-keypad-hint { margin: 0 0 8px; font-size: 0.85rem; color: var(--muted, var(--text)); }
+.math-keypad-keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.math-key {
+  min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--card, var(--bg)); color: var(--text); cursor: pointer;
+}
+.math-key span { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.math-key small { font-size: 0.7rem; opacity: 0.8; }
+.math-key:hover { border-color: var(--primary); }

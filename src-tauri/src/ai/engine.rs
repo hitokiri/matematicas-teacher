@@ -28,7 +28,8 @@ REGLAS:
 3. Usa como maximo 5 frases. Escribe las cuentas en texto plano (por ejemplo 4 × 4 = 16), sin LaTeX ni simbolos $.
 4. Usa los mismos numeros de paso que la pizarra.
 5. Si la pregunta no es de matematicas, responde amablemente y vuelve al problema.
-6. Animale: termina con una frase corta de animo si viene al caso."#;
+6. Animale: termina con una frase corta de animo si viene al caso.
+7. Si el mensaje del nino dice que quiere verlo desarrollado en la pizarra, responde con una frase corta y al final, en un renglon aparte, la etiqueta [[PIZARRA: problema]] con el problema en texto plano, por ejemplo [[PIZARRA: 1010 ÷ 20]], [[PIZARRA: 2x + 3 = 7]] o [[PIZARRA: 3/4 + 1/2]]. La pizarra lo resuelve sola. Usa el mismo tipo de problema que el de la pizarra (con otros numeros si pide otro ejemplo). Solo cuentas, ecuaciones, fracciones o expresiones con numeros. Si el nino no lo pidio, NO pongas la etiqueta."#;
 
 /// Solo modelos locales: la inferencia corre dentro de la app
 pub struct AIEngine {
