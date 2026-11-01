@@ -95,3 +95,54 @@ test('dictado en el chat', async ({ page }) => {
   await expect(chat.locator('.chat-mic-status')).toBeVisible();
   await chat.screenshot({ path: `${DIR}/chat-microfono.png` });
 });
+
+test('simbolos matematicos junto al problema', async ({ page }) => {
+  await open(page);
+  await page.locator('.problem-input').fill('2x + 3 = ');
+  await page.getByRole('button', { name: /^➕➗ Símbolos|Símbolos$/ }).click();
+  await expect(page.getByRole('group', { name: 'Símbolos matemáticos' })).toBeVisible();
+  await page.getByRole('button', { name: 'raíz cuadrada' }).focus();
+  await page.locator('.input-section').screenshot({ path: `${DIR}/simbolos.png` });
+});
+
+test('cuenta dicha con palabras', async ({ page }) => {
+  await open(page);
+  await solve(page, 'divide trescientos entre cincuenta');
+  await goToStep(page, 3);
+  await page.locator('.workspace').screenshot({ path: `${DIR}/divide-palabras.png` });
+});
+
+test('el chat pregunta como quiere la respuesta', async ({ page }) => {
+  await open(page);
+  await solve(page, '2x + 4 = 10');
+  const chat = page.locator('.step-chat');
+  await chat.getByRole('button', { name: /no entendí el paso 1/i }).click();
+  await expect(chat.getByRole('button', { name: 'Desarrollarlo en la pizarra' })).toBeVisible();
+  await chat.scrollIntoViewIfNeeded();
+  await chat.screenshot({ path: `${DIR}/chat-pizarra.png` });
+});
+
+test('ejemplo en otra pizarra', async ({ page }) => {
+  await open(page);
+  await solve(page, '2x + 4 = 10');
+  const chat = page.locator('.step-chat');
+  await chat.locator('textarea').fill('¿y cómo sería 3/4 + 1/2?');
+  await chat.getByRole('button', { name: 'Enviar' }).click();
+  await chat.getByRole('button', { name: 'Desarrollarlo en la pizarra' }).click();
+  await chat.getByRole('button', { name: 'Ponerlo en otra pizarra' }).click();
+  const aside = page.getByRole('region', { name: 'Pizarra de ejemplo' });
+  await expect(aside).toBeVisible();
+  await page.getByRole('button', { name: /^.*Pausa$/ }).last().click();
+  await chalkDone(page);
+  await aside.scrollIntoViewIfNeeded();
+  await page.locator('.workspace').screenshot({ path: `${DIR}/pizarra-aparte.png` });
+});
+
+test('practicar dictando operaciones', async ({ page }) => {
+  await open(page);
+  await solve(page, '2x + 4 = 10');
+  await page.getByRole('button', { name: /practicar dictando/i }).click();
+  await expect(page.getByRole('complementary', { name: /dicta las operaciones/i })).toBeVisible();
+  await chalkDone(page);
+  await page.locator('.workspace').screenshot({ path: `${DIR}/practica.png` });
+});

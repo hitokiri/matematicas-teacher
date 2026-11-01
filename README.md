@@ -15,6 +15,10 @@ Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a r
 - **Visuales**: balanza para ecuaciones, pizzas y rectángulos para fracciones.
 - **Chat de preguntas** sobre cada paso (`StepChat`).
 - **Micrófono**: dicta tus preguntas en voz alta; Whisper transcribe el audio en la propia computadora, sin internet. El modelo de voz se descarga desde Configuración › Micrófono.
+- **Botones junto al problema**: **🎤 Hablar** dicta el problema al cuadro de texto y **➕➗ Símbolos** abre un teclado de símbolos (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) para quien no sabe sacarlos con el teclado. Ambos son accesibles (nombre hablado, foco visible, Escape cierra).
+- **Cuentas dichas con palabras**: "divide trescientos entre cincuenta" o "multiplica 12 por 3" se resuelven en la pizarra con todo el procedimiento.
+- **Ejemplos desde el chat**: al preguntar, la maestra pregunta si quieres la respuesta aquí o que lo desarrolle en la pizarra; si eliges la pizarra, puedes **borrar y escribir** o ponerlo en **otra pizarra aparte** sin perder la principal.
+- **Practicar dictando operaciones**: en una ecuación de primer grado, el modo práctica deja que el niño dicte operaciones ("sumar 3", "dividir entre 4") y la pizarra las ejecuta paso a paso con la balanza; si no se entiende, la maestra pregunta en vez de ejecutar.
 - **Lienzo de dibujo**: lee lo que el niño escribe/dibuja con modelos con visión (mtmd) y permite corregirlo.
 - **IA local con llama.cpp** integrado en la app (como Handy con whisper): sin servidor ni puertos; backends CPU/CUDA/Vulkan se cargan en tiempo de ejecución según el hardware.
 - **Gestor de modelos** (Llama, Qwen, Phi, Gemma, Mistral): descarga desde HuggingFace, selección del modelo activo y eliminación.
@@ -51,6 +55,12 @@ Los sistemas se escriben con una ecuación por renglón (también sirven `;` o `
 | **Pizarras de una en una**: los botones *Pizarra N* cambian de pizarra y *Ver todas* las junta. | **Configuración › Interfaz**: pizarras, reproducción automática, panel de temas y tema. |
 | ![Micrófono](docs/capturas/microfono.png) | ![Dictado en el chat](docs/capturas/chat-microfono.png) |
 | **Configuración › Micrófono**: descarga el modelo de voz una vez; el audio no sale del equipo. | **Hablar en el chat**: pulsa 🎤, habla y el dictado se envía como pregunta. |
+| ![Símbolos matemáticos](docs/capturas/simbolos.png) | ![Cuenta dicha con palabras](docs/capturas/divide-palabras.png) |
+| **Símbolos y voz junto al problema**: cada tecla trae su nombre hablado y Escape cierra el panel. | **"divide trescientos entre cincuenta"** se resuelve en la casita, paso a paso. |
+| ![El chat pregunta cómo quieres la respuesta](docs/capturas/chat-pizarra.png) | ![Ejemplo en otra pizarra](docs/capturas/pizarra-aparte.png) |
+| **Antes de contestar**, la maestra pregunta si quieres la respuesta aquí o desarrollada en la pizarra. | **Otra pizarra aparte**: el ejemplo se resuelve debajo sin tocar la pizarra principal. |
+| ![Practicar dictando operaciones](docs/capturas/practica.png) | |
+| **Practicar dictando**: dices "sumar 3" o "dividir entre 4" y la balanza lo hace en los dos lados. | |
 
 Las capturas se generan con `npm run capturas` (Playwright con el backend simulado de los e2e) y se guardan en
 `docs/capturas/`.
@@ -60,6 +70,7 @@ Las capturas se generan con `npm run capturas` (Playwright con el backend simula
 1. En **⚙️ Configuración › 🎤 Micrófono**, descarga un modelo de voz (Whisper Turbo o Small) la primera vez.
 2. En el chat de un paso, pulsa **🎤** y habla; al detectar silencio, el audio se transcribe.
 3. El texto se envía como pregunta y la maestra responde. Todo se procesa en la computadora, sin internet.
+4. Lo que se dicta se resuelve primero en la pizarra (cuentas, expresiones, fracciones, ecuaciones); si no es un problema, se toma como operación del modo práctica o pasa al chat como pregunta.
 
 ## Configuración de la interfaz
 

@@ -2,6 +2,9 @@
 
 Objetivo: que el niño hable en vez de escribir. Fase 1 = chat; Fase 2 = operaciones en la pizarra por voz.
 
+Estado: Fase 1 completa y liberada en `v0.4.9`. Fase 2 en curso: modelo de operación,
+parser determinista y pizarra interactiva ya funcionan; falta la intención por LLM.
+
 Lo que ya existe (base sobre la que construir):
 - `sherpa-onnx 1.13.8` en Cargo.toml (hoy solo TTS: Piper/Kokoro en `src-tauri/src/voice/`).
 - Patrón de descarga de modelos: `src-tauri/src/voice/download.rs` + `models/manager.rs`
@@ -9,7 +12,14 @@ Lo que ya existe (base sobre la que construir):
 - Chat: `src/components/StepChat.tsx` → `ask(question)` → `invoke('ask_about_steps')`.
 - Settings.tsx ya escucha eventos (`model-download-complete`, `models-updated`).
 
-## Fase 1 — micrófono en el chat (~1–2 días)
+## Fase 1 — micrófono en el chat (~1–2 días) — ✅ completa (v0.4.9)
+
+Estado: STT local con Whisper funcionando, botón de micrófono en el chat y descarga de
+modelos en Configuración. Implementado: `src-tauri/src/voice/stt.rs` (cpal + sherpa-onnx
+Transcriber), `src/lib/mic.ts` (eventos `mic-state`/`mic-transcript`/`mic-error` y comandos
+`start_listening`/`stop_listening`/`list_mic_models`), `MicSection.tsx` (descarga),
+`StepChat.tsx` (dictado → pregunta, barge-in). Tests: vitest para la UI + `cargo test voice`
+(2 tests ignorados: requieren modelo descargado con `STT_TEST_DIR`).
 
 1. **STT local**: sherpa-onnx ya soporta Whisper (Transcriber) con modelos ONNX
    multilingües. Reutilizar el crate existente; si la binding Rust de Transcriber no
@@ -44,17 +54,33 @@ de Small.
 6. **Tests**: vitest para la UI (mock de `mic-transcript`), Rust test con `VOICE_TEST_DIR`
    como `voz_real_genera_audio_con_piper_y_kokoro`.
 
-## Fase 2 — operaciones por voz (~2–3 días)
+## Fase 2 — operaciones por voz (~2–3 días) — 🟡 en curso
 
-1. **Modelo de operación**: hoy la pizarra genera scripts (`equationScript` en
-   `src/lib/board/equation.ts`); falta un modo interactivo: definir `Operation`
-   (sumar/restar a ambos lados, elevar al cuadrado, dividir…) + `applyOperation()` en `src/lib/board/`.
-2. **Intent por voz**: pasar el transcript por el LLM local con un prompt de intención
-   (utterance → `Operation` + parámetros), reutilizando `engine.rs`/`local.rs`.
-   Fallback determinista: regex para frases frecuentes ("elevar al cuadrado", "restar 4").
-3. **Feedback**: la maestra confirma la operación en voz alta y la pizarra la dibuja
-   (mismos `BoardStep`/`visual`).
-4. **Seguridad**: operación no reconocida → preguntar, no ejecutar.
+Estado: modelo de operación + parser determinista + pizarra interactiva funcionando y
+testeados. Falta la intención por LLM y pulir estilos/e2e.
+
+Implementado:
+- `src/lib/board/ops.ts`: `Operation` (sumar/restar/multiplicar/dividir ambos lados) +
+  `applyOperation()` sobre `Lin`/`Equation` → `BoardStep` con la balanza; `isSolved`/`answerOf`.
+- `src/lib/board/intent.ts`: `parseOperationIntent(transcript, lang)` — camino determinista
+  (regex de frases comunes en es/en, números en dígitos o palabras); devuelve `null` si no
+  se entiende.
+- `src/components/PracticeBoard.tsx`: modo práctica — la pizarra crece paso a paso con cada
+  operación dictada, la maestra confirma en voz alta y, si no se entiende o se divide entre 0,
+  pregunta en vez de ejecutar.
+- `Chalkboard.tsx` admite paso controlado desde afuera (`step`, `onStepDone`, `onStepMove`).
+- `MainApp.tsx`: toggle "Practicar dictando" cuando el problema es una ecuación de primer grado.
+- **Enrutado del dictado**: lo que se dice primero se intenta resolver en la pizarra (`boardFor`:
+  cuentas, expresiones, fracciones, ecuaciones, sistemas); si no es un problema, se toma como
+  operación del modo práctica; si nada se entiende, pasa al chat como pregunta.
+- Tests: `ops.test.ts`, `intent.test.ts`, `PracticeBoard.test.tsx`, `StepChat.test.tsx`.
+
+Pendiente:
+1. **Intent por LLM**: pasar el transcript por el LLM local con un prompt de intención
+   (utterance → `Operation` + parámetros), reutilizando `engine.rs`/`local.rs`, con el parser
+   determinista como fallback.
+2. Operaciones no lineales (elevar al cuadrado) y ecuaciones con la incognita a la derecha.
+3. Estilos propios del modo práctica y cobertura e2e.
 
 ## Riesgos
 
