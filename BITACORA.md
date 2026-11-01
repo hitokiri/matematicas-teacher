@@ -660,3 +660,29 @@ y `examples/`); con enlace estático salen `libggml-metal.a`, `libggml-cpu.a`, e
 - Se descartó la config de `.cargo/config.toml` para macOS (rustflags que no hacían falta; Handy tampoco la tiene).
 - Resultado: `npm run package:mac` en `macos-15` genera `matematicas-teacher_0.4.2_arm64_macOS.dmg` (~18 MB). Sigue pendiente probarlo en una Mac real.
 - Falta publicar: `v0.4.3` (o mover `v0.4.2`) para que el job `release` lo incluya.
+
+## 31 oct 2026 — v0.5.0: voz y símbolos junto al problema, ejemplos del chat en la pizarra
+
+- **Audio repetido:** con la voz del sistema, `speak()` esperaba una consulta asíncrona antes de reproducir y un
+  `stopSpeaking()` en ese intervalo no cortaba nada: la lectura vieja sonaba encima de la nueva. Ahora un contador de
+  generación (`src/lib/voice.ts`) descarta las lecturas vencidas.
+- **Narración repetida del modelo:** `solutionScript` decía `título. explicación` y el modelo suele repetir el título
+  dentro de la explicación. `narration()` (`fromSolution.ts`) quita el título redundante, las frases repetidas y los pasos
+  idénticos; el prompt también lo pide. (El reproductor no era el problema: una prueba con StrictMode y voz neuronal
+  simulada decía cada paso una sola vez.)
+- **Modo práctica:** `PracticeBoard` creaba el guion y `onStepDone` nuevos en cada render (reiniciaba el audio) y cada
+  operación generaba los mismos ids de trazo (`op0`, `op1`), así que la segunda borraba la primera.
+- **Chat y pizarra:** antes de contestar, la maestra pregunta si se quiere la respuesta aquí o desarrollada en la
+  pizarra; el ejemplo puede borrar y escribir o ir a otra pizarra aparte. Sin problema en la pregunta, el modelo propone
+  uno con `[[PIZARRA: ...]]` (regla 7 de `CHAT_PROMPT`). Quitar `onTranscript` de `StepChat` en `MainApp` hace que el
+  dictado también pregunte en vez de reemplazar la pizarra sin avisar.
+- **"divide trescientos entre cincuenta" daba solo la respuesta:** `parseArithmetic` no entendía verbos ni números en
+  letras, así que la cuenta iba al modelo. Ahora `wordsToDigits` y las formas con verbo la resuelven en la casita.
+  Cuidado: "un/una" solo cuentan como número dentro de una cantidad o antes de "mil" (si no, "un ejemplo" se volvía 1).
+- **Botones 🎤 Hablar y ➕➗ Símbolos** junto a "Resolver problema". El micro lo comparten el chat, el modo práctica y el
+  cuadro del problema: `claimMic(owner)` evita que el texto llegue a todos.
+- **e2e:** el paso "¿aquí o en la pizarra?" rompió tres pruebas (hay que pulsar *Respuesta aquí*). Axe también atrapó una
+  transición de color a medias en el botón de símbolos: los botones `.solve-tool` no usan transición.
+- Pendiente: selector de métodos de resolución (método japonés para multiplicar, tanteo, "aislar y elevar al
+  cuadrado" en raíces), que necesita un parámetro `method` en `solve_problem`.
+

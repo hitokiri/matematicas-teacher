@@ -45,6 +45,11 @@ La misma lista aparece dentro de la app en el panel *¿Hasta dónde llega la mae
 
 Los sistemas se escriben con una ecuación por renglón (también sirven `;` o `, `).
 
+Las cuentas también se entienden **dichas con palabras**: `divide 300 entre 50`, `multiplica doce por tres`,
+`suma cuatro y cinco`, `resta 5 de 9` o `divide trescientos entre cincuenta` (números en letras hasta millones).
+Se resuelven con el mismo procedimiento en columna, no solo con el resultado (`parseArithmetic` y `wordsToDigits`
+en `src/lib/board/parse.ts`).
+
 ## Capturas
 
 | | |
@@ -68,9 +73,38 @@ Las capturas se generan con `npm run capturas` (Playwright con el backend simula
 ## Micrófono
 
 1. En **⚙️ Configuración › 🎤 Micrófono**, descarga un modelo de voz (Whisper Turbo o Small) la primera vez.
-2. En el chat de un paso, pulsa **🎤** y habla; al detectar silencio, el audio se transcribe.
-3. El texto se envía como pregunta y la maestra responde. Todo se procesa en la computadora, sin internet.
-4. Lo que se dicta se resuelve primero en la pizarra (cuentas, expresiones, fracciones, ecuaciones); si no es un problema, se toma como operación del modo práctica o pasa al chat como pregunta.
+2. Pulsa **🎤** y habla; al detectar silencio, el audio se transcribe. Hay dos botones de micrófono:
+   - **Junto a "Resolver problema"** (**🎤 Hablar**): lo dicho se escribe en el cuadro del problema, para revisarlo
+     antes de resolver.
+   - **En el chat de un paso**: lo dicho se envía como pregunta.
+3. Todo se procesa en la computadora, sin internet. El micrófono es de quien lo activó: lo dictado en el cuadro del
+   problema no llega también al chat (y al revés).
+4. En el modo **Practicar dictando** (ecuaciones de primer grado) lo dictado son operaciones: "sumar 3", "restar 4",
+   "multiplicar por 2" o "dividir entre 4".
+
+## Símbolos matemáticos
+
+El botón **➕➗ Símbolos**, junto al cuadro del problema, abre un teclado con `+ − × ÷ = / ( ) √( ² ³ ^ x y .` para quien
+no sabe sacarlos con el teclado. Cada tecla escribe el símbolo donde está el cursor y trae su nombre hablado
+("raíz cuadrada", "al cuadrado") para lectores de pantalla; **Escape** lo cierra y devuelve el foco al botón
+(`src/components/MathKeypad.tsx`).
+
+## Preguntas en el chat
+
+Al hacer una pregunta (escrita, dictada o con los botones rápidos), la maestra pregunta primero cómo la quieres:
+
+1. **Respuesta aquí**: contesta el modelo en el chat.
+2. **Desarrollarlo en la pizarra**: se resuelve un ejemplo con la pizarra de la app. El problema sale de tu pregunta
+   ("¿y cómo sería 3/4 + 1/2?", "mil 10 entre 20") o de la conversación si pides "en la pizarra"; si no hay ninguno,
+   el modelo propone uno con la etiqueta `[[PIZARRA: problema]]`, que el niño no ve. Solo se ofrece si la app sabe
+   resolverlo y no es el que ya está en la pizarra.
+3. Después, la maestra pregunta dónde ponerlo: **Borrar y escribir aquí** (la pizarra principal pasa al ejemplo y el
+   chat se reinicia), **Ponerlo en otra pizarra** (aparece una *Pizarra de ejemplo* debajo, con botón para cerrarla, y
+   la principal queda como estaba) o **Solo respóndeme**.
+
+La lógica está en `src/lib/board/example.ts` (detección del ejemplo y de la etiqueta), `StepChat.tsx` (las preguntas)
+y `MainApp.tsx` (la pizarra aparte). La regla 7 del prompt del chat (`CHAT_PROMPT` en `src-tauri/src/ai/engine.rs`)
+explica al modelo cuándo usar la etiqueta.
 
 ## Configuración de la interfaz
 
@@ -86,7 +120,7 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
 - **Idioma**: español o inglés. Si nunca lo has escogido, la app usa el idioma de tu sistema; se cambia con el botón
   **ES / EN** del encabezado o en Configuración › Interfaz. Se traduce la interfaz, la narración de la pizarra, la
   lectura en voz alta y las respuestas del modelo. Lo que se escribe como problema sigue entendiendo solo símbolos y
-  palabras en español (`entre`, `raíz`...), aunque los símbolos (`+ − × ÷ √ ²`) funcionan igual en inglés.
+  palabras en español (`entre`, `raíz`, números en letras...), aunque los símbolos (`+ − × ÷ √ ²`) funcionan igual en inglés.
 - **Tema** claro u oscuro (si no has escogido, el del sistema).
 - **Registro de la app** (Configuración › Registro de la app): lo que hace la app y sus errores, con filtro, botón
   para copiarlo y borrarlo. También se guarda en `logs/app.log` dentro de la carpeta de datos de la app, por si no abre.
@@ -218,10 +252,13 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 
 ```
 src/                  Frontend React (Vite + TypeScript)
-  lib/board/          Solver simbólico: racional, fracciones, ecuaciones, dos letras, sistemas, expresiones
+  lib/board/          Solver simbólico: racional, fracciones, ecuaciones, dos letras, sistemas, expresiones;
+                      parse (cuentas y números en letras), example (ejemplos del chat), ops/intent (practicar dictando)
+  lib/mic.ts          Eventos y comandos del micrófono; useMic.ts dicta en una caja de texto
   lib/capabilities.ts Temas que explica la app (panel "¿Hasta dónde llega la maestra?")
   lib/uiPrefs.ts      Preferencias de la interfaz
-  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, ModelBrowser
+  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, PracticeBoard,
+                      MathKeypad, ModelBrowser
   pages/              MainApp, Settings
 src-tauri/            Backend Rust (Tauri v2)
   src/ai/             Motor de IA (llama.cpp, visión mtmd)
@@ -241,7 +278,7 @@ LGPL-2.1 — ver [LICENSE](LICENSE).
 
 - **Accesibilidad (WCAG 2.2 AA)**: se usa con teclado y lector de pantalla (enlace para saltar al contenido, diálogo con
   foco atrapado y Esc, botones con nombre, estados anunciados), contraste de color de al menos 4.5:1, foco visible,
-  objetivos táctiles de 40 px, y respeta *reducir movimiento*. `npx playwright test e2e/a11y.spec.ts` revisa la
+  objetivos táctiles de 40 px (48 px en los botones de voz y símbolos), y respeta *reducir movimiento*. `npx playwright test e2e/a11y.spec.ts` revisa la
   interfaz con axe-core en tema claro, oscuro y en inglés.
 - **Seguridad**: la ventana web tiene un CSP estricto y solo el permiso de escuchar eventos (sin acceso a archivos,
   diálogos ni enlaces); el backend limita el tamaño de lo que recibe; las voces se descargan por HTTPS y se

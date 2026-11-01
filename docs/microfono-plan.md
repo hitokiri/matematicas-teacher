@@ -2,8 +2,9 @@
 
 Objetivo: que el niño hable en vez de escribir. Fase 1 = chat; Fase 2 = operaciones en la pizarra por voz.
 
-Estado: Fase 1 completa y liberada en `v0.4.9`. Fase 2 en curso: modelo de operación,
-parser determinista y pizarra interactiva ya funcionan; falta la intención por LLM.
+Estado: Fase 1 completa y liberada en `v0.4.9`. Fase 2 en curso (modo práctica liberado en `v0.5.0`): modelo de
+operación, parser determinista y pizarra interactiva ya funcionan; falta la intención por LLM. En `v0.5.0` el micrófono
+también dicta el problema en el cuadro de texto (`useMic.ts`, `claimMic`) y el chat ofrece ejemplos en la pizarra.
 
 Lo que ya existe (base sobre la que construir):
 - `sherpa-onnx 1.13.8` en Cargo.toml (hoy solo TTS: Piper/Kokoro en `src-tauri/src/voice/`).
@@ -70,10 +71,17 @@ Implementado:
   pregunta en vez de ejecutar.
 - `Chalkboard.tsx` admite paso controlado desde afuera (`step`, `onStepDone`, `onStepMove`).
 - `MainApp.tsx`: toggle "Practicar dictando" cuando el problema es una ecuación de primer grado.
-- **Enrutado del dictado**: lo que se dice primero se intenta resolver en la pizarra (`boardFor`:
-  cuentas, expresiones, fracciones, ecuaciones, sistemas); si no es un problema, se toma como
-  operación del modo práctica; si nada se entiende, pasa al chat como pregunta.
-- Tests: `ops.test.ts`, `intent.test.ts`, `PracticeBoard.test.tsx`, `StepChat.test.tsx`.
+- **Enrutado del dictado** (modo práctica): lo que se dice primero se intenta resolver en la pizarra
+  (`boardFor`: cuentas, expresiones, fracciones, ecuaciones, sistemas); si no es un problema, se toma como
+  operación; si nada se entiende, la maestra pregunta. En el chat, lo dictado ya no reemplaza la pizarra sin
+  avisar: pasa por la pregunta "¿aquí o en la pizarra?" como cualquier otra pregunta.
+- **Dueño del micrófono** (`mic.ts`): los eventos `mic-*` llegan a todos los suscriptores, así que `claimMic(owner)`
+  marca quién lo activó (`chat`, `practice`, `problem`) y solo ese recibe el texto; se suelta con el `idle`
+  que el backend envía siempre al final.
+- **Micrófono junto al problema** (`useMic.ts` + `MainApp.tsx`): dicta al cuadro de texto, sin resolver solo.
+- **Ids de trazo únicos** por operación (`applyOperation(..., idPrefix)`) y guion de la pizarra estable entre renders
+  (si no, la narración se volvía a leer en cada render).
+- Tests: `ops.test.ts`, `intent.test.ts`, `PracticeBoard.test.tsx`, `StepChat.test.tsx`, `problemTools.test.tsx`.
 
 Pendiente:
 1. **Intent por LLM**: pasar el transcript por el LLM local con un prompt de intención
@@ -81,6 +89,7 @@ Pendiente:
    determinista como fallback.
 2. Operaciones no lineales (elevar al cuadrado) y ecuaciones con la incognita a la derecha.
 3. Estilos propios del modo práctica y cobertura e2e.
+4. El texto del modo práctica (`PracticeBoard.tsx`) tiene frases escritas en el componente en vez de pasar por i18n.
 
 ## Riesgos
 

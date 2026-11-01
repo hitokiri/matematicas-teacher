@@ -15,6 +15,10 @@ A desktop app (Tauri v2 + React/TypeScript) that teaches kids to solve math prob
 - **Visuals**: balance scale for equations, pizzas and rectangles for fractions.
 - **Question chat** about each step (`StepChat`).
 - **Microphone**: ask your questions out loud; Whisper transcribes the audio on the device, with no internet. The speech model is downloaded from Settings › Microphone.
+- **Buttons next to the problem**: **🎤 Speak** dictates the problem into the text box and **➕➗ Symbols** opens a keypad of math symbols (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) for anyone who does not know how to type them. Both are accessible (spoken names, visible focus, Escape closes).
+- **Sums said in words** (Spanish): "divide trescientos entre cincuenta" or "multiplica 12 por 3" are solved on the board with the full procedure.
+- **Examples from the chat**: when you ask something, the teacher asks whether you want the answer here or worked out on the board; if you pick the board you can **erase and write** or put it on **another board** without losing the main one.
+- **Practice by dictating operations**: on a first-degree equation, practice mode lets the child dictate operations ("add 3", "divide by 4") and the board runs them step by step on the balance scale; if it is not understood, the teacher asks instead of acting.
 - **Drawing canvas**: reads what the child writes/draws using vision models (mtmd) and lets them correct it.
 - **Local AI with llama.cpp** embedded in the app (like Handy with whisper): no server, no ports; CPU/CUDA/Vulkan backends are loaded at runtime depending on the hardware.
 - **Model manager** (Llama, Qwen, Phi, Gemma, Mistral): download from HuggingFace, select the active model, and delete.
@@ -41,6 +45,11 @@ is added, both places are updated.
 
 Systems are written with one equation per line (`;` or `, ` also work).
 
+Sums are also understood **said in words** (in Spanish): `divide 300 entre 50`, `multiplica doce por tres`,
+`suma cuatro y cinco`, `resta 5 de 9` or `divide trescientos entre cincuenta` (number words up to millions). They are
+solved with the same column procedure, not just the result (`parseArithmetic` and `wordsToDigits` in
+`src/lib/board/parse.ts`).
+
 ## Screenshots
 
 | | |
@@ -51,6 +60,12 @@ Systems are written with one equation per line (`;` or `, ` also work).
 | **One board at a time**: the *Pizarra N* buttons switch boards and *Ver todas* shows them together. | **Settings › Interface**: boards, autoplay, topics panel, and theme. |
 | ![Microphone](docs/capturas/microfono.png) | ![Dictation in the chat](docs/capturas/chat-microfono.png) |
 | **Settings › Microphone**: download the speech model once; audio never leaves the device. | **Talking in the chat**: press 🎤, speak, and the dictation is sent as your question. |
+| ![Math symbols](docs/capturas/simbolos.png) | ![Sum said in words](docs/capturas/divide-palabras.png) |
+| **Symbols and voice next to the problem**: every key has a spoken name and Escape closes the panel. | **"divide trescientos entre cincuenta"** is solved in the long-division house, step by step. |
+| ![The chat asks how you want the answer](docs/capturas/chat-pizarra.png) | ![Example on another board](docs/capturas/pizarra-aparte.png) |
+| **Before answering**, the teacher asks whether you want the answer here or worked out on the board. | **Another board**: the example is solved below without touching the main board. |
+| ![Practice by dictating](docs/capturas/practica.png) | |
+| **Practice by dictating**: say "add 3" or "divide by 4" and the scale does it on both sides. | |
 
 Screenshots are generated with `npm run capturas` (Playwright with the e2e mocked backend) and saved to
 `docs/capturas/`.
@@ -58,8 +73,37 @@ Screenshots are generated with `npm run capturas` (Playwright with the e2e mocke
 ## Microphone
 
 1. In **⚙️ Configuración › 🎤 Micrófono**, download a speech model (Whisper Turbo or Small) the first time.
-2. In a step's chat, press **🎤** and speak; when silence is detected, the audio is transcribed.
-3. The text is sent as your question and the teacher answers. Everything runs on the computer, with no internet.
+2. Press **🎤** and speak; when silence is detected, the audio is transcribed. There are two microphone buttons:
+   - **Next to "Resolver problema"** (**🎤 Speak**): what you say is typed into the problem box, so you can check it
+     before solving.
+   - **In a step's chat**: what you say is sent as a question.
+3. Everything runs on the computer, with no internet. The microphone belongs to whoever turned it on: what is dictated
+   into the problem box does not also reach the chat (and vice versa).
+4. In **Practice by dictating** mode (first-degree equations) what you say are operations: "add 3", "subtract 4",
+   "multiply by 2" or "divide by 4".
+
+## Math symbols
+
+The **➕➗ Symbols** button next to the problem box opens a keypad with `+ − × ÷ = / ( ) √( ² ³ ^ x y .` for anyone who
+does not know how to type them. Each key writes the symbol at the cursor and has a spoken name ("square root",
+"squared") for screen readers; **Escape** closes it and returns focus to the button (`src/components/MathKeypad.tsx`).
+
+## Questions in the chat
+
+When you ask something (typed, dictated or with the quick buttons), the teacher first asks how you want it:
+
+1. **Answer here**: the model replies in the chat.
+2. **Work it out on the board**: an example is solved with the app's board. The problem comes from your question
+   ("and how would 3/4 + 1/2 be?") or from the conversation if you ask for it "on the board"; if there is none, the
+   model proposes one with the tag `[[PIZARRA: problem]]`, which the child never sees. It is only offered if the app
+   can solve it and it is not the one already on the board.
+3. Then the teacher asks where to put it: **Erase and write here** (the main board becomes the example and the chat
+   resets), **Put it on another board** (an *Example board* appears below, with a close button, and the main one stays
+   as it was) or **Just answer me**.
+
+The logic lives in `src/lib/board/example.ts` (finding the example and the tag), `StepChat.tsx` (the questions) and
+`MainApp.tsx` (the extra board). Rule 7 of the chat prompt (`CHAT_PROMPT` in `src-tauri/src/ai/engine.rs`) tells the
+model when to use the tag.
 
 ## Interface settings
 
@@ -200,10 +244,13 @@ npm run dev           # frontend only (Vite, http://localhost:5173)
 
 ```
 src/                  React frontend (Vite + TypeScript)
-  lib/board/          Symbolic solver: rational, fractions, equations, two letters, systems, expressions
+  lib/board/          Symbolic solver: rational, fractions, equations, two letters, systems, expressions;
+                      parse (sums and number words), example (chat examples), ops/intent (practice by dictating)
+  lib/mic.ts          Microphone events and commands; useMic.ts dictates into a text box
   lib/capabilities.ts Topics the app explains ("¿Hasta dónde llega la maestra?" panel)
   lib/uiPrefs.ts      Interface preferences
-  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, ModelBrowser
+  components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, PracticeBoard,
+                      MathKeypad, ModelBrowser
   pages/              MainApp, Settings
 src-tauri/            Rust backend (Tauri v2)
   src/ai/             AI engine (llama.cpp, mtmd vision)
@@ -222,7 +269,7 @@ LGPL-2.1 — see [LICENSE](LICENSE).
 ## Accessibility and security
 
 - **Accessibility (WCAG 2.2 AA)**: usable with keyboard and screen reader (skip link, dialog with focus trap and Esc,
-  named buttons, announced states), colour contrast of at least 4.5:1, visible focus, 40 px touch targets, and it
+  named buttons, announced states), colour contrast of at least 4.5:1, visible focus, 40 px touch targets (48 px on the voice and symbols buttons), and it
   honours *reduce motion*. `npx playwright test e2e/a11y.spec.ts` audits the UI with axe-core in light, dark and English.
 - **Security**: the web view has a strict CSP and only the permission to listen to events (no file, dialog or link
   access); the backend caps the size of what it receives; voices are downloaded over HTTPS and verified against a
