@@ -1,7 +1,9 @@
 import { TOPICS } from '../lib/capabilities'
 import { useT, type MessageKey } from '../lib/i18n'
+import { Bot, Check, Clock, GraduationCap } from 'lucide-react'
+import Ico from './Ico'
 
-const SUPPORT_ICON = { app: '✔', model: '🤖', soon: '🔜' } as const
+const SUPPORT_ICON = { app: Check, model: Bot, soon: Clock } as const
 
 interface LevelsPanelProps {
   /** Al pulsar un ejemplo se escribe en el cuadro del problema */
@@ -15,7 +17,7 @@ export default function LevelsPanel({ onTry }: LevelsPanelProps) {
   return (
     <details className="levels-panel">
       <summary>
-        <span className="levels-title"><span aria-hidden="true">🎓</span> {t('levels.title')}</span>
+        <span className="levels-title"><Ico as={GraduationCap} /> {t('levels.title')}</span>
         <span className="levels-progress">
           <span className="levels-bar" aria-hidden="true">
             <span style={{ width: `${(own / TOPICS.length) * 100}%` }} />
@@ -31,7 +33,7 @@ export default function LevelsPanel({ onTry }: LevelsPanelProps) {
               <span className="level-num">{i + 1}</span>
               <strong>{t(`topic.${topic.id}.title` as MessageKey)}</strong>
             </div>
-            <span className="level-badge"><span aria-hidden="true">{SUPPORT_ICON[topic.support]} </span>{t(`support.${topic.support}` as MessageKey)}</span>
+            <span className="level-badge"><Ico as={SUPPORT_ICON[topic.support]} /> {t(`support.${topic.support}` as MessageKey)}</span>
             <p>{t(`topic.${topic.id}.how` as MessageKey)}</p>
             {topic.examples.length > 0 && (
               <div className="level-examples">

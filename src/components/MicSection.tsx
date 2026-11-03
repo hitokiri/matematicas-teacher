@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { listMicModels, MIC_MODELS_UPDATED, type SttModelInfo } from '../lib/mic'
 import { useI18n, type MessageKey } from '../lib/i18n'
+import { Download, Mic, Trash2 } from 'lucide-react'
+import Ico from './Ico'
 
 /**
  * Modelos de reconocimiento de voz. Se descargan una vez y trabajan sin internet.
@@ -73,7 +75,7 @@ export default function MicSection() {
 
   return (
     <div className="provider-section">
-      <h2><span aria-hidden="true">🎤</span> {t('mic.title')}</h2>
+      <h2><Ico as={Mic} /> {t('mic.title')}</h2>
       <p className="section-hint">{t('mic.hint')}</p>
       <div className="voice-list">
         {models.map(model => {
@@ -98,7 +100,7 @@ export default function MicSection() {
               <div className="voice-actions">
                 {!model.is_downloaded && !model.is_downloading && (
                   <button type="button" className="btn btn-primary" onClick={() => void run('download_mic_model', model.id)} aria-label={t('mic.downloadAria', { name })}>
-                    <span aria-hidden="true">⬇</span> {t('mic.download')}
+                    <Ico as={Download} /> {t('mic.download')}
                   </button>
                 )}
                 {model.is_downloading && (
@@ -108,7 +110,7 @@ export default function MicSection() {
                 )}
                 {model.is_downloaded && (
                   <button type="button" className="btn btn-secondary" onClick={() => void remove(model)} aria-label={t('mic.deleteAria', { name })}>
-                    <span aria-hidden="true">🗑</span>
+                    <Ico as={Trash2} />
                   </button>
                 )}
               </div>

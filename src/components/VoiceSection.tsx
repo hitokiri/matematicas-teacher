@@ -6,6 +6,8 @@ import { logUi } from '../lib/applog'
 import { useI18n, useT, type MessageKey } from '../lib/i18n'
 import { SYSTEM_VOICE, speak, stopSpeaking, type VoiceInfo } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
+import { Copy, Download, Play, RefreshCw, Trash2, Volume2 } from 'lucide-react'
+import Ico from './Ico'
 
 interface VoiceSectionProps {
   /** Voz elegida: 'system' o el id de una voz descargada */
@@ -103,7 +105,7 @@ export default function VoiceSection({ voice, onChange, readAloud, onReadAloudCh
 
   return (
     <div className="provider-section">
-      <h2><span aria-hidden="true">🗣️</span> {t('voice.title')}</h2>
+      <h2><Ico as={Volume2} /> {t('voice.title')}</h2>
       <div className="ui-pref voice-read-aloud">
         <div className="ui-pref-text">
           <strong>{t('voice.readAloud')}</strong>
@@ -219,12 +221,12 @@ function VoiceRow(p: RowProps) {
       <div className="voice-actions">
         {p.available && (
           <button type="button" className="btn btn-secondary" onClick={p.onTest} disabled={p.testing} aria-label={t('voice.testAria', { name: p.name })}>
-            {p.testing ? t('voice.testing') : <><span aria-hidden="true">▶</span> {t('voice.test')}</>}
+            {p.testing ? t('voice.testing') : <><Ico as={Play} /> {t('voice.test')}</>}
           </button>
         )}
         {!p.available && p.onDownload && !p.downloading && (
           <button type="button" className="btn btn-primary" onClick={p.onDownload} aria-label={t('voice.downloadAria', { name: p.name })}>
-            <span aria-hidden="true">⬇</span> {t('voice.download')}
+            <Ico as={Download} /> {t('voice.download')}
           </button>
         )}
         {p.downloading && p.onCancel && (
@@ -234,7 +236,7 @@ function VoiceRow(p: RowProps) {
         )}
         {p.available && p.onDelete && (
           <button type="button" className="btn btn-secondary" onClick={p.onDelete} aria-label={t('voice.deleteAria', { name: p.name })}>
-            <span aria-hidden="true">🗑</span>
+            <Ico as={Trash2} />
           </button>
         )}
       </div>
@@ -263,11 +265,11 @@ function SystemVoiceHelp({ info, checking, onCheck }: { info: ReturnType<typeof 
       <div className="voice-help-actions">
         {info.install_command && (
           <button type="button" className="btn btn-secondary" onClick={() => void copy()}>
-            <span aria-hidden="true">📋</span> {t('voice.systemCopy')}
+            <Ico as={Copy} /> {t('voice.systemCopy')}
           </button>
         )}
         <button type="button" className="btn btn-secondary" onClick={onCheck} disabled={checking}>
-          <span aria-hidden="true">🔄</span> {checking ? t('voice.systemChecking') : t('voice.systemRecheck')}
+          <Ico as={RefreshCw} /> {checking ? t('voice.systemChecking') : t('voice.systemRecheck')}
         </button>
       </div>
       <span className="visually-hidden" role="status" aria-live="polite">{copied}</span>

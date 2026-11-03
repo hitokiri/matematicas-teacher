@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useT, type MessageKey } from '../lib/i18n'
 import { filterEntries, logToText, type LogFilter, type LogSnapshot } from '../lib/applog'
+import { Copy, ScrollText, Trash2 } from 'lucide-react'
+import Ico from './Ico'
 
 export default function LogSection() {
   const t = useT()
@@ -67,7 +69,7 @@ export default function LogSection() {
 
   return (
     <div className="provider-section">
-      <h2><span aria-hidden="true">🪵</span> {t('log.title')}</h2>
+      <h2><Ico as={ScrollText} /> {t('log.title')}</h2>
       <p className="section-hint">{t('log.hint')}</p>
 
       <details className="log-details" open={open} onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
@@ -84,10 +86,10 @@ export default function LogSection() {
             <option value="error">{t('log.filterError')}</option>
           </select>
           <button type="button" className="btn btn-secondary" onClick={() => void copy()} disabled={!snap?.entries.length}>
-            <span aria-hidden="true">📋</span> {t('log.copy')}
+            <Ico as={Copy} /> {t('log.copy')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => void clear()} disabled={!snap?.entries.length}>
-            <span aria-hidden="true">🗑</span> {t('log.clear')}
+            <Ico as={Trash2} /> {t('log.clear')}
           </button>
         </div>
 

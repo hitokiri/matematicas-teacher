@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useT } from '../lib/i18n';
+import { Check, CircleCheck, Download, HardDrive, Hourglass, Image as ImageIcon, Inbox, Package, Pause, Play, RefreshCw, Search, Star, Target, Trash2, X, Zap, type LucideIcon } from 'lucide-react'
+import Ico from './Ico'
 
 interface ModelInfo {
   id: string;
@@ -156,13 +158,13 @@ export default function ModelBrowser({
   };
 
 
-  const renderSection = (title: string, modelsList: ModelInfo[], icon: string) => {
+  const renderSection = (title: string, modelsList: ModelInfo[], icon: LucideIcon) => {
     if (modelsList.length === 0) return null;
 
     return (
       <div className="models-section">
         <div className="section-header">
-          <h3 className="section-title"><span aria-hidden="true">{icon}</span> {title}</h3>
+          <h3 className="section-title"><Ico as={icon} /> {title}</h3>
         </div>
         
         <div className="models-list">
@@ -180,13 +182,13 @@ export default function ModelBrowser({
                     <div className="model-header">
                       <h4 className="model-name">{model.name}</h4>
                       {model.is_active && (
-                        <span className="badge active-badge"><span aria-hidden="true">✓</span> {t('models.badgeActive')}</span>
+                        <span className="badge active-badge"><Ico as={Check} /> {t('models.badgeActive')}</span>
                       )}
                       {model.mmproj_filename && (
-                        <span className="badge recommended-badge"><span aria-hidden="true">🖼</span> {t('models.badgeVision')}</span>
+                        <span className="badge recommended-badge"><Ico as={ImageIcon} /> {t('models.badgeVision')}</span>
                       )}
                       {model.is_recommended && (
-                        <span className="badge recommended-badge"><span aria-hidden="true">⭐</span> {t('models.badgeRecommended')}</span>
+                        <span className="badge recommended-badge"><Ico as={Star} /> {t('models.badgeRecommended')}</span>
                       )}
                     </div>
                     <p className="model-description">{model.description}</p>
@@ -194,11 +196,11 @@ export default function ModelBrowser({
 
                   <div className="model-metrics">
                     <div className="metric" title={t('models.metricMathTitle')}>
-                      <span className="metric-label"><span aria-hidden="true">🎯</span> {t('models.metricMath')}</span>
+                      <span className="metric-label"><Ico as={Target} /> {t('models.metricMath')}</span>
                       <span className="metric-value">{model.benchmark ?? t('models.noData')}</span>
                     </div>
                     <div className="metric" title={t('models.metricSpeedTitle')}>
-                      <span className="metric-label"><span aria-hidden="true">⚡</span> {t('models.metricSpeed')}</span>
+                      <span className="metric-label"><Ico as={Zap} /> {t('models.metricSpeed')}</span>
                       <span className="metric-value">
                         {model.tokens_per_second
                           ? t('models.tokensPerSecond', { n: model.tokens_per_second.toFixed(0) })
@@ -215,7 +217,7 @@ export default function ModelBrowser({
                     </div>
                     
                     <div className="model-actions">
-                      <span className="model-size"><span aria-hidden="true">💾</span> {model.size_mb.toFixed(0)} MB</span>
+                      <span className="model-size"><Ico as={HardDrive} /> {model.size_mb.toFixed(0)} MB</span>
                       
                       {!model.is_downloaded && !isDownloading && (
                         <button
@@ -223,7 +225,7 @@ export default function ModelBrowser({
                           className="btn btn-download"
                           aria-label={t('models.downloadAria', { name: model.name })}
                         >
-                          <span aria-hidden="true">⬇</span> {t('models.download')}
+                          <Ico as={Download} /> {t('models.download')}
                         </button>
                       )}
 
@@ -247,7 +249,7 @@ export default function ModelBrowser({
                           className="btn btn-delete"
                           aria-label={t('models.deleteAria', { name: model.name })}
                         >
-                          <span aria-hidden="true">🗑</span> {t('models.delete')}
+                          <Ico as={Trash2} /> {t('models.delete')}
                         </button>
                       )}
                     </div>
@@ -271,7 +273,7 @@ export default function ModelBrowser({
                         </div>
                         <div className="progress-info">
                           <span className="progress-text">
-                            {progress < 100 ? `⬇️ ${t('models.downloading')}` : `✓ ${t('models.done')}`}
+                            {progress < 100 ? <><Ico as={Download} /> {t('models.downloading')}</> : <><Ico as={Check} /> {t('models.done')}</>}
                           </span>
                           <span className="progress-percent">{progress.toFixed(0)}%</span>
                         </div>
@@ -282,21 +284,21 @@ export default function ModelBrowser({
                           className="btn btn-pause"
                           aria-label={t('models.pauseAria', { name: model.name })}
                         >
-                          <span aria-hidden="true">⏸</span> {t('models.pause')}
+                          <Ico as={Pause} /> {t('models.pause')}
                         </button>
                         <button
                           onClick={(e) => handleResume(model.id, e)}
                           className="btn btn-resume"
                           aria-label={t('models.resumeAria', { name: model.name })}
                         >
-                          <span aria-hidden="true">▶</span> {t('models.resume')}
+                          <Ico as={Play} /> {t('models.resume')}
                         </button>
                         <button
                           onClick={(e) => handleCancel(model.id, e)}
                           className="btn btn-cancel"
                           aria-label={t('models.cancelAria', { name: model.name })}
                         >
-                          <span aria-hidden="true">✕</span> {t('models.cancel')}
+                          <Ico as={X} /> {t('models.cancel')}
                         </button>
                       </div>
                     </div>
@@ -323,7 +325,7 @@ export default function ModelBrowser({
 
       <div className="models-toolbar">
         <div className="search-box">
-          <span className="search-icon" aria-hidden="true">🔍</span>
+          <span className="search-icon" aria-hidden="true"><Ico as={Search} /></span>
           <input
             type="search"
             aria-label={t('models.search')}
@@ -341,19 +343,19 @@ export default function ModelBrowser({
             title={t('models.refreshTitle')}
             aria-label={t('models.refresh')}
           >
-            <span aria-hidden="true">🔄</span>
+            <Ico as={RefreshCw} />
           </button>
         </div>
       </div>
 
-      {renderSection(t('models.sectionActive'), activeModels, '✅')}
-      {renderSection(t('models.sectionDownloading'), downloadingModelsList, '⏳')}
-      {renderSection(t('models.sectionDownloaded'), downloadedModels, '📦')}
-      {renderSection(t('models.sectionAvailable'), availableModels, '⬇️')}
+      {renderSection(t('models.sectionActive'), activeModels, CircleCheck)}
+      {renderSection(t('models.sectionDownloading'), downloadingModelsList, Hourglass)}
+      {renderSection(t('models.sectionDownloaded'), downloadedModels, Package)}
+      {renderSection(t('models.sectionAvailable'), availableModels, Download)}
 
       {filteredModels.length === 0 && (
         <div className="empty-state">
-          <div className="empty-icon" aria-hidden="true">📭</div>
+          <div className="empty-icon" aria-hidden="true"><Ico as={Inbox} /></div>
           <p>{t('models.none')}</p>
         </div>
       )}

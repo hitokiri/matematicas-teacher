@@ -8,6 +8,8 @@ import MicSection from '../components/MicSection';
 import LogSection from '../components/LogSection';
 import type { UiPrefs } from '../lib/uiPrefs';
 import { useI18n } from '../lib/i18n';
+import { Cpu, Settings as SettingsIcon, X } from 'lucide-react'
+import Ico from '../components/Ico'
 
 interface ModelInfo {
   id: string;
@@ -174,9 +176,9 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
     <>
       <div className="settings-top">
         <div className="modal-header">
-          <h2 id="settings-title"><span aria-hidden="true">⚙️</span> {t('settings.title')}</h2>
+          <h2 id="settings-title"><Ico as={SettingsIcon} /> {t('settings.title')}</h2>
           <button onClick={onCancel} className="modal-back-btn modal-close-btn" aria-label={t('settings.close')} title={t('settings.close')}>
-            <span aria-hidden="true">✕</span>
+            <Ico as={X} />
           </button>
         </div>
         <nav className="settings-nav" aria-label={t('settings.nav')}>
@@ -229,7 +231,7 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
 
       <div className="settings-group" id="set-advanced">
         <div className="provider-section">
-          <h2><span aria-hidden="true">💻</span> {t('settings.hardware')}</h2>
+          <h2><Ico as={Cpu} /> {t('settings.hardware')}</h2>
           <p className="compute-device">{computeDevice ?? t('settings.detecting')}</p>
         </div>
         <LogSection />

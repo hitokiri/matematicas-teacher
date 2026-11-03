@@ -1,6 +1,8 @@
 import { FONT_SCALES, type UiPrefs } from '../lib/uiPrefs'
 import { LANGS, useI18n } from '../lib/i18n'
 import Switch from './Switch'
+import { File, Files, Moon, Palette, Sun } from 'lucide-react'
+import Ico from './Ico'
 
 interface UiPrefsSectionProps {
   prefs: UiPrefs
@@ -16,7 +18,7 @@ export default function UiPrefsSection({ prefs, onChange, theme, onThemeChange }
   const fontLabels = t('ui.fontSizes').split('|')
   return (
     <div className="provider-section">
-      <h2><span aria-hidden="true">🎨</span> {t('ui.title')}</h2>
+      <h2><Ico as={Palette} /> {t('ui.title')}</h2>
       <div className="ui-prefs">
         <div className="ui-pref">
           <div className="ui-pref-text">
@@ -39,10 +41,10 @@ export default function UiPrefsSection({ prefs, onChange, theme, onThemeChange }
           </div>
           <div className="segmented" role="group" aria-label={t('ui.boards')}>
             <button type="button" aria-pressed={prefs.boards === 'one'} onClick={() => set('boards', 'one')}>
-              <span aria-hidden="true">📄</span> {t('ui.boardsOne')}
+              <Ico as={File} /> {t('ui.boardsOne')}
             </button>
             <button type="button" aria-pressed={prefs.boards === 'all'} onClick={() => set('boards', 'all')}>
-              <span aria-hidden="true">🗂</span> {t('ui.boardsAll')}
+              <Ico as={Files} /> {t('ui.boardsAll')}
             </button>
           </div>
         </div>
@@ -90,8 +92,8 @@ export default function UiPrefsSection({ prefs, onChange, theme, onThemeChange }
               <small>{t('ui.themeHelp')}</small>
             </div>
             <div className="segmented" role="group" aria-label={t('ui.theme')}>
-              <button type="button" aria-pressed={theme === 'light'} onClick={() => onThemeChange('light')}><span aria-hidden="true">☀️</span> {t('ui.themeLight')}</button>
-              <button type="button" aria-pressed={theme === 'dark'} onClick={() => onThemeChange('dark')}><span aria-hidden="true">🌙</span> {t('ui.themeDark')}</button>
+              <button type="button" aria-pressed={theme === 'light'} onClick={() => onThemeChange('light')}><Ico as={Sun} /> {t('ui.themeLight')}</button>
+              <button type="button" aria-pressed={theme === 'dark'} onClick={() => onThemeChange('dark')}><Ico as={Moon} /> {t('ui.themeDark')}</button>
             </div>
           </div>
         )}
