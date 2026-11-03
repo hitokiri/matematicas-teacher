@@ -8,6 +8,8 @@ import { logUi } from '../lib/applog'
 import { useI18n, useT } from '../lib/i18n'
 import { SYSTEM_VOICE, onVoiceInterrupt, prefetch, speak, stopSpeaking } from '../lib/voice'
 import { useSystemVoice } from '../lib/useSystemVoice'
+import { ChevronLeft, ChevronRight, File, Files, Pause, Play, SkipBack, Volume1, Volume2 } from 'lucide-react'
+import Ico from './Ico'
 
 // Geometria de la cuadricula (unidades del viewBox del SVG)
 const CW = 52
@@ -255,7 +257,7 @@ export default function Chalkboard({
               aria-pressed={allPages}
               title={allPages ? t('board.viewOneTitle') : t('board.viewAllTitle')}
             >
-              <span aria-hidden="true">{allPages ? '📄' : '🗂'}</span> {allPages ? t('board.viewOne') : t('board.viewAll')}
+              <Ico as={allPages ? File : Files} /> {allPages ? t('board.viewOne') : t('board.viewAll')}
             </button>
           </div>
         )}
@@ -355,12 +357,12 @@ export default function Chalkboard({
       </div>
 
       <div className="chalk-controls">
-        <button className="btn btn-secondary" onClick={() => { if (controlled) onStepMove?.(0); else { setInternalStep(0); setPlaying(true) } }} title={t('board.againTitle')}><span aria-hidden="true">⏮</span> {t('board.again')}</button>
-        <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}><span aria-hidden="true">◀</span> {t('board.prev')}</button>
+        <button className="btn btn-secondary" onClick={() => { if (controlled) onStepMove?.(0); else { setInternalStep(0); setPlaying(true) } }} title={t('board.againTitle')}><Ico as={SkipBack} /> {t('board.again')}</button>
+        <button className="btn btn-secondary" onClick={() => go(step - 1)} disabled={step === 0}><Ico as={ChevronLeft} /> {t('board.prev')}</button>
         <button className="btn btn-primary" onClick={() => { if (!playing && voice) setReplay(r => r + 1); setPlaying(p => !p) }} disabled={step === last && !playing}>
-          <span aria-hidden="true">{playing ? '⏸' : '▶'}</span> {playing ? t('board.pause') : t('board.play')}
+          <Ico as={playing ? Pause : Play} /> {playing ? t('board.pause') : t('board.play')}
         </button>
-        <button className="btn btn-secondary" onClick={() => go(step + 1)} disabled={step === last}>{t('board.next')} <span aria-hidden="true">▶</span></button>
+        <button className="btn btn-secondary" onClick={() => go(step + 1)} disabled={step === last}>{t('board.next')} <Ico as={ChevronRight} /></button>
         {canSpeak && (
           <button
             className={`btn btn-secondary ${voice ? 'active' : ''}`}
@@ -368,7 +370,7 @@ export default function Chalkboard({
             aria-pressed={voice}
             title={t('board.readAloud')}
           >
-            <span aria-hidden="true">{voice ? '🔊' : '🔈'}</span> {t('board.readAloud')}
+            <Ico as={voice ? Volume2 : Volume1} /> {t('board.readAloud')}
           </button>
         )}
         {onFontScaleChange && (

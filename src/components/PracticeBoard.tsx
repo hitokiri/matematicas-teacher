@@ -14,6 +14,8 @@ import { parseOperationIntent } from '../lib/board/intent'
 import type { BoardItem, BoardScript, BoardStep } from '../lib/board/types'
 import { SYSTEM_VOICE } from '../lib/voice'
 import Chalkboard from './Chalkboard'
+import { Mic, Square } from 'lucide-react'
+import Ico from './Ico'
 
 interface PracticeBoardProps {
   equation: Equation
@@ -146,7 +148,7 @@ export default function PracticeBoard({ equation, voiceId = SYSTEM_VOICE, readAl
   return (
     <aside className="step-chat" aria-label={t('practice.title')}>
       <div className="step-chat-header">
-        <span aria-hidden="true">🎤</span>
+        <Ico as={Mic} />
         <div>
           <h3>{t('practice.title')}</h3>
           <small>{t('practice.hint')}</small>
@@ -168,7 +170,7 @@ export default function PracticeBoard({ equation, voiceId = SYSTEM_VOICE, readAl
           aria-label={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
           title={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
         >
-          <span aria-hidden="true">{mic === 'recording' ? '⏹' : mic === 'transcribing' ? '…' : '🎤'}</span>
+          {mic === 'recording' ? <Ico as={Square} /> : mic === 'transcribing' ? <span aria-hidden="true">…</span> : <Ico as={Mic} />}
         </button>
       </div>
       {(mic === 'recording' || mic === 'transcribing') && (

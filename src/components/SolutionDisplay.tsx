@@ -1,4 +1,6 @@
 import { useT } from '../lib/i18n'
+import { CircleCheck, Target } from 'lucide-react'
+import Ico from './Ico'
 
 interface SolutionStep {
   step: number
@@ -21,7 +23,7 @@ function SolutionDisplay({ solution }: SolutionDisplayProps) {
   const t = useT()
   return (
     <div className="solution-section">
-      <h2><span aria-hidden="true">✅</span> {t('solution.heading')}</h2>
+      <h2><Ico as={CircleCheck} /> {t('solution.heading')}</h2>
       
       <div className="solution-problem">
         <strong>{t('solution.problem')}</strong> {solution.problem}
@@ -40,7 +42,7 @@ function SolutionDisplay({ solution }: SolutionDisplayProps) {
       </div>
 
       <div className="final-answer">
-        <div style={{ fontSize: '1.5rem', marginBottom: '8px' }} aria-hidden="true">🎯</div>
+        <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}><Ico as={Target} /></div>
         <div>{solution.final_answer}</div>
       </div>
     </div>

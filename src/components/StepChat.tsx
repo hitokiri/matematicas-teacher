@@ -7,6 +7,8 @@ import { claimMic, listMicModels, onMicEvents, startListening, stopListening, ty
 import { useSystemVoice } from '../lib/useSystemVoice'
 import { splitBoardTag } from '../lib/board/example'
 import type { BoardScript } from '../lib/board/types'
+import { MessageCircle, Mic, Square, Volume2 } from 'lucide-react'
+import Ico from './Ico'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -273,7 +275,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
       onKeyDown={e => { if (e.key === 'Escape' && narrow && open) setOpen(false) }}
     >
       <div className="step-chat-header">
-        <span aria-hidden="true">💬</span>
+        <Ico as={MessageCircle} />
         <div>
           <h3>
             {narrow ? (
@@ -307,7 +309,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
                   title={speaking === i ? t('chat.stopListening') : t('chat.listen')}
                   onClick={() => { if (speaking === i) { stopSpeaking(); setSpeaking(null) } else void say(m.content, i) }}
                 >
-                  <span aria-hidden="true">{speaking === i ? '⏹' : '🔊'}</span>
+                  <Ico as={speaking === i ? Square : Volume2} />
                 </button>
               )}
             </div>
@@ -378,7 +380,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
           aria-label={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
           title={mic === 'recording' ? t('chat.micStop') : t('chat.mic')}
         >
-          <span aria-hidden="true">{mic === 'recording' ? '⏹' : mic === 'transcribing' ? '…' : '🎤'}</span>
+          {mic === 'recording' ? <Ico as={Square} /> : mic === 'transcribing' ? <span aria-hidden="true">…</span> : <Ico as={Mic} />}
         </button>
         <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>{t('chat.send')}</button>
       </form>

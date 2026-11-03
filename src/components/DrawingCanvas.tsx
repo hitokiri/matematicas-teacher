@@ -1,5 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useT } from '../lib/i18n'
+import { Trash2 } from 'lucide-react'
+import Ico from './Ico'
 
 interface DrawingCanvasProps {
   onDraw: (text: string) => void
@@ -111,7 +113,7 @@ function DrawingCanvas({ onDraw }: DrawingCanvasProps) {
       />
       <div className="canvas-toolbar">
         <button className="btn btn-secondary" onClick={clearCanvas}>
-          <span aria-hidden="true">🗑️</span> {t('draw.clear')}
+          <Ico as={Trash2} /> {t('draw.clear')}
         </button>
         <span className="canvas-hint">{t('draw.hint')}</span>
       </div>
