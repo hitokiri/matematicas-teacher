@@ -21,6 +21,8 @@ import { parseSystem, systemScript } from '../lib/board/system'
 import { fractionScript, parseFractions } from '../lib/board/fraction'
 import type { BoardScript } from '../lib/board/types'
 import { detectLang, rich, translate, useI18n, type Lang } from '../lib/i18n'
+import { Brain, Calculator, Eye, FileText, Hourglass, Mic, NotebookPen, Palette, Pencil, RotateCw, Sparkles, Square } from 'lucide-react'
+import Ico from '../components/Ico'
 
 interface AppSettings {
   active_model_id: string | null
@@ -228,7 +230,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
     setSource(null)
     setReadText(null)
     setLoading(true)
-    setLoadingMessage(`👀 ${t('main.reading')}`)
+    setLoadingMessage(t('main.reading'))
     let text: string
     try {
       text = await invoke<string>('read_problem', { problemImage })
@@ -250,7 +252,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
   const noModelError = !settings.active_model_id && error === t('main.errNoModel')
   const pickModelButton = onOpenSettings && (
     <button type="button" className="btn btn-primary" onClick={onOpenSettings}>
-      <span aria-hidden="true">🧠</span> {t('main.pickModel')}
+      <Ico as={Brain} /> {t('main.pickModel')}
     </button>
   )
   // Con la pizarra a la vista el panel va debajo de ella, para que la pizarra no quede lejos
@@ -261,7 +263,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
   const practiceChip = practiceEquation && (
     <div className="solve-section">
       <button className={`chip ${practice ? 'active' : ''}`} onClick={() => setPractice(p => !p)}>
-        <span aria-hidden="true">🎤</span> {t('practice.mode')}
+        <Ico as={Mic} /> {t('practice.mode')}
       </button>
     </div>
   )
@@ -275,7 +277,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
             <h2 className="problem-bar-text" title={board.title}>{board.title}</h2>
             {practiceChip}
             <button type="button" className="btn btn-secondary" onClick={openInput}>
-              <span aria-hidden="true">✏️</span> {t('main.newProblem')}
+              <Ico as={Pencil} /> {t('main.newProblem')}
             </button>
           </div>
         )}
@@ -288,14 +290,14 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
             aria-pressed={inputMode === 'text'}
             onClick={() => { setError(''); setInputMode('text') }}
           >
-            <span aria-hidden="true">✏️</span> {t('main.modeText')}
+            <Ico as={Pencil} /> {t('main.modeText')}
           </button>
           <button
             className={`tab ${inputMode === 'draw' ? 'active' : ''}`}
             aria-pressed={inputMode === 'draw'}
             onClick={() => { setProblemImage(''); setReadText(null); setError(''); setInputMode('draw') }}
           >
-            <span aria-hidden="true">🎨</span> {t('main.modeDraw')}
+            <Ico as={Palette} /> {t('main.modeDraw')}
           </button>
         </div>
 
@@ -321,7 +323,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
                   aria-label={dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictateLabel')}
                   title={t('main.dictateTitle')}
                 >
-                  <span aria-hidden="true">{dictation.state === 'recording' ? '⏹' : dictation.state === 'transcribing' ? '…' : '🎤'}</span>{' '}
+                  {dictation.state === 'recording' ? <Ico as={Square} /> : dictation.state === 'transcribing' ? <span aria-hidden="true">…</span> : <Ico as={Mic} />}{' '}
                   <span className="tool-label">{dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictate')}</span>
                 </button>
                 <button
@@ -332,7 +334,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
                   aria-expanded={keypad}
                   aria-controls={keypadId}
                 >
-                  <span aria-hidden="true">➕➗</span> <span className="tool-label">{keypad ? t('keypad.close') : t('keypad.open')}</span>
+                  <Ico as={Calculator} /> <span className="tool-label">{keypad ? t('keypad.close') : t('keypad.open')}</span>
                 </button>
               </div>
             </div>
@@ -355,7 +357,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
             disabled={loading || !hasInput}
             aria-describedby={!loading && !hasInput ? solveHintId : undefined}
           >
-            <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
+            <Ico as={loading ? Hourglass : Sparkles} /> {loading ? t('main.solving') : t('main.solve')}
           </button>
           {!loading && !hasInput && (
             <p id={solveHintId} className="solve-hint">
@@ -379,7 +381,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
 
         {inputMode === 'draw' && readText !== null && !loading && (
           <div className="read-box">
-            <label htmlFor="read-text"><span aria-hidden="true">👀</span> {t('main.readLabel')}</label>
+            <label htmlFor="read-text"><Ico as={Eye} /> {t('main.readLabel')}</label>
             <div className="read-row">
               <input
                 id="read-text"
@@ -390,7 +392,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
                 onKeyDown={(e) => { if (e.key === 'Enter') void solveText(readText) }}
               />
               <button className="btn btn-secondary" onClick={() => solveText(readText)} disabled={!readText.trim()}>
-                <span aria-hidden="true">🔁</span> {t('main.readAgain')}
+                <Ico as={RotateCw} /> {t('main.readAgain')}
               </button>
             </div>
             <small>{t('main.readHint')}</small>
@@ -441,7 +443,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
       {asideBoard && aside && !loading && (
         <section className="example-board" aria-label={t('example.title')}>
           <div className="example-board-header">
-            <h3><span aria-hidden="true">📝</span> {t('example.title')}</h3>
+            <h3><Ico as={NotebookPen} /> {t('example.title')}</h3>
             <button type="button" className="chip" onClick={() => setAside(null)}>{t('example.close')}</button>
           </div>
           <Chalkboard
@@ -460,7 +462,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
 
       {solution && !loading && (
         <details className="text-explanation">
-          <summary><span aria-hidden="true">📄</span> {t('main.textExplanation')}</summary>
+          <summary><Ico as={FileText} /> {t('main.textExplanation')}</summary>
           <SolutionDisplay solution={solution} />
         </details>
       )}

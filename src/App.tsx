@@ -5,6 +5,8 @@ import Settings from './pages/Settings'
 import Modal from './components/Modal'
 import { loadUiPrefs, saveUiPrefs, type UiPrefs } from './lib/uiPrefs'
 import { LANGS, useI18n } from './lib/i18n'
+import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
+import Ico from './components/Ico'
 
 export interface AppSettings {
   active_model_id: string | null
@@ -95,7 +97,7 @@ function App() {
             ))}
           </div>
           <button className="btn btn-secondary" onClick={() => setShowSettings(true)}>
-            <span aria-hidden="true">⚙️</span> {t('app.settings')}
+            <Ico as={SettingsIcon} /> {t('app.settings')}
           </button>
         </div>
       </header>
@@ -112,7 +114,7 @@ function App() {
         title={theme === 'light' ? t('app.themeToDark') : t('app.themeToLight')}
         aria-label={theme === 'light' ? t('app.themeToDark') : t('app.themeToLight')}
       >
-        <span aria-hidden="true">{theme === 'light' ? '🌙' : '☀️'}</span>
+        <Ico as={theme === 'light' ? Moon : Sun} />
       </button>
 
       {showSettings && (
