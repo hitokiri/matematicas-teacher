@@ -72,3 +72,61 @@ describe('el primario no se usa como borde ni foco donde no llega a 3:1', () => 
     expect(css).not.toMatch(/border:\s*\d+px dashed var\(--primary\)/)
   })
 })
+
+// ---- Pizarra: paleta de tiza sobre verde (igual en los dos temas) ----
+/** Color (#rrggbb) de una propiedad en la regla cuyo selector es exactamente `selector` */
+function ruleColor(selector: string, prop: string): string {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const m = css.match(new RegExp(`(?:^|\\n)${esc}\\s*\\{[^}]*?[\\s;{]${prop}:\\s*(#[0-9a-fA-F]{6})`))
+  if (!m) throw new Error(`No encontre ${prop} en ${selector}`)
+  return m[1]
+}
+
+const BOARD = ruleColor('.board-visual-wrap', 'background')
+// El degradado de la pizarra aclara hasta un 6%: se mide contra el punto mas claro
+const BOARD_LIGHTEST = over('#ffffff', BOARD, 0.06)
+const FRAME = ruleColor('.chalkboard-frame', 'background')
+
+describe('contraste WCAG AA, pizarra', () => {
+  const text: Array<[string, string, string]> = [
+    ['tiza base', ruleColor('.chalk-text', 'fill'), BOARD_LIGHTEST],
+    ['tono de operacion', ruleColor('.chalk-text.tone-op', 'fill'), BOARD_LIGHTEST],
+    ['tono de acarreo', ruleColor('.chalk-text.tone-carry', 'fill'), BOARD_LIGHTEST],
+    ['tono de resultado', ruleColor('.chalk-text.tone-result', 'fill'), BOARD_LIGHTEST],
+    ['tono atenuado', ruleColor('.chalk-text.tone-muted', 'fill'), BOARD_LIGHTEST],
+    ['etiqueta de pagina sobre el marco', ruleColor('.chalk-page-label', 'color'), FRAME],
+    ['rotulo sobre la bolsa', ruleColor('.pan-label', 'fill'), ruleColor('.pan-bag', 'fill')],
+    ['rotulo sobre el peso', ruleColor('.pan-label', 'fill'), ruleColor('.pan-weight', 'fill')],
+    ['numero de paso (blanco) sobre su circulo', '#ffffff', ruleColor('.step-badge circle', 'fill')],
+    ['numero de paso (blanco) sobre el circulo activo', '#ffffff', ruleColor('.step-badge.active circle', 'fill')],
+    ['numero de paso (blanco) en hover', '#ffffff', ruleColor('.step-badge.clickable:hover circle', 'fill')],
+  ]
+  it.each(text)('texto: %s (4.5)', (_n, fg, bg) => {
+    expect(ratio(fg, bg), `${fg} sobre ${bg}`).toBeGreaterThanOrEqual(4.5)
+  })
+
+  const graphics: Array<[string, string]> = [
+    ['linea de tiza', ruleColor('.chalk-line', 'stroke')],
+    ['tachado', ruleColor('.chalk-strike', 'stroke')],
+    ['signo igual de la balanza', ruleColor('.balance-equal', 'fill')],
+    ['bolsa', ruleColor('.pan-bag', 'fill')],
+    ['peso', ruleColor('.pan-weight', 'fill')],
+    ['cruz de lo que se quita', ruleColor('.pan-cross', 'stroke')],
+    ['rebanada tomada', ruleColor('.slice.taken', 'fill')],
+    ['segunda rebanada', ruleColor('.slice.second', 'fill')],
+    ['corteza', ruleColor('.pizza-crust', 'stroke')],
+    ['celda de columna', ruleColor('.grid-cell.col', 'fill')],
+    ['celda de fila', ruleColor('.grid-cell.row', 'fill')],
+    ['celda de ambas', ruleColor('.grid-cell.both', 'fill')],
+    ['aro de las insignias de paso', ruleColor('.step-badge circle', 'stroke')],
+    ['aro de la insignia activa', ruleColor('.step-badge.active circle', 'stroke')],
+    ['anillo de foco de las insignias', ruleColor('.step-badge:focus-visible circle', 'stroke')],
+  ]
+  it.each(graphics)('grafico: %s (3)', (_n, fg) => {
+    expect(ratio(fg, BOARD_LIGHTEST), `${fg} sobre ${BOARD_LIGHTEST}`).toBeGreaterThanOrEqual(3)
+  })
+
+  it('el foco de las insignias no usa --focus: sobre la pizarra verde el azul oscuro del tema claro daria 1.5:1', () => {
+    expect(css).not.toMatch(/\.step-badge:focus-visible circle\s*\{[^}]*var\(--focus\)/)
+  })
+})

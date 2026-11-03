@@ -1117,7 +1117,7 @@ body {
 .chalk-page-label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: rgba(244, 241, 232, 0.75);
+  color: #f4f1e8;
   margin-bottom: 6px;
 }
 
@@ -1160,10 +1160,10 @@ body {
 
 .chalk-text.tone-op { fill: #a7e3ff; stroke: #a7e3ff; }
 .chalk-text.tone-carry { fill: #ffe066; stroke: #ffe066; }
-.chalk-text.tone-result { fill: #ff9ecf; stroke: #ff9ecf; }
-.chalk-text.tone-muted { fill: #c9d6cc; stroke: #c9d6cc; opacity: 0.85; }
+.chalk-text.tone-result { fill: #ffadd6; stroke: #ffadd6; }
+.chalk-text.tone-muted { fill: #c9d6cc; stroke: #c9d6cc; }
 .chalk-text.tone-line-text { fill: #f4f1e8; }
-.chalk-text tspan.tone-result { fill: #ff9ecf; stroke: #ff9ecf; }
+.chalk-text tspan.tone-result { fill: #ffadd6; stroke: #ffadd6; }
 .chalk-text tspan.tone-carry { fill: #ffe066; stroke: #ffe066; }
 
 .chalk-line {
@@ -1340,11 +1340,11 @@ body {
 .grid-frame { fill: none; stroke: #f4f1e8; stroke-width: 4; }
 
 /* Numeros de paso en la pizarra */
-.step-badge circle { fill: #d64545; stroke: #f4f1e8; stroke-width: 2.5; }
+.step-badge circle { fill: #c93a3a; stroke: #f4f1e8; stroke-width: 2.5; }
 .step-badge text { fill: #fff; font-weight: 700; font-family: 'Patrick Hand', 'Comic Sans MS', cursive; }
 .step-badge.active circle { fill: #db2777; stroke: #ffe066; }
 .step-badge.clickable { cursor: pointer; }
-.step-badge.clickable:hover circle { fill: #ff6fae; }
+.step-badge.clickable:hover circle { fill: #d6336c; }
 
 /* Pizarra + chat */
 .workspace.with-chat {
@@ -1821,7 +1821,8 @@ body {
 
 /* Elementos SVG enfocables (numero de paso en la pizarra) */
 .step-badge:focus-visible { outline: none; }
-.step-badge:focus-visible circle { stroke: var(--focus); stroke-width: 4; }
+/* La pizarra es verde oscuro en los dos temas: el foco no puede depender de --focus (azul oscuro en claro, 1.5:1) */
+.step-badge:focus-visible circle { stroke: #8fd3ff; stroke-width: 4; }
 
 /* Enlace para saltar al contenido: solo aparece al enfocarlo con el teclado */
 .skip-link {
