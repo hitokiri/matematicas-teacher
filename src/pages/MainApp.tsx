@@ -299,30 +299,18 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
         </div>
 
         {inputMode === 'text' ? (
-          <textarea
-            className="problem-input"
-            aria-label={t('main.problemLabel')}
-            ref={problemRef}
-            maxLength={4000}
-            placeholder={t('main.placeholder')}
-            value={problemText}
-            onChange={(e) => { setProblemText(e.target.value); setError('') }}
-          />
-        ) : (
-          <DrawingCanvas onDraw={handleCanvasDraw} />
-        )}
-
-        <div className="solve-section">
-          <div className="solve-row">
-            <button
-              className="btn btn-primary btn-large"
-              onClick={solveProblem}
-              disabled={loading || !hasInput}
-            >
-              <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
-            </button>
-            {inputMode === 'text' && (
-              <>
+          <>
+            <div className="problem-field">
+              <textarea
+                className="problem-input"
+                aria-label={t('main.problemLabel')}
+                ref={problemRef}
+                maxLength={4000}
+                placeholder={t('main.placeholder')}
+                value={problemText}
+                onChange={(e) => { setProblemText(e.target.value); setError('') }}
+              />
+              <div className="field-tools">
                 <button
                   type="button"
                   className={`btn btn-secondary solve-tool chat-mic-${dictation.state}`}
@@ -333,7 +321,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
                   title={t('main.dictateTitle')}
                 >
                   <span aria-hidden="true">{dictation.state === 'recording' ? '⏹' : dictation.state === 'transcribing' ? '…' : '🎤'}</span>{' '}
-                  {dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictate')}
+                  <span className="tool-label">{dictation.state === 'recording' ? t('main.dictateStop') : t('main.dictate')}</span>
                 </button>
                 <button
                   type="button"
@@ -343,18 +331,30 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
                   aria-expanded={keypad}
                   aria-controls={keypadId}
                 >
-                  <span aria-hidden="true">➕➗</span> {keypad ? t('keypad.close') : t('keypad.open')}
+                  <span aria-hidden="true">➕➗</span> <span className="tool-label">{keypad ? t('keypad.close') : t('keypad.open')}</span>
                 </button>
-              </>
+              </div>
+            </div>
+            {(dictation.state === 'recording' || dictation.state === 'transcribing') && (
+              <p className="chat-mic-status" role="status">
+                {dictation.state === 'recording' ? t('chat.micRecording') : t('chat.micBusy')}
+              </p>
             )}
-          </div>
-          {inputMode === 'text' && (dictation.state === 'recording' || dictation.state === 'transcribing') && (
-            <p className="chat-mic-status" role="status">
-              {dictation.state === 'recording' ? t('chat.micRecording') : t('chat.micBusy')}
-            </p>
-          )}
-          {inputMode === 'text' && dictation.error && <div className="error-message" role="alert">{dictation.error}</div>}
-          {inputMode === 'text' && keypad && <MathKeypad id={keypadId} onInsert={insertAtCursor} onClose={closeKeypad} />}
+            {dictation.error && <div className="error-message" role="alert">{dictation.error}</div>}
+            {keypad && <MathKeypad id={keypadId} onInsert={insertAtCursor} onClose={closeKeypad} />}
+          </>
+        ) : (
+          <DrawingCanvas onDraw={handleCanvasDraw} />
+        )}
+
+        <div className="solve-section">
+          <button
+            className="btn btn-primary btn-large"
+            onClick={solveProblem}
+            disabled={loading || !hasInput}
+          >
+            <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
+          </button>
         </div>
 
         {practiceChip}

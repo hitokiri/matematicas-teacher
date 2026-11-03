@@ -1949,8 +1949,18 @@ body {
 .example-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .example-board-header h3 { margin: 0; font-size: 1rem; }
 
-.solve-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
-.solve-row .btn-large { flex: 1 1 220px; width: auto; }
+/* Hablar y Simbolos viven dentro del campo, abajo a la derecha; el texto deja sitio debajo */
+.problem-field { position: relative; }
+.problem-field .problem-input { display: block; padding-bottom: 64px; }
+.field-tools { position: absolute; right: 24px; bottom: 12px; display: flex; gap: 8px; }
+.field-tools .solve-tool { min-height: 40px; min-width: 40px; padding: 6px 14px; font-size: 0.85rem; background: var(--surface); }
+.field-tools .solve-tool.active { background: var(--primary); }
+@media (max-width: 640px) {
+  .field-tools { right: 12px; }
+  /* Solo el icono: la etiqueta sigue ahi para lectores de pantalla */
+  .field-tools .tool-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+}
+.problem-field + .chat-mic-status, .problem-field + .error-message { margin-top: 12px; }
 .solve-tool { transition: none; min-height: 48px; min-width: 48px; padding-inline: 16px; font-weight: 600; white-space: nowrap; }
 .solve-tool.active, .solve-tool.active:hover { border-color: var(--primary); background: var(--primary); color: #fff; }
 .solve-tool.active:hover { background: var(--primary-hover); }
