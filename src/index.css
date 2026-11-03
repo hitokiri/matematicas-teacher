@@ -1851,6 +1851,16 @@ body {
 .problem-bar .solve-section { margin: 0; }
 .input-section.collapsed .read-box { margin-top: 12px; }
 
+/* Movil: el resumen del panel de temas no deja la flecha suelta en otra linea */
+@media (max-width: 640px) {
+  .levels-panel > summary { position: relative; padding: 14px 44px 14px 16px; }
+  .levels-panel > summary::after { position: absolute; right: 16px; top: 14px; }
+  .levels-progress { margin-left: 0; width: 100%; }
+  .levels-bar { flex: 0 0 72px; width: 72px; }
+  .levels-intro { padding: 12px 16px 0; }
+  .levels-grid { padding: 12px 16px 16px; }
+}
+
 /* Movil: el header se envuelve en vez de salirse de la pantalla */
 @media (max-width: 640px) {
   .header { flex-wrap: wrap; gap: 12px; padding: 16px; }

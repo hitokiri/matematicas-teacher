@@ -252,6 +252,10 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
       <span aria-hidden="true">🧠</span> {t('main.pickModel')}
     </button>
   )
+  // Con la pizarra a la vista el panel va debajo de ella, para que la pizarra no quede lejos
+  const levelsPanel = (
+    <LevelsPanel onTry={ex => { setEditing(true); setInputMode('text'); setProblemText(ex); setError(''); requestAnimationFrame(() => problemRef.current?.focus()) }} />
+  )
   const collapsed = !!board && !loading && !editing
   const practiceChip = practiceEquation && (
     <div className="solve-section">
@@ -394,9 +398,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
         )}
       </div>
 
-      {uiPrefs.showLevels && (
-        <LevelsPanel onTry={ex => { setEditing(true); setInputMode('text'); setProblemText(ex); setError('') }} />
-      )}
+      {uiPrefs.showLevels && !board && levelsPanel}
 
       {loading && (
         <div className="loading" role="status">
@@ -446,6 +448,8 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
           />
         </section>
       )}
+
+      {uiPrefs.showLevels && board && !loading && levelsPanel}
 
       {solution && !loading && (
         <details className="text-explanation">
