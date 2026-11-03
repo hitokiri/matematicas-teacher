@@ -23,6 +23,8 @@ export const es = {
   'main.placeholder': 'Ejemplo: 2 + 2 = ?\no\nx + 5 = 12\no un sistema, una ecuación por renglón:\nx + y = 5\nx - y = 1',
   'main.solve': 'Resolver problema',
   'main.solving': 'Resolviendo...',
+  'main.newProblem': 'Nuevo problema',
+  'main.currentProblem': 'Problema actual',
   'main.errorHint': 'Si se repite, mira Configuración › Registro de la app para ver qué falló.',
   'main.thinking': 'La maestra está pensando la explicación...',
   'main.reading': 'Leyendo tu dibujo...',

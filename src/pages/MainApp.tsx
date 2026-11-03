@@ -88,9 +88,12 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
   const asideBoard = useMemo(() => (aside ? boardFor(aside.text, lang) : null), [aside, lang])
   const showBoard = (next: BoardSource) => {
     setAside(null)
+    setEditing(false)
     setBoardKey(k => k + 1)
     setSource(next)
   }
+  // Con pizarra la entrada se reduce a una barra; "Nuevo problema" la vuelve a abrir
+  const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'draw'>('text')
@@ -129,6 +132,11 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     problemRef.current?.focus()
   })
   const closeKeypad = () => { setKeypad(false); keypadToggle.current?.focus() }
+
+  const openInput = () => {
+    setEditing(true)
+    requestAnimationFrame(() => problemRef.current?.focus())
+  }
 
   const hasInput = inputMode === 'draw' ? !!problemImage : !!problemText.trim()
   const practiceEquation = source ? parseEquation('text' in source ? source.text : source.result.problem) : null
@@ -227,10 +235,29 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     setError('')
   }
 
+  const collapsed = !!board && !loading && !editing
+  const practiceChip = practiceEquation && (
+    <div className="solve-section">
+      <button className={`chip ${practice ? 'active' : ''}`} onClick={() => setPractice(p => !p)}>
+        <span aria-hidden="true">🎤</span> {t('practice.mode')}
+      </button>
+    </div>
+  )
+
   return (
     <div className={`workspace ${board && !loading ? 'with-chat' : ''}`}>
     <div className="workspace-main">
-      <div className="input-section">
+      <div className={`input-section ${collapsed ? 'collapsed' : ''}`}>
+        {collapsed && board && (
+          <div className="problem-bar" role="group" aria-label={t('main.currentProblem')}>
+            <h2 className="problem-bar-text" title={board.title}>{board.title}</h2>
+            {practiceChip}
+            <button type="button" className="btn btn-secondary" onClick={openInput}>
+              <span aria-hidden="true">✏️</span> {t('main.newProblem')}
+            </button>
+          </div>
+        )}
+        <div hidden={collapsed}>
         <h2>{t('main.heading')}</h2>
 
         <div className="tab-bar" role="group" aria-label={t('main.modeGroup')}>
@@ -309,13 +336,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           {inputMode === 'text' && keypad && <MathKeypad id={keypadId} onInsert={insertAtCursor} onClose={closeKeypad} />}
         </div>
 
-        {practiceEquation && (
-          <div className="solve-section">
-            <button className={`chip ${practice ? 'active' : ''}`} onClick={() => setPractice(p => !p)}>
-              <span aria-hidden="true">🎤</span> {t('practice.mode')}
-            </button>
-          </div>
-        )}
+        {practiceChip}
 
         {error && (
           <div className="error-message" role="alert">
@@ -323,6 +344,8 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
             <small className="error-hint">{t('main.errorHint')}</small>
           </div>
         )}
+
+        </div>
 
         {inputMode === 'draw' && readText !== null && !loading && (
           <div className="read-box">
@@ -344,13 +367,13 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           </div>
         )}
 
-        {!settings.active_model_id && (
+        {!settings.active_model_id && !collapsed && (
           <div className="warning-message">{rich(t('main.noModel'))}</div>
         )}
       </div>
 
       {uiPrefs.showLevels && (
-        <LevelsPanel onTry={ex => { setInputMode('text'); setProblemText(ex); setError('') }} />
+        <LevelsPanel onTry={ex => { setEditing(true); setInputMode('text'); setProblemText(ex); setError('') }} />
       )}
 
       {loading && (

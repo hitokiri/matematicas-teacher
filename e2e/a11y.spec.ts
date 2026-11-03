@@ -168,6 +168,7 @@ test.describe('Idioma', () => {
     await expect(page.getByText(/Step 1 of/)).toBeVisible()
 
     // Un problema nuevo ya sale en inglés de entrada
+    await page.getByRole('button', { name: /new problem/i }).click()
     await page.getByLabel('Your math problem').fill('47 + 38')
     await page.getByRole('button', { name: /solve problem/i }).click()
     await expect(page.locator('.chalk-narration')).not.toContainText(/Escribimos|sumamos/i)

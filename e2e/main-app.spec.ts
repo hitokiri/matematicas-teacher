@@ -52,4 +52,16 @@ test.describe('MainApp - Problem Solver', () => {
     await expect(textTab).toHaveClass(/active/);
     await expect(page.locator('.problem-input')).toBeVisible();
   });
+  test('con la pizarra a la vista la entrada se reduce a una barra y se reabre', async ({ page }) => {
+    await page.locator('.problem-input').fill('47 + 38');
+    await page.getByRole('button', { name: /resolver problema/i }).click();
+    await expect(page.locator('.chalk-pages')).toBeVisible();
+
+    await expect(page.locator('.problem-input')).toBeHidden();
+    await expect(page.locator('.problem-bar')).toContainText('47 + 38');
+
+    await page.getByRole('button', { name: /nuevo problema/i }).click();
+    await expect(page.locator('.problem-input')).toBeVisible();
+    await expect(page.locator('.problem-input')).toBeFocused();
+  });
 });

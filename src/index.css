@@ -645,7 +645,7 @@ body {
   border: 1px solid var(--border);
 }
 
-.input-section > h2 {
+.input-section h2 {
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 24px;
@@ -1839,6 +1839,13 @@ body {
 .lang-switch button:hover:not([aria-pressed='true']) { background: var(--surface-hover); color: var(--text); }
 .lang-switch button[aria-pressed='true'] { background: var(--primary); color: #fff; }
 .header-actions { align-items: center; }
+
+/* Con la pizarra a la vista, la entrada se reduce a una barra con el problema */
+.input-section.collapsed { padding: 14px 20px; }
+.problem-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.input-section .problem-bar-text { flex: 1 1 160px; min-width: 0; margin: 0; font-size: 1rem; font-weight: 600; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.problem-bar .solve-section { margin: 0; }
+.input-section.collapsed .read-box { margin-top: 12px; }
 
 /* Movil: el header se envuelve en vez de salirse de la pantalla */
 @media (max-width: 640px) {

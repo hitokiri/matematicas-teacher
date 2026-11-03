@@ -23,6 +23,8 @@ export const en: Record<MessageKey, string> = {
   'main.placeholder': 'Example: 2 + 2 = ?\nor\nx + 5 = 12\nor a system, one equation per line:\nx + y = 5\nx - y = 1',
   'main.solve': 'Solve problem',
   'main.solving': 'Solving...',
+  'main.newProblem': 'New problem',
+  'main.currentProblem': 'Current problem',
   'main.errorHint': 'If it keeps happening, check Settings › App log to see what failed.',
   'main.thinking': 'The teacher is thinking about the explanation...',
   'main.reading': 'Reading your drawing...',
