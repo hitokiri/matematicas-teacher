@@ -15,8 +15,10 @@
   --surface: #ffffff;
   --surface-hover: #f3f4f6;
   --text: #111827;
-  --text-secondary: #6b7280;
+  --text-secondary: #5b6472;
   --border: #e5e7eb;
+  /* Borde de campos y controles: WCAG 1.4.11 pide 3:1 contra el fondo (--border es solo decorativo) */
+  --border-control: #7c8493;
   --success: #10b981;
   --error: #b91c1c;
   --radius: 12px;
@@ -34,6 +36,7 @@
   --text: #e5e5e5;
   --text-secondary: #9ca3af;
   --border: #404040;
+  --border-control: #808080;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
@@ -232,7 +235,7 @@ body {
   width: 100%;
   padding: 10px 16px 10px 40px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   color: var(--text);
   font-size: 0.9rem;
@@ -699,7 +702,7 @@ body {
   width: 100%;
   min-height: 180px;
   padding: 20px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-control);
   border-radius: 12px;
   font-size: 1.1rem;
   font-family: inherit;
@@ -905,7 +908,7 @@ body {
 /* Canvas */
 .canvas-container {
   width: 100%;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-control);
   border-radius: 12px;
   overflow: hidden;
   background: var(--surface);
@@ -1259,7 +1262,7 @@ body {
 .read-box {
   margin-top: 16px;
   padding: 14px 16px;
-  border: 2px dashed var(--primary);
+  border: 2px dashed var(--accent);
   border-radius: 12px;
   background: var(--bg);
   display: flex;
@@ -1276,7 +1279,7 @@ body {
   padding: 10px 14px;
   font-size: 1.3rem;
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-control);
   border-radius: 10px;
   background: var(--surface);
   color: var(--text);
@@ -1482,7 +1485,7 @@ body {
   flex: 1;
   resize: none;
   padding: 10px 12px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-control);
   border-radius: 10px;
   background: var(--bg);
   color: var(--text);
@@ -1691,7 +1694,7 @@ body {
   height: 26px;
   border-radius: 999px;
   border: none;
-  background: var(--border);
+  background: var(--border-control);
   position: relative;
   cursor: pointer;
   transition: background 0.2s;
@@ -1711,6 +1714,8 @@ body {
 }
 
 .switch[aria-checked='true'] { background: var(--primary); }
+/* En oscuro el primario no llega a 3:1 contra la superficie: el interruptor activado usa el rosa claro */
+[data-theme="dark"] .switch[aria-checked='true'] { background: var(--accent); }
 .switch[aria-checked='true']::after { transform: translateX(20px); }
 
 /* Voz de la maestra (Configuración) */
@@ -1770,7 +1775,7 @@ body {
 .log-toolbar select {
   font: inherit;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
@@ -1958,7 +1963,7 @@ body {
 .chat-listen[aria-pressed='true'] { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .chat-offer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.example-board { margin-top: 16px; border: 2px dashed var(--primary); border-radius: 12px; padding: 10px; }
+.example-board { margin-top: 16px; border: 2px dashed var(--accent); border-radius: 12px; padding: 10px; }
 .example-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .example-board-header h3 { margin: 0; font-size: 1rem; }
 
@@ -1987,7 +1992,7 @@ body {
 .solve-tool { transition: none; min-height: 48px; min-width: 48px; padding-inline: 16px; font-weight: 600; white-space: nowrap; }
 .solve-tool.active, .solve-tool.active:hover { border-color: var(--primary); background: var(--primary); color: #fff; }
 .solve-tool.active:hover { background: var(--primary-hover); }
-.solve-tool:focus-visible, .math-key:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.solve-tool:focus-visible, .math-key:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .math-keypad { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: left; }
 .math-keypad-hint { margin: 0 0 8px; font-size: 0.85rem; color: var(--muted, var(--text)); }
 .math-keypad-keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
