@@ -1840,6 +1840,14 @@ body {
 .lang-switch button[aria-pressed='true'] { background: var(--primary); color: #fff; }
 .header-actions { align-items: center; }
 
+/* Movil: el header se envuelve en vez de salirse de la pantalla */
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; gap: 12px; padding: 16px; }
+  .header h1 { font-size: 1.25rem; }
+  .header-logo { width: 32px; height: 32px; }
+  .main-container { padding: 20px 16px; }
+}
+
 .voice-row.pickable { cursor: pointer; }
 .voice-row.pickable:hover { border-color: var(--accent); }
 .voice-row.unavailable { opacity: 0.85; }
