@@ -102,7 +102,7 @@ function App() {
 
       <main className="main-content" id="contenido" tabIndex={-1}>
         <div className="main-container">
-          <MainApp settings={settings} uiPrefs={uiPrefs} onUiPrefsChange={setUiPrefs} />
+          <MainApp settings={settings} uiPrefs={uiPrefs} onUiPrefsChange={setUiPrefs} onOpenSettings={() => setShowSettings(true)} />
         </div>
       </main>
 

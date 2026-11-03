@@ -1840,6 +1840,10 @@ body {
 .lang-switch button[aria-pressed='true'] { background: var(--primary); color: #fff; }
 .header-actions { align-items: center; }
 
+/* Aviso de falta de modelo: la accion va dentro del propio aviso */
+.error-action { margin-top: 12px; }
+.warning-message p { margin: 0; }
+
 /* Con la pizarra a la vista, la entrada se reduce a una barra con el problema */
 .input-section.collapsed { padding: 14px 20px; }
 .problem-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

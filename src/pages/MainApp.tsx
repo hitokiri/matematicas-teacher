@@ -41,6 +41,8 @@ interface MainAppProps {
   settings: AppSettings
   uiPrefs?: UiPrefs
   onUiPrefsChange?: (prefs: UiPrefs) => void
+  /** Abre Ajustes (para elegir un modelo desde los avisos) */
+  onOpenSettings?: () => void
 }
 
 /** Pizarra que la app resuelve sola: cuentas en columna, expresiones (orden de operaciones, raices)
@@ -75,7 +77,7 @@ export function typoHint(text: string, lang: Lang = detectLang()): string | null
   return translate(lang, 'main.typo', { signs: `${m[1]}${m[2]}` })
 }
 
-function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: MainAppProps) {
+function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpenSettings }: MainAppProps) {
   const { t, lang } = useI18n()
   const [problemText, setProblemText] = useState('')
   const [solution, setSolution] = useState<Solution | null>(null)
@@ -192,6 +194,11 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
       return
     }
 
+    if (!settings.active_model_id) {
+      setError(t('main.errNoModel'))
+      return
+    }
+
     setLoading(true)
     setLoadingMessage(t('main.thinking'))
     try {
@@ -211,6 +218,10 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     if (inputMode === 'text') return solveText(problemText)
 
     // Dibujo: primero el modelo solo lo lee; se muestra lo que leyo para poder corregirlo
+    if (!settings.active_model_id) {
+      setError(t('main.errNoModel'))
+      return
+    }
     setError('')
     setSolution(null)
     setSource(null)
@@ -235,6 +246,12 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
     setError('')
   }
 
+  const noModelError = !settings.active_model_id && error === t('main.errNoModel')
+  const pickModelButton = onOpenSettings && (
+    <button type="button" className="btn btn-primary" onClick={onOpenSettings}>
+      <span aria-hidden="true">🧠</span> {t('main.pickModel')}
+    </button>
+  )
   const collapsed = !!board && !loading && !editing
   const practiceChip = practiceEquation && (
     <div className="solve-section">
@@ -341,7 +358,9 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
         {error && (
           <div className="error-message" role="alert">
             {error}
-            <small className="error-hint">{t('main.errorHint')}</small>
+            {noModelError
+              ? pickModelButton && <div className="error-action">{pickModelButton}</div>
+              : <small className="error-hint">{t('main.errorHint')}</small>}
           </div>
         )}
 
@@ -367,8 +386,11 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange }: Main
           </div>
         )}
 
-        {!settings.active_model_id && !collapsed && (
-          <div className="warning-message">{rich(t('main.noModel'))}</div>
+        {!settings.active_model_id && !collapsed && !noModelError && (
+          <div className="warning-message">
+            <p>{rich(t('main.noModel'))}</p>
+            {pickModelButton && <div className="error-action">{pickModelButton}</div>}
+          </div>
         )}
       </div>
 

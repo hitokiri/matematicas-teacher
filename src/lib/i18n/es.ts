@@ -34,7 +34,9 @@ export const es = {
   'main.readLabel': 'Leí esto en tu dibujo:',
   'main.readAgain': 'Resolver esto',
   'main.readHint': '¿Leí mal algún número? Corrígelo aquí (por ejemplo una x que era un 7) y vuelve a resolver.',
-  'main.noModel': 'Las cuentas como **10 x 20** funcionan sin modelo. Para dibujos y otros problemas, ve a **Configuración** y selecciona un modelo.',
+  'main.noModel': 'Las cuentas como **10 x 20** funcionan sin modelo. Para dibujos y otros problemas necesitas elegir un modelo.',
+  'main.pickModel': 'Elegir un modelo',
+  'main.errNoModel': 'Este problema necesita un modelo de IA y todavía no hay uno elegido.',
   'main.textExplanation': 'Ver la explicación en texto',
 
   // Dibujo

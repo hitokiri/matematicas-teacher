@@ -64,4 +64,25 @@ test.describe('MainApp - Problem Solver', () => {
     await expect(page.locator('.problem-input')).toBeVisible();
     await expect(page.locator('.problem-input')).toBeFocused();
   });
+  test('sin modelo: el aviso lleva a Ajustes y un problema que necesita IA lo explica', async ({ page }) => {
+    const warning = page.locator('.warning-message');
+    await expect(warning).toBeVisible();
+
+    // Un problema que la app no resuelve sola pide un modelo, sin llamar al backend
+    await page.locator('.problem-input').fill('un tren sale a las 3 y viaja 2 horas');
+    await page.getByRole('button', { name: /resolver problema/i }).click();
+    const error = page.getByRole('alert').filter({ hasText: /necesita un modelo/i });
+    await expect(error).toBeVisible();
+    await expect(warning).toBeHidden(); // el error ya trae su propio boton
+
+    await error.getByRole('button', { name: /elegir un modelo/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+  });
+
+  test('sin modelo: las cuentas se siguen resolviendo en la pizarra', async ({ page }) => {
+    await page.locator('.problem-input').fill('47 + 38');
+    await page.getByRole('button', { name: /resolver problema/i }).click();
+    await expect(page.locator('.chalk-pages')).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: /necesita un modelo/i })).toHaveCount(0);
+  });
 });

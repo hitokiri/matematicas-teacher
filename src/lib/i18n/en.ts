@@ -34,7 +34,9 @@ export const en: Record<MessageKey, string> = {
   'main.readLabel': 'I read this in your drawing:',
   'main.readAgain': 'Solve this',
   'main.readHint': 'Did I misread a number? Fix it here (for example an x that was a 7) and solve again.',
-  'main.noModel': 'Sums like **10 x 20** work without a model. For drawings and other problems, go to **Settings** and pick a model.',
+  'main.noModel': 'Sums like **10 x 20** work without a model. For drawings and other problems you need to pick a model.',
+  'main.pickModel': 'Pick a model',
+  'main.errNoModel': 'This problem needs an AI model and none is selected yet.',
   'main.textExplanation': 'Show the explanation as text',
 
   'draw.canvas': 'Canvas to draw the problem with the mouse or your finger. If you cannot draw, use the Text option.',

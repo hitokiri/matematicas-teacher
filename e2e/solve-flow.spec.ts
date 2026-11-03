@@ -13,6 +13,13 @@ async function drawStroke(page: Page) {
 
 test.describe('Flujo de resolver problemas', () => {
   test.beforeEach(async ({ page }) => {
+    // Con un modelo elegido y descargado: sin modelo la app avisa en vez de llamar al backend
+    await page.addInitScript(() => {
+      localStorage.setItem('__e2e_state__', JSON.stringify({
+        settings: { active_model_id: 'm-small' },
+        models: [{ id: 'm-small', name: 'Qwen 2.5 1.5B Instruct', description: 'Modelo ligero', filename: 'small.gguf', size_mb: 1024, recommended_for: ['rapido'], tags: ['1.5B'], downloaded: true }],
+      }));
+    });
     await page.goto('/');
     await page.waitForSelector('.input-section', { timeout: 15000 });
   });
