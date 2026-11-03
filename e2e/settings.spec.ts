@@ -77,3 +77,34 @@ test.describe('Settings Modal', () => {
     await expect(page.locator('.input-section')).toBeVisible({ timeout: 5000 });
   });
 });
+
+test.describe('Configuración - índice y móvil', () => {
+  test('el índice salta a cada sección y la cabecera con el cierre queda fija', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
+    const dialog = page.getByRole('dialog', { name: /configuraci[oó]n/i });
+    const nav = dialog.getByRole('navigation', { name: /secciones/i });
+    await expect(nav.getByRole('button')).toHaveText(['Modelos', 'Voz', 'Interfaz', 'Avanzado']);
+
+    await nav.getByRole('button', { name: 'Avanzado' }).click();
+    // Tras el salto la sección está a la vista y el botón de cierre sigue a mano
+    await expect(dialog.locator('#set-advanced')).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: 'Cerrar' })).toBeInViewport();
+    await dialog.getByRole('button', { name: 'Cerrar' }).click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test.describe('móvil', () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test('el diálogo no se sale de la pantalla', async ({ page }) => {
+      await page.goto('/');
+      await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
+      const overflow = await page.evaluate(() => {
+        const m = document.querySelector('.modal')!;
+        return m.scrollWidth - m.clientWidth;
+      });
+      expect(overflow).toBe(0);
+    });
+  });
+});

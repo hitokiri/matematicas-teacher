@@ -180,7 +180,7 @@ test.describe('Flujo de resolver problemas', () => {
   test('configuracion: la seccion de interfaz cambia a todas las pizarras juntas', async ({ page }) => {
     await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
     await page.getByRole('button', { name: /todas juntas/i }).click();
-    await page.getByRole('button', { name: /volver/i }).click();
+    await page.getByRole('button', { name: /cerrar/i }).click();
 
     await page.locator('.problem-input').fill('proceso largo');
     await solveButton(page).click();

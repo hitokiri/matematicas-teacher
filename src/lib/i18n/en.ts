@@ -141,6 +141,12 @@ export const en: Record<MessageKey, string> = {
 
   'settings.title': 'Settings',
   'settings.back': 'Back',
+  'settings.close': 'Close',
+  'settings.nav': 'Settings sections',
+  'settings.navModels': 'Models',
+  'settings.navVoice': 'Voice',
+  'settings.navInterface': 'Interface',
+  'settings.navAdvanced': 'Advanced',
   'settings.hardware': 'Local model hardware',
   'settings.detecting': 'Detecting...',
 

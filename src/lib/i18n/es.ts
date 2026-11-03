@@ -147,6 +147,12 @@ export const es = {
   // Configuración
   'settings.title': 'Configuración',
   'settings.back': 'Volver',
+  'settings.close': 'Cerrar',
+  'settings.nav': 'Secciones de configuración',
+  'settings.navModels': 'Modelos',
+  'settings.navVoice': 'Voz',
+  'settings.navInterface': 'Interfaz',
+  'settings.navAdvanced': 'Avanzado',
   'settings.hardware': 'Hardware del modelo local',
   'settings.detecting': 'Detectando...',
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import Settings from '../pages/Settings'
 import { mockInvoke } from '../test-setup'
+import { DEFAULT_UI_PREFS } from '../lib/uiPrefs'
 
 const createMockModels = () => [
   {
@@ -71,7 +72,7 @@ describe('Settings Component', () => {
     })
   })
 
-  it('calls onCancel when back button is clicked', async () => {
+  it('calls onCancel when the close button is clicked', async () => {
     mockInvoke.mockResolvedValue(createMockModels())
     const onCancel = vi.fn()
     
@@ -85,10 +86,25 @@ describe('Settings Component', () => {
       expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument()
     })
 
-    const backButton = screen.getByText(/volver/i)
-    fireEvent.click(backButton)
+    fireEvent.click(screen.getByRole('button', { name: /cerrar/i }))
 
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('el índice salta a cada sección de la configuración', async () => {
+    mockInvoke.mockResolvedValue(createMockModels())
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const { container } = render(<Settings onCancel={vi.fn()} uiPrefs={DEFAULT_UI_PREFS} onUiPrefsChange={vi.fn()} />)
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument())
+
+    const nav = screen.getByRole('navigation', { name: /secciones/i })
+    expect(within(nav).getAllByRole('button').map(b => b.textContent)).toEqual(['Modelos', 'Voz', 'Interfaz', 'Avanzado'])
+
+    fireEvent.click(within(nav).getByRole('button', { name: 'Interfaz' }))
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector('#set-interface'))
   })
 
   it('displays models list from API', async () => {

@@ -524,6 +524,13 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+/* Ajustes: cabecera fija con el indice de secciones; cada grupo conserva el relleno de antes */
+.modal > .settings-top { position: sticky; top: 0; z-index: 5; background: var(--surface); padding-bottom: 14px; }
+.settings-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.modal-close-btn { padding: 8px 14px; font-size: 1rem; }
+.modal > .settings-group { padding: 0; scroll-margin-top: 140px; }
+.settings-group > * { padding: 28px 32px; }
+
 .modal-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
@@ -596,7 +603,7 @@ body {
     max-height: 95vh;
   }
   
-  .modal > * {
+  .modal > *, .settings-group > * {
     padding: 20px 16px;
   }
   
@@ -1644,6 +1651,11 @@ body {
 }
 
 .ui-pref-text { display: flex; flex-direction: column; }
+/* Movil: el control va debajo de su texto en vez de salirse del dialogo */
+@media (max-width: 640px) {
+  .ui-pref { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ui-pref .segmented { max-width: 100%; flex-wrap: wrap; border-radius: 16px; }
+}
 .ui-pref-text small { color: var(--text-secondary); }
 
 .segmented {

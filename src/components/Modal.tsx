@@ -9,6 +9,13 @@ interface ModalProps {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
 
+/** Se puede alcanzar con Tab: visible y no escondido dentro de un <details> cerrado (salvo su propio <summary>) */
+function reachable(el: HTMLElement): boolean {
+  if (el.offsetParent === null && el !== document.activeElement) return false
+  const closed = el.closest('details:not([open])')
+  return !closed || (el.tagName === 'SUMMARY' && el.parentElement === closed)
+}
+
 /**
  * Dialogo modal accesible: el foco entra y se queda dentro (Tab da la vuelta), Esc lo cierra,
  * el resto de la pagina queda inerte (ni se enfoca ni se lee) y el foco regresa al boton que lo abrio.
@@ -38,7 +45,7 @@ export default function Modal({ labelledBy, onClose, children }: ModalProps) {
         return
       }
       if (e.key !== 'Tab') return
-      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(el => el.offsetParent !== null || el === document.activeElement)
+      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(reachable)
       if (items.length === 0) {
         e.preventDefault()
         return

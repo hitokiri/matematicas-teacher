@@ -158,53 +158,82 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
     };
   }, []);
 
+  /** Salta a una seccion; con "reducir movimiento" el salto es directo */
+  const jumpTo = (id: string) => {
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById(id)?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  };
+  const SECTIONS = [
+    { id: 'set-models', label: t('settings.navModels') },
+    { id: 'set-voice', label: t('settings.navVoice') },
+    { id: 'set-interface', label: t('settings.navInterface') },
+    { id: 'set-advanced', label: t('settings.navAdvanced') },
+  ];
+
   return (
     <>
-      <div className="modal-header">
-        <h2 id="settings-title"><span aria-hidden="true">⚙️</span> {t('settings.title')}</h2>
-        <button onClick={onCancel} className="modal-back-btn">
-          <span aria-hidden="true">←</span> {t('settings.back')}
-        </button>
+      <div className="settings-top">
+        <div className="modal-header">
+          <h2 id="settings-title"><span aria-hidden="true">⚙️</span> {t('settings.title')}</h2>
+          <button onClick={onCancel} className="modal-back-btn modal-close-btn" aria-label={t('settings.close')} title={t('settings.close')}>
+            <span aria-hidden="true">✕</span>
+          </button>
+        </div>
+        <nav className="settings-nav" aria-label={t('settings.nav')}>
+          {SECTIONS.map(sec => (
+            <button key={sec.id} type="button" className="chip" onClick={() => jumpTo(sec.id)}>{sec.label}</button>
+          ))}
+        </nav>
       </div>
 
-      {uiPrefs && onUiPrefsChange && (
-        <UiPrefsSection prefs={uiPrefs} onChange={onUiPrefsChange} theme={theme} onThemeChange={onThemeChange} />
-      )}
-
-      {uiPrefs && onUiPrefsChange && (
-        <VoiceSection
-          voice={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
-          // Cada idioma recuerda su voz. Elegir una voz natural es pedir que la maestra lea: se enciende la lectura
-          onChange={voice => onUiPrefsChange({
-            ...uiPrefs,
-            [lang === 'en' ? 'voiceEn' : 'voice']: voice,
-            readAloud: uiPrefs.readAloud || voice !== 'system',
-          })}
-          readAloud={uiPrefs.readAloud}
-          onReadAloudChange={readAloud => onUiPrefsChange({ ...uiPrefs, readAloud })}
+      <div className="settings-group" id="set-models">
+        <ModelBrowser
+          models={models}
+          onListModels={loadModels}
+          onDownload={handleDownload}
+          onSelect={handleSelect}
+          onDelete={handleDelete}
+          onPause={handlePause}
+          onResume={handleResume}
+          onCancel={handleCancel}
         />
-      )}
-
-      <MicSection />
-
-      <div className="provider-section">
-        <h2><span aria-hidden="true">💻</span> {t('settings.hardware')}</h2>
-        <p className="compute-device">{computeDevice ?? t('settings.detecting')}</p>
       </div>
 
-      <LogSection />
+      {uiPrefs && onUiPrefsChange && (
+        <div className="settings-group" id="set-voice">
+          <VoiceSection
+            voice={lang === 'en' ? uiPrefs.voiceEn : uiPrefs.voice}
+            // Cada idioma recuerda su voz. Elegir una voz natural es pedir que la maestra lea: se enciende la lectura
+            onChange={voice => onUiPrefsChange({
+              ...uiPrefs,
+              [lang === 'en' ? 'voiceEn' : 'voice']: voice,
+              readAloud: uiPrefs.readAloud || voice !== 'system',
+            })}
+            readAloud={uiPrefs.readAloud}
+            onReadAloudChange={readAloud => onUiPrefsChange({ ...uiPrefs, readAloud })}
+          />
+          <MicSection />
+        </div>
+      )}
+      {!(uiPrefs && onUiPrefsChange) && (
+        <div className="settings-group" id="set-voice">
+          <MicSection />
+        </div>
+      )}
 
-      <ModelBrowser
-        models={models}
-        onListModels={loadModels}
-        onDownload={handleDownload}
-        onSelect={handleSelect}
-        onDelete={handleDelete}
-        onPause={handlePause}
-        onResume={handleResume}
-        onCancel={handleCancel}
-      />
+      {uiPrefs && onUiPrefsChange && (
+        <div className="settings-group" id="set-interface">
+          <UiPrefsSection prefs={uiPrefs} onChange={onUiPrefsChange} theme={theme} onThemeChange={onThemeChange} />
+        </div>
+      )}
 
+      <div className="settings-group" id="set-advanced">
+        <div className="provider-section">
+          <h2><span aria-hidden="true">💻</span> {t('settings.hardware')}</h2>
+          <p className="compute-device">{computeDevice ?? t('settings.detecting')}</p>
+        </div>
+        <LogSection />
+      </div>
     </>
   );
 }
