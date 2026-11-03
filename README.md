@@ -15,7 +15,12 @@ Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a r
 - **Visuales**: balanza para ecuaciones, pizzas y rectángulos para fracciones.
 - **Chat de preguntas** sobre cada paso (`StepChat`).
 - **Micrófono**: dicta tus preguntas en voz alta; Whisper transcribe el audio en la propia computadora, sin internet. El modelo de voz se descarga desde Configuración › Micrófono.
-- **Botones junto al problema**: **🎤 Hablar** dicta el problema al cuadro de texto y **➕➗ Símbolos** abre un teclado de símbolos (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) para quien no sabe sacarlos con el teclado. Ambos son accesibles (nombre hablado, foco visible, Escape cierra).
+- **Voz y símbolos dentro del cuadro del problema**: **Hablar** dicta el problema al cuadro de texto y **Símbolos** abre un teclado de símbolos (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) para quien no sabe sacarlos con el teclado. Ambos son accesibles (nombre hablado, foco visible, Escape cierra).
+- **La entrada se aparta cuando hay pizarra**: el cuadro del problema se reduce a una barra con el problema y **Nuevo problema**, y el panel de temas pasa debajo de la pizarra.
+- **Pensada para el celular**: en pantallas estrechas el chat es una hoja plegable fija abajo (se abre al tocar el número de un paso, Escape la cierra) y nada se sale de la pantalla.
+- **Sin modelo, la app lo explica**: lo que necesita IA avisa con un botón **Elegir un modelo** que abre Configuración, y el botón **Resolver** dice por qué está deshabilitado.
+- **Configuración con índice** (*Modelos · Voz · Interfaz · Avanzado*), cabecera fija y botón para cerrar.
+- **Iconos Lucide** (`lucide-react`) en lugar de emojis; solo se conservan los personajes de la maestra y el niño y el 🎉 de celebración.
 - **Cuentas dichas con palabras**: "divide trescientos entre cincuenta" o "multiplica 12 por 3" se resuelven en la pizarra con todo el procedimiento.
 - **Ejemplos desde el chat**: al preguntar, la maestra pregunta si quieres la respuesta aquí o que lo desarrolle en la pizarra; si eliges la pizarra, puedes **borrar y escribir** o ponerlo en **otra pizarra aparte** sin perder la principal.
 - **Practicar dictando operaciones**: en una ecuación de primer grado, el modo práctica deja que el niño dicte operaciones ("sumar 3", "dividir entre 4") y la pizarra las ejecuta paso a paso con la balanza; si no se entiende, la maestra pregunta en vez de ejecutar.
@@ -59,22 +64,24 @@ en `src/lib/board/parse.ts`).
 | ![Pizarras de una en una](docs/capturas/pizarras.png) | ![Configuración de la interfaz](docs/capturas/configuracion.png) |
 | **Pizarras de una en una**: los botones *Pizarra N* cambian de pizarra y *Ver todas* las junta. | **Configuración › Interfaz**: pizarras, reproducción automática, panel de temas y tema. |
 | ![Micrófono](docs/capturas/microfono.png) | ![Dictado en el chat](docs/capturas/chat-microfono.png) |
-| **Configuración › Micrófono**: descarga el modelo de voz una vez; el audio no sale del equipo. | **Hablar en el chat**: pulsa 🎤, habla y el dictado se envía como pregunta. |
+| **Configuración › Micrófono**: descarga el modelo de voz una vez; el audio no sale del equipo. | **Hablar en el chat**: pulsa el micrófono, habla y el dictado se envía como pregunta. |
 | ![Símbolos matemáticos](docs/capturas/simbolos.png) | ![Cuenta dicha con palabras](docs/capturas/divide-palabras.png) |
-| **Símbolos y voz junto al problema**: cada tecla trae su nombre hablado y Escape cierra el panel. | **"divide trescientos entre cincuenta"** se resuelve en la casita, paso a paso. |
+| **Símbolos y voz dentro del cuadro del problema**: cada tecla trae su nombre hablado y Escape cierra el panel. | **"divide trescientos entre cincuenta"** se resuelve en la casita, paso a paso. |
 | ![El chat pregunta cómo quieres la respuesta](docs/capturas/chat-pizarra.png) | ![Ejemplo en otra pizarra](docs/capturas/pizarra-aparte.png) |
 | **Antes de contestar**, la maestra pregunta si quieres la respuesta aquí o desarrollada en la pizarra. | **Otra pizarra aparte**: el ejemplo se resuelve debajo sin tocar la pizarra principal. |
-| ![Practicar dictando operaciones](docs/capturas/practica.png) | |
-| **Practicar dictando**: dices "sumar 3" o "dividir entre 4" y la balanza lo hace en los dos lados. | |
+| ![Practicar dictando operaciones](docs/capturas/practica.png) | ![Configuración con índice](docs/capturas/ajustes-indice.png) |
+| **Practicar dictando**: dices "sumar 3" o "dividir entre 4" y la balanza lo hace en los dos lados. | **Configuración con índice**: *Modelos · Voz · Interfaz · Avanzado* saltan a cada sección y el botón de cerrar queda fijo. |
+| ![Celular: pizarra a la vista](docs/capturas/movil.png) | ![Celular: chat abierto](docs/capturas/movil-chat.png) |
+| **En el celular** la pizarra queda a la vista y el chat es una barra plegable abajo. | **Chat abierto**: se despliega sobre la pizarra y se cierra con Escape o tocando la barra. |
 
 Las capturas se generan con `npm run capturas` (Playwright con el backend simulado de los e2e) y se guardan en
 `docs/capturas/`.
 
 ## Micrófono
 
-1. En **⚙️ Configuración › 🎤 Micrófono**, descarga un modelo de voz (Whisper Turbo o Small) la primera vez.
-2. Pulsa **🎤** y habla; al detectar silencio, el audio se transcribe. Hay dos botones de micrófono:
-   - **Junto a "Resolver problema"** (**🎤 Hablar**): lo dicho se escribe en el cuadro del problema, para revisarlo
+1. En **Configuración › Micrófono**, descarga un modelo de voz (Whisper Turbo o Small) la primera vez.
+2. Pulsa el botón del **micrófono** y habla; al detectar silencio, el audio se transcribe. Hay dos botones de micrófono:
+   - **Dentro del cuadro del problema** (**Hablar**): lo dicho se escribe en el cuadro del problema, para revisarlo
      antes de resolver.
    - **En el chat de un paso**: lo dicho se envía como pregunta.
 3. Todo se procesa en la computadora, sin internet. El micrófono es de quien lo activó: lo dictado en el cuadro del
@@ -84,7 +91,7 @@ Las capturas se generan con `npm run capturas` (Playwright con el backend simula
 
 ## Símbolos matemáticos
 
-El botón **➕➗ Símbolos**, junto al cuadro del problema, abre un teclado con `+ − × ÷ = / ( ) √( ² ³ ^ x y .` para quien
+El botón **Símbolos**, dentro del cuadro del problema (abajo a la derecha), abre un teclado con `+ − × ÷ = / ( ) √( ² ³ ^ x y .` para quien
 no sabe sacarlos con el teclado. Cada tecla escribe el símbolo donde está el cursor y trae su nombre hablado
 ("raíz cuadrada", "al cuadrado") para lectores de pantalla; **Escape** lo cierra y devuelve el foco al botón
 (`src/components/MathKeypad.tsx`).
@@ -108,7 +115,9 @@ explica al modelo cuándo usar la etiqueta.
 
 ## Configuración de la interfaz
 
-En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
+**Configuración** se abre como un diálogo con la cabecera fija y un índice (*Modelos · Voz · Interfaz · Avanzado*) que salta a cada sección; **Modelos** va primero porque es lo que hace falta para empezar. Se cierra con la ✕ o con Escape.
+
+En **Configuración › Interfaz** (se guarda en el equipo):
 
 - **Pizarras de un proceso largo**: *Una a la vez* (por defecto, ahorra espacio) o *Todas juntas*. En la pizarra,
   el botón *Ver todas* / *Una a la vez* cambia solo ese problema.
@@ -128,7 +137,7 @@ En **⚙️ Configuración › 🎨 Interfaz** (se guarda en el equipo):
   Kokoro (~334 MB, más expresiva, con voz de mujer y de hombre), en español o en inglés (según el idioma de la app),
   o se usa la voz del sistema (`espeak-ng`; la app detecta tu distribución y te dice qué instalar si falta). La maestra lee las
   matemáticas en palabras ("2x + 3y = 6" → "dos equis más tres ye igual a seis") y la pizarra avanza al terminar cada
-  audio. El botón 🔈 junto a la pizarra enciende la lectura. En el chat de preguntas la maestra también lee sus respuestas (nunca lo que escribes tú), y cada respuesta tiene un botón 🔊 para escucharla de nuevo.
+  audio. El botón **Leer en voz alta** junto a la pizarra enciende la lectura. En el chat de preguntas la maestra también lee sus respuestas (nunca lo que escribes tú), y cada respuesta tiene un botón de altavoz para escucharla de nuevo.
 
 ## Próximamente
 
@@ -208,7 +217,7 @@ open matematicas-teacher_0.1.0_arm64_macOS.dmg
 
 ### Primer uso
 
-1. Entra en **⚙️ Configuración** y descarga un modelo de la lista (todos leen dibujos).
+1. Entra en **Configuración** y descarga un modelo de la lista (todos leen dibujos).
 2. Pulsa **Select**: pasa a *Active Model* y se carga en memoria.
 3. Escribe o dibuja un problema en la pizarra.
 
@@ -257,8 +266,9 @@ src/                  Frontend React (Vite + TypeScript)
   lib/mic.ts          Eventos y comandos del micrófono; useMic.ts dicta en una caja de texto
   lib/capabilities.ts Temas que explica la app (panel "¿Hasta dónde llega la maestra?")
   lib/uiPrefs.ts      Preferencias de la interfaz
+  lib/contrast.test.ts Contraste WCAG de la paleta (tema claro, oscuro y pizarra)
   components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, PracticeBoard,
-                      MathKeypad, ModelBrowser
+                      MathKeypad, ModelBrowser, Ico (iconos Lucide)
   pages/              MainApp, Settings
 src-tauri/            Backend Rust (Tauri v2)
   src/ai/             Motor de IA (llama.cpp, visión mtmd)
@@ -277,8 +287,8 @@ LGPL-2.1 — ver [LICENSE](LICENSE).
 ## Accesibilidad y seguridad
 
 - **Accesibilidad (WCAG 2.2 AA)**: se usa con teclado y lector de pantalla (enlace para saltar al contenido, diálogo con
-  foco atrapado y Esc, botones con nombre, estados anunciados), contraste de color de al menos 4.5:1, foco visible,
-  objetivos táctiles de 40 px (48 px en los botones de voz y símbolos), y respeta *reducir movimiento*. `npx playwright test e2e/a11y.spec.ts` revisa la
+  foco atrapado y Esc, botones con nombre, estados anunciados), contraste de color WCAG AA (texto 4.5:1; bordes de campos, foco e iconos 3:1) en tema claro, oscuro y en la pizarra, foco visible,
+  objetivos táctiles de 40 px, y respeta *reducir movimiento*. `src/lib/contrast.test.ts` fija esos ratios leyendo los colores de `index.css`; `npx playwright test e2e/a11y.spec.ts` revisa la
   interfaz con axe-core en tema claro, oscuro y en inglés.
 - **Seguridad**: la ventana web tiene un CSP estricto y solo el permiso de escuchar eventos (sin acceso a archivos,
   diálogos ni enlaces); el backend limita el tamaño de lo que recibe; las voces se descargan por HTTPS y se

@@ -15,7 +15,12 @@ A desktop app (Tauri v2 + React/TypeScript) that teaches kids to solve math prob
 - **Visuals**: balance scale for equations, pizzas and rectangles for fractions.
 - **Question chat** about each step (`StepChat`).
 - **Microphone**: ask your questions out loud; Whisper transcribes the audio on the device, with no internet. The speech model is downloaded from Settings › Microphone.
-- **Buttons next to the problem**: **🎤 Speak** dictates the problem into the text box and **➕➗ Symbols** opens a keypad of math symbols (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) for anyone who does not know how to type them. Both are accessible (spoken names, visible focus, Escape closes).
+- **Voice and symbols inside the problem box**: **Speak** dictates the problem into the text box and **Symbols** opens a keypad of math symbols (`+ − × ÷ = / ( ) √ ² ³ ^ x y .`) for anyone who does not know how to type them. Both are accessible (spoken names, visible focus, Escape closes).
+- **The input steps aside when there is a board**: the problem box shrinks to a bar with the problem and **New problem**, and the topics panel moves below the board.
+- **Built for phones**: on narrow screens the chat is a collapsible sheet fixed at the bottom (it opens when you tap a step number, Escape closes it) and nothing overflows the screen.
+- **No model? The app says so**: anything that needs AI shows a **Pick a model** button that opens Settings, and the **Solve** button says why it is disabled.
+- **Settings with an index** (*Models · Voice · Interface · Advanced*), a fixed header and a close button.
+- **Lucide icons** (`lucide-react`) instead of emojis; only the teacher and child characters and the 🎉 celebration are kept.
 - **Sums said in words** (Spanish): "divide trescientos entre cincuenta" or "multiplica 12 por 3" are solved on the board with the full procedure.
 - **Examples from the chat**: when you ask something, the teacher asks whether you want the answer here or worked out on the board; if you pick the board you can **erase and write** or put it on **another board** without losing the main one.
 - **Practice by dictating operations**: on a first-degree equation, practice mode lets the child dictate operations ("add 3", "divide by 4") and the board runs them step by step on the balance scale; if it is not understood, the teacher asks instead of acting.
@@ -59,22 +64,24 @@ solved with the same column procedure, not just the result (`parseArithmetic` an
 | ![One board at a time](docs/capturas/pizarras.png) | ![Interface settings](docs/capturas/configuracion.png) |
 | **One board at a time**: the *Pizarra N* buttons switch boards and *Ver todas* shows them together. | **Settings › Interface**: boards, autoplay, topics panel, and theme. |
 | ![Microphone](docs/capturas/microfono.png) | ![Dictation in the chat](docs/capturas/chat-microfono.png) |
-| **Settings › Microphone**: download the speech model once; audio never leaves the device. | **Talking in the chat**: press 🎤, speak, and the dictation is sent as your question. |
+| **Settings › Microphone**: download the speech model once; audio never leaves the device. | **Talking in the chat**: press the microphone, speak, and the dictation is sent as your question. |
 | ![Math symbols](docs/capturas/simbolos.png) | ![Sum said in words](docs/capturas/divide-palabras.png) |
-| **Symbols and voice next to the problem**: every key has a spoken name and Escape closes the panel. | **"divide trescientos entre cincuenta"** is solved in the long-division house, step by step. |
+| **Symbols and voice inside the problem box**: every key has a spoken name and Escape closes the panel. | **"divide trescientos entre cincuenta"** is solved in the long-division house, step by step. |
 | ![The chat asks how you want the answer](docs/capturas/chat-pizarra.png) | ![Example on another board](docs/capturas/pizarra-aparte.png) |
 | **Before answering**, the teacher asks whether you want the answer here or worked out on the board. | **Another board**: the example is solved below without touching the main board. |
-| ![Practice by dictating](docs/capturas/practica.png) | |
-| **Practice by dictating**: say "add 3" or "divide by 4" and the scale does it on both sides. | |
+| ![Practice by dictating](docs/capturas/practica.png) | ![Settings with an index](docs/capturas/ajustes-indice.png) |
+| **Practice by dictating**: say "add 3" or "divide by 4" and the scale does it on both sides. | **Settings with an index**: *Models · Voice · Interface · Advanced* jump to each section and the close button stays in place. |
+| ![Phone: board in view](docs/capturas/movil.png) | ![Phone: chat open](docs/capturas/movil-chat.png) |
+| **On a phone** the board stays in view and the chat is a collapsible bar at the bottom. | **Chat open**: it slides over the board and closes with Escape or by tapping the bar. |
 
 Screenshots are generated with `npm run capturas` (Playwright with the e2e mocked backend) and saved to
 `docs/capturas/`.
 
 ## Microphone
 
-1. In **⚙️ Configuración › 🎤 Micrófono**, download a speech model (Whisper Turbo or Small) the first time.
-2. Press **🎤** and speak; when silence is detected, the audio is transcribed. There are two microphone buttons:
-   - **Next to "Resolver problema"** (**🎤 Speak**): what you say is typed into the problem box, so you can check it
+1. In **Settings › Microphone**, download a speech model (Whisper Turbo or Small) the first time.
+2. Press the **microphone** button and speak; when silence is detected, the audio is transcribed. There are two microphone buttons:
+   - **Inside the problem box** (**Speak**): what you say is typed into the problem box, so you can check it
      before solving.
    - **In a step's chat**: what you say is sent as a question.
 3. Everything runs on the computer, with no internet. The microphone belongs to whoever turned it on: what is dictated
@@ -84,7 +91,7 @@ Screenshots are generated with `npm run capturas` (Playwright with the e2e mocke
 
 ## Math symbols
 
-The **➕➗ Symbols** button next to the problem box opens a keypad with `+ − × ÷ = / ( ) √( ² ³ ^ x y .` for anyone who
+The **Symbols** button inside the problem box (bottom right) opens a keypad with `+ − × ÷ = / ( ) √( ² ³ ^ x y .` for anyone who
 does not know how to type them. Each key writes the symbol at the cursor and has a spoken name ("square root",
 "squared") for screen readers; **Escape** closes it and returns focus to the button (`src/components/MathKeypad.tsx`).
 
@@ -107,7 +114,9 @@ model when to use the tag.
 
 ## Interface settings
 
-In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
+**Settings** opens as a dialog with a fixed header and an index (*Models · Voice · Interface · Advanced*) that jumps to each section; **Models** comes first because it is what you need to get started. It closes with the ✕ or with Escape.
+
+In **Settings › Interface** (saved on the computer):
 
 - **Boards for long solutions**: *Una a la vez* (one at a time, the default, saves space) or *Todas juntas* (all
   together). On the board, the *Ver todas* / *Una a la vez* button changes it just for that problem.
@@ -125,7 +134,7 @@ In **⚙️ Configuración › 🎨 Interfaz** (saved on the computer):
 - **Teacher voice** (offline): in Settings, download a natural voice — Piper (~64 MB, fast) or Kokoro (~334 MB,
   more expressive, female and male voices) — in Spanish or English (following the app language), or use the system voice (`espeak-ng`; the app detects your distro
   and tells you what to install if it is missing). The teacher reads math as words
-  ("2x + 3y = 6" → "dos equis más tres ye igual a seis") and the board advances when each audio clip ends. The 🔈
+  ("2x + 3y = 6" → "dos equis más tres ye igual a seis") and the board advances when each audio clip ends. The **Read aloud**
   button next to the board turns reading on.
 
 ## Coming soon
@@ -201,7 +210,7 @@ chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 
 ### First use
 
-1. Open **⚙️ Settings** and download a model from the list (all of them read drawings).
+1. Open **Settings** and download a model from the list (all of them read drawings).
 2. Click **Select**: it becomes the *Active Model* and is loaded into memory.
 3. Type or draw a problem on the chalkboard.
 
@@ -249,8 +258,9 @@ src/                  React frontend (Vite + TypeScript)
   lib/mic.ts          Microphone events and commands; useMic.ts dictates into a text box
   lib/capabilities.ts Topics the app explains ("¿Hasta dónde llega la maestra?" panel)
   lib/uiPrefs.ts      Interface preferences
+  lib/contrast.test.ts WCAG contrast of the palette (light, dark and board)
   components/         Chalkboard, BoardVisual, LevelsPanel, UiPrefsSection, DrawingCanvas, StepChat, PracticeBoard,
-                      MathKeypad, ModelBrowser
+                      MathKeypad, ModelBrowser, Ico (Lucide icons)
   pages/              MainApp, Settings
 src-tauri/            Rust backend (Tauri v2)
   src/ai/             AI engine (llama.cpp, mtmd vision)
@@ -269,8 +279,8 @@ LGPL-2.1 — see [LICENSE](LICENSE).
 ## Accessibility and security
 
 - **Accessibility (WCAG 2.2 AA)**: usable with keyboard and screen reader (skip link, dialog with focus trap and Esc,
-  named buttons, announced states), colour contrast of at least 4.5:1, visible focus, 40 px touch targets (48 px on the voice and symbols buttons), and it
-  honours *reduce motion*. `npx playwright test e2e/a11y.spec.ts` audits the UI with axe-core in light, dark and English.
+  named buttons, announced states), WCAG AA colour contrast (text 4.5:1; field borders, focus and icons 3:1) in the light theme, the dark theme and the board, visible focus, 40 px touch targets, and it
+  honours *reduce motion*. `src/lib/contrast.test.ts` pins those ratios by reading the colours from `index.css`; `npx playwright test e2e/a11y.spec.ts` audits the UI with axe-core in light, dark and English.
 - **Security**: the web view has a strict CSP and only the permission to listen to events (no file, dialog or link
   access); the backend caps the size of what it receives; voices are downloaded over HTTPS and verified against a
   SHA-256 before being installed.

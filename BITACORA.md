@@ -686,3 +686,45 @@ y `examples/`); con enlace estático salen `libggml-metal.a`, `libggml-cpu.a`, e
 - Pendiente: selector de métodos de resolución (método japonés para multiplicar, tanteo, "aislar y elevar al
   cuadrado" en raíces), que necesita un parámetro `method` en `solve_problem`.
 
+
+## 2 nov 2026 — v0.6.0: rediseño de la interfaz (móvil, accesibilidad e iconos)
+
+Se clasificó la UI (shell, entrada, aprendizaje, conversación, orientación, configuración, primitivas, feedback) y se
+fue mejorando por objetivos, comprobando cada uno con Playwright a 390 px y en escritorio.
+
+- **Desbordamiento en móvil:** el header no se envolvía y `.header-actions` medía 456 px en 375 útiles. Se envuelve a
+  ≤640 px.
+- **Entrada que se aparta:** con pizarra, el formulario se oculta con `hidden` (conserva texto y dibujo) y queda una
+  barra con el problema, *Nuevo problema* y el chip de práctica. La barra usa un `h2`: sin él axe marcó `heading-order`.
+  La caja "lo que leí" del modo dibujo sigue visible para corregir lecturas.
+- **Sin modelo:** `solveText`/`solveProblem` avisan antes de llamar al backend y el aviso y el error traen el botón
+  *Elegir un modelo* (`onOpenSettings`). Los e2e que resolvían con IA pasaban solo porque el mock respondía sin modelo:
+  ahora siembran `__e2e_state__` con un modelo activo.
+- **Panel de temas** debajo de la pizarra (con pizarra) y resumen reordenado en móvil.
+- **Chat plegable (≤1100 px):** hoja fija abajo (`useNarrow` con `matchMedia`); cerrada es una barra, abierta ocupa el 72 %.
+  Se abre al pulsar un paso de la pizarra, Escape la cierra y se cierra sola al poner un ejemplo en la pizarra. El botón
+  de tema sube para no taparse. Las tablets en horizontal (≤1100 px) también reciben la hoja.
+- **Campo del problema:** *Hablar* y *Símbolos* van dentro del cuadro (`.problem-field` + `.field-tools`); a ≤640 px solo
+  icono (la etiqueta queda para lectores de pantalla). *Resolver* queda solo debajo.
+- **Ajustes:** cabecera fija con índice de saltos (*Modelos · Voz · Interfaz · Avanzado*), ✕ para cerrar y Modelos primero.
+  Se eligió índice y no pestañas para no reescribir los tests, que asumen todas las secciones montadas. Descubrió un bug
+  latente en `Modal`: la trampa de foco contaba como último elemento uno dentro de un `<details>` cerrado (inalcanzable
+  con Tab); `reachable()` ya lo ignora. El selector "Tamaño del texto" también desbordaba el diálogo en móvil.
+- **Resolver deshabilitado:** pista visible enlazada con `aria-describedby`. No existía estilo `:disabled`: ahora se ven
+  apagados. `.btn` animaba `all` y axe medía la opacidad a medias; la transición ya no incluye la opacidad.
+- **Iconos:** `lucide-react` mediante `Ico` (`1em`, hereda color). 90 emojis de interfaz convertidos; se conservan los
+  avatares y el 🎉. Los 50 de `src/lib/` son contenido de la pizarra y la voz, no iconos.
+- **Contraste (ADA / WCAG AA):** `--border-control` para los bordes de campos (eran 1.2:1 en claro y 1.7:1 en oscuro),
+  gris secundario `#5b6472`, foco de `.solve-tool` con `--focus` y, en oscuro, interruptor y bordes punteados con
+  `--accent`. En la pizarra: el foco de las insignias usaba `--focus` y daba 1.49:1 sobre el verde; ahora `#8fd3ff`. También
+  se aclararon el rosa de resultado, el tono atenuado, la etiqueta de página y la insignia. `src/lib/contrast.test.ts`
+  (62 comprobaciones) lee los colores de `index.css`. El import `?raw` de CSS llega vacío en vitest: se lee con `fs`
+  (`@types/node` como dependencia de desarrollo).
+- **Housekeeping:** `.playwright-mcp/` al `.gitignore`; se borraron `tempp/` (con un clon vacío del remoto), los `.bak` y
+  `dist/`, `test-results/` y `playwright-report/`. Capturas regeneradas y tres nuevas (`ajustes-indice`, `movil`,
+  `movil-chat`); README (es/en) e INSTALACION actualizados (decía *Select*/*Active Model*; la app dice *Usar*/*Activo*).
+- **Estado de pruebas:** 451 unitarios y 78 e2e en verde; `npm run build` correcto.
+- **Pendiente:** celdas columna y "ambas" de los rectángulos de fracciones con la misma luminosidad (0.50), podrían
+  confundirse con daltonismo (falta un patrón); barra de progreso del panel de temas a 2.05:1 (siempre con texto);
+  teclado en pantalla en un móvil real tapando la hoja del chat; `docs/auto-update.md` sin versionar; `instaladores/`
+  (2.2 GB de versiones antiguas, ignorada por git).

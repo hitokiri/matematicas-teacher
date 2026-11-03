@@ -114,10 +114,11 @@ como arriba, y llama.cpp usa la GPU integrada **Metal** automáticamente. No hay
 
 ## 5. Primer uso
 
-1. Abre la app y entra en **⚙️ Configuración**.
-   - Arriba se ve el **hardware detectado**, por ejemplo "GPU: NVIDIA GeForce RTX 5070 Ti" o "CPU".
+1. Abre la app y entra en **Configuración**. Se abre en **Modelos**; el índice de arriba (*Modelos · Voz · Interfaz · Avanzado*) salta a cada sección.
+   - En **Avanzado** se ve el **hardware detectado**, por ejemplo "GPU: NVIDIA GeForce RTX 5070 Ti" o "CPU".
+   - Si no hay modelo elegido, la pantalla principal tiene un botón **Elegir un modelo** que abre este mismo lugar.
 2. **Descarga un modelo** de la lista. Todos leen dibujos.
-   - **⭐ Recomendado para tu PC:** es el de mejor puntaje de matemáticas que cabe en tu GPU; sin GPU,
+   - **Recomendado para tu PC:** es el de mejor puntaje de matemáticas que cabe en tu GPU; sin GPU,
      uno ligero.
    - **Cada tarjeta muestra:**
      - el puntaje de matemáticas publicado por el autor (MATH-Vision o MathVista)
@@ -127,23 +128,24 @@ como arriba, y llama.cpp usa la GPU integrada **Metal** automáticamente. No hay
      - **Medianos** (Qwen 3.5 4B, Qwen 3 VL 4B): buen equilibrio; leen bien la letra a mano.
      - **Grandes** (Qwen 3.5 9B, Gemma 4 12B): necesitan GPU de 8–12 GB; explican mejor.
      - **Muy grandes** (Gemma 4 26B, Qwen 3.5 35B): se reparten entre GPU y RAM; necesitan 32 GB de RAM.
-3. Pulsa **Select** en el modelo descargado: pasa a "Active Model" y se carga en memoria.
-4. Vuelve con **← Volver** y escribe o dibuja un problema.
+3. Pulsa **Usar** en el modelo descargado: pasa a **Activo** y se carga en memoria.
+4. Cierra con la **✕** (o con Escape) y escribe o dibuja un problema.
 
 ### Qué hace cada parte
 
-- **✏️ Texto:** escribe por ejemplo `10 x 20`, `2x + 4 = 10`, `1/2 + 1/4 + 10` o
+- **Texto:** escribe por ejemplo `10 x 20`, `2x + 4 = 10`, `1/2 + 1/4 + 10` o
   `raiz cubica de 3x4+7`. La app lo resuelve en la pizarra con el método de la escuela:
   - multiplicación en columna
   - balanza para ecuaciones
   - pizzas para fracciones
   - raíces por tanteo
-- **🎨 Dibujar:** el modelo lee el dibujo y muestra **"Leí esto en tu dibujo"**. Si leyó mal un
+- **Dibujar:** el modelo lee el dibujo y muestra **"Leí esto en tu dibujo"**. Si leyó mal un
   número (por ejemplo una x que era un 7), corrígelo ahí y pulsa **Resolver esto**.
 - **Pizarra:**
-  - los pasos aparecen numerados y se pueden reproducir, pausar o recorrer con ◀ ▶
-  - 🔈 lee en voz alta si el sistema lo permite
-- **💬 Preguntas:** a la derecha de la pizarra. Pregunta por cualquier paso, o pulsa el número de un
+  - los pasos aparecen numerados y se pueden reproducir, pausar o recorrer con **Anterior** / **Siguiente**
+  - **Leer en voz alta** lee en voz alta si el sistema lo permite
+  - al aparecer la pizarra, el cuadro del problema se reduce a una barra; **Nuevo problema** lo vuelve a abrir
+- **Preguntas:** a la derecha de la pizarra (en el celular es una barra plegable abajo). Pregunta por cualquier paso, o pulsa el número de un
   paso en la pizarra para preparar la pregunta.
 
 ## 6. Dónde se guardan los datos

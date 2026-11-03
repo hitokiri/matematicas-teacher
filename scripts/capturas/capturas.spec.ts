@@ -67,7 +67,7 @@ test('configuracion de la interfaz', async ({ page }) => {
   await open(page);
   await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
   await page.waitForSelector('.ui-prefs');
-  await page.locator('.provider-section').first().screenshot({ path: `${DIR}/configuracion.png` });
+  await page.locator('#set-interface .provider-section').screenshot({ path: `${DIR}/configuracion.png` });
 });
 
 test('modelos de voz para el microfono', async ({ page }) => {
@@ -145,4 +145,22 @@ test('practicar dictando operaciones', async ({ page }) => {
   await expect(page.getByRole('complementary', { name: /dicta las operaciones/i })).toBeVisible();
   await chalkDone(page);
   await page.locator('.workspace').screenshot({ path: `${DIR}/practica.png` });
+});
+
+test('configuracion con indice de secciones', async ({ page }) => {
+  await open(page);
+  await page.getByRole('button', { name: /configuraci[oó]n/i }).click();
+  await expect(page.getByRole('navigation', { name: /secciones/i })).toBeVisible();
+  await page.getByRole('dialog').screenshot({ path: `${DIR}/ajustes-indice.png` });
+});
+
+test('movil: pizarra a la vista y chat plegable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await solve(page, '2x + 4 = 10');
+  await chalkDone(page);
+  await page.screenshot({ path: `${DIR}/movil.png` });
+  await page.getByRole('button', { name: 'Preguntas' }).click();
+  await expect(page.getByLabel('Tu pregunta para la maestra')).toBeVisible();
+  await page.screenshot({ path: `${DIR}/movil-chat.png` });
 });
