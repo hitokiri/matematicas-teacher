@@ -115,6 +115,7 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
   const problemRef = useRef<HTMLTextAreaElement>(null)
   const keypadToggle = useRef<HTMLButtonElement>(null)
   const keypadId = useId()
+  const solveHintId = useId()
   const [keypad, setKeypad] = useState(false)
   const insertAtCursor = (symbol: string) => {
     const el = problemRef.current
@@ -352,9 +353,15 @@ function MainApp({ settings, uiPrefs = DEFAULT_UI_PREFS, onUiPrefsChange, onOpen
             className="btn btn-primary btn-large"
             onClick={solveProblem}
             disabled={loading || !hasInput}
+            aria-describedby={!loading && !hasInput ? solveHintId : undefined}
           >
             <span aria-hidden="true">{loading ? '⏳' : '🚀'}</span> {loading ? t('main.solving') : t('main.solve')}
           </button>
+          {!loading && !hasInput && (
+            <p id={solveHintId} className="solve-hint">
+              {inputMode === 'draw' ? t('main.solveHintDraw') : t('main.solveHintText')}
+            </p>
+          )}
         </div>
 
         {practiceChip}

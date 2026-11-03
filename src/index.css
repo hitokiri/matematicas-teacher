@@ -98,7 +98,8 @@ body {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: all 0.2s;
+  /* Sin opacidad en la transicion: un boton que se habilita no debe quedar a medio apagar */
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1960,6 +1961,13 @@ body {
 .example-board { margin-top: 16px; border: 2px dashed var(--primary); border-radius: 12px; padding: 10px; }
 .example-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .example-board-header h3 { margin: 0; font-size: 1rem; }
+
+/* Botones deshabilitados: se ven apagados (antes eran identicos a los activos) */
+.btn:disabled, .chip:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary:disabled:hover { background: var(--primary); }
+
+/* Por que Resolver esta deshabilitado */
+.solve-hint { margin: 8px 0 0; font-size: 0.88rem; color: var(--text-secondary); }
 
 /* Hablar y Simbolos viven dentro del campo, abajo a la derecha; el texto deja sitio debajo */
 .problem-field { position: relative; }

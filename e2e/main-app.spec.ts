@@ -114,3 +114,22 @@ test.describe('MainApp - móvil', () => {
     expect(overflow).toBe(0);
   });
 });
+
+test.describe('MainApp - motivo de Resolver deshabilitado', () => {
+  test('explica por qué no se puede resolver y desaparece al haber algo', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.input-section', { timeout: 15000 });
+    const solve = page.getByRole('button', { name: /resolver problema/i });
+    await expect(solve).toBeDisabled();
+    await expect(solve).toHaveAccessibleDescription(/escribe un problema/i);
+    await expect(page.locator('.solve-hint')).toBeVisible();
+
+    await page.locator('.problem-input').fill('2 + 2');
+    await expect(solve).toBeEnabled();
+    await expect(page.locator('.solve-hint')).toHaveCount(0);
+
+    await page.locator('.problem-input').fill('');
+    await page.locator('.tab', { hasText: /dibujar/i }).click();
+    await expect(solve).toHaveAccessibleDescription(/dibuja el problema/i);
+  });
+});
