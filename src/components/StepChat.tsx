@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../lib/i18n'
 import { logUi } from '../lib/applog'
@@ -65,6 +65,23 @@ function Rich({ text }: { text: string }) {
   )
 }
 
+/** Pantallas donde el chat se apila: ahi es una hoja plegable en la parte de abajo */
+const NARROW = '(max-width: 1100px)'
+
+function useNarrow(): boolean {
+  const query = () => typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches
+  const [narrow, setNarrow] = useState(query)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mql = window.matchMedia(NARROW)
+    const onChange = () => setNarrow(mql.matches)
+    onChange()
+    mql.addEventListener?.('change', onChange)
+    return () => mql.removeEventListener?.('change', onChange)
+  }, [])
+  return narrow
+}
+
 export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_VOICE, readAloud = false, onTranscript, exampleOf, canShow, onExample }: StepChatProps) {
   const { t, lang } = useI18n()
   const systemVoice = useSystemVoice()
@@ -83,13 +100,21 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   const [micError, setMicError] = useState('')
   /** Pregunta con un ejemplo que la maestra puede hacer en la pizarra, esperando que el nino elija */
   const [offer, setOffer] = useState<{ history: Message[]; stage: 'how' | 'where'; example: string | null } | null>(null)
+  // En pantallas estrechas el chat empieza cerrado; en las anchas siempre esta abierto
+  const narrow = useNarrow()
+  const [open, setOpen] = useState(false)
+  const expanded = !narrow || open
+  const bodyId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (!draft) return
     setInput(draft.text)
+    setOpen(true)
     inputRef.current?.focus()
+    // Si el chat estaba cerrado, el campo aparece en el siguiente cuadro
+    requestAnimationFrame(() => inputRef.current?.focus())
   }, [draft])
 
   useEffect(() => {
@@ -205,6 +230,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
       return
     }
     onExample?.(example, choice)
+    setOpen(false) // la hoja no debe tapar el ejemplo que acaba de aparecer en la pizarra
     setMessages([...history, { role: 'assistant', content: t(choice === 'replace' ? 'chat.offerDoneReplace' : 'chat.offerDoneAside') }])
   }
   askRef.current = ask
@@ -241,15 +267,26 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
   const quick = [t('chat.quick1', { n: step }), t('chat.quick2', { n: step }), t('chat.quick3')]
 
   return (
-    <aside className="step-chat" aria-label={t('chat.label')}>
+    <aside
+      className={`step-chat ${narrow ? 'sheet' : ''} ${expanded ? 'open' : ''}`}
+      aria-label={t('chat.label')}
+      onKeyDown={e => { if (e.key === 'Escape' && narrow && open) setOpen(false) }}
+    >
       <div className="step-chat-header">
         <span aria-hidden="true">💬</span>
         <div>
-          <h3>{t('chat.title')}</h3>
+          <h3>
+            {narrow ? (
+              <button type="button" className="step-chat-toggle" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(o => !o)}>
+                {t('chat.title')}
+              </button>
+            ) : t('chat.title')}
+          </h3>
           <small>{t('chat.subtitle')}</small>
         </div>
       </div>
 
+      <div className="step-chat-body" id={bodyId} hidden={!expanded}>
       <div className="step-chat-messages" ref={listRef} role="log" aria-live="polite" aria-label={t('chat.title')}>
         {messages.length === 0 && (
           <div className="step-chat-empty">
@@ -350,6 +387,7 @@ export default function StepChat({ script, currentStep, draft, voiceId = SYSTEM_
           {mic === 'recording' ? t('chat.micRecording') : t('chat.micBusy')}
         </p>
       )}
+      </div>
     </aside>
   )
 }

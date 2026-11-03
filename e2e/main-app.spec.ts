@@ -86,3 +86,31 @@ test.describe('MainApp - Problem Solver', () => {
     await expect(page.getByRole('alert').filter({ hasText: /necesita un modelo/i })).toHaveCount(0);
   });
 });
+
+test.describe('MainApp - móvil', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('el chat es una hoja plegable: cerrada por defecto, se abre y se cierra con Esc', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.input-section', { timeout: 15000 });
+    await page.locator('.problem-input').fill('47 + 38');
+    await page.getByRole('button', { name: /resolver problema/i }).click();
+    await expect(page.locator('.chalk-pages')).toBeVisible();
+
+    const toggle = page.getByRole('button', { name: 'Preguntas' });
+    const question = page.getByLabel('Tu pregunta para la maestra');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(question).toBeHidden();
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(question).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(question).toBeHidden();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBe(0);
+  });
+});

@@ -1344,7 +1344,41 @@ body {
 }
 
 @media (max-width: 1100px) {
-  .workspace.with-chat { grid-template-columns: minmax(0, 1fr); }
+  .workspace.with-chat { grid-template-columns: minmax(0, 1fr); padding-bottom: 76px; }
+
+  /* El chat es una hoja plegable fija abajo: cerrada es solo una barra, abierta ocupa casi toda la pantalla */
+  .step-chat.sheet {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    min-height: 0;
+    z-index: 60;
+    border-width: 2px 0 0;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  }
+  .step-chat.sheet.open { height: 72vh; }
+  .step-chat.sheet .step-chat-header { position: relative; border-bottom: 0; }
+  .step-chat.sheet.open .step-chat-header { border-bottom: 1px solid var(--border); }
+  .step-chat.sheet .step-chat-header::after { content: '▴'; margin-left: auto; color: var(--text-secondary); }
+  .step-chat.sheet.open .step-chat-header::after { content: '▾'; }
+  .step-chat-toggle {
+    all: unset;
+    font: inherit;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+  }
+  /* Toda la barra es el boton: el toque no tiene que acertar en el titulo */
+  .step-chat-toggle::after { content: ''; position: absolute; inset: 0; }
+  .step-chat-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  /* El boton del tema sube para no taparse con la barra del chat */
+  .app:has(.step-chat.sheet) .theme-toggle { bottom: 88px; }
 }
 
 .step-chat {
@@ -1373,6 +1407,9 @@ body {
 
 .step-chat-header h3 { margin: 0; font-size: 1.1rem; color: var(--text); }
 .step-chat-header small { font-size: 0.8rem; color: var(--text-secondary); }
+
+.step-chat-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.step-chat-body[hidden] { display: none; }
 
 .step-chat-messages {
   flex: 1;
