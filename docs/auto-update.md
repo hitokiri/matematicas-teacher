@@ -9,7 +9,7 @@ flujo que hace Handy (cjpais/Handy).
 - Plugins `tauri-plugin-updater` y `tauri-plugin-process` registrados en `src-tauri/src/main.rs`;
   capabilities `updater:default` y `process:default`.
 - `tauri.conf.json` → `plugins.updater` con `endpoints` al `latest.json` del último Release.
-  **Pendiente:** `pubkey` aún es un placeholder; hay que poner la clave pública real.
+  `pubkey` es la clave pública de `~/.tauri/matematicas-teacher.key..pub` (la privada nunca va al repo).
 - Ajustes → *Actualización* (`src/components/UpdateSection.tsx`): versión instalada,
   buscar, descargar con progreso e instalar + reiniciar. Los errores van al registro (`updater`).
   El chequeo es manual (no hay chequeo automático al iniciar).
