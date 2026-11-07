@@ -1,6 +1,6 @@
 [package]
 name = "matematicas-teacher"
-version = "0.6.0"
+version = "0.6.1"
 description = "AI-powered math problem solver with step-by-step explanations"
 authors = ["you"]
 edition = "2021"
