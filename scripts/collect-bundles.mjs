@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Copia los instaladores generados a ./instaladores con un nombre que dice la version:
-//   matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb / ..._solo-CPU.AppImage / ..._macOS.dmg / ..._Windows.exe
+//   matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage / ..._solo-CPU.AppImage / ..._macOS.dmg / ..._Windows.exe
+// y, si el build está firmado para el updater, cada .sig (en macOS, el ..._macOS.app.tar.gz + .sig)
 //
 // Uso: node scripts/collect-bundles.mjs gpu|cpu|mac|win
 
@@ -15,7 +16,8 @@ if (!['gpu', 'cpu', 'mac', 'win'].includes(variant)) {
 }
 const suffix = variant === 'gpu' ? 'con-GPU-NVIDIA' : variant === 'cpu' ? 'solo-CPU' : variant === 'mac' ? 'macOS' : 'Windows'
 const arch = variant === 'mac' ? 'arm64' : variant === 'win' ? 'x64' : 'amd64'
-const targets = variant === 'mac' ? [['dmg', '.dmg']] : variant === 'win' ? [['nsis', '.exe']] : [['deb', '.deb'], ['appimage', '.AppImage']]
+// En macOS el updater no usa el .dmg sino el .app.tar.gz (y su .sig) que genera createUpdaterArtifacts
+const targets = variant === 'mac' ? [['dmg', '.dmg'], ['macos', '.app.tar.gz']] : variant === 'win' ? [['nsis', '.exe']] : [['appimage', '.AppImage']]
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const bundleDir = path.join(root, 'src-tauri', 'target', 'release', 'bundle')
 const outDir = path.join(root, 'instaladores')
@@ -30,6 +32,11 @@ for (const [sub, ext] of targets) {
     const name = `matematicas-teacher_${version}_${arch}_${suffix}${ext}`
     fs.copyFileSync(path.join(dir, f), path.join(outDir, name))
     found.push(name)
+    const sig = path.join(dir, f + '.sig')
+    if (fs.existsSync(sig)) {
+      fs.copyFileSync(sig, path.join(outDir, name + '.sig'))
+      found.push(name + '.sig')
+    }
   }
 }
 if (!found.length) {

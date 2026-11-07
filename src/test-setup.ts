@@ -21,6 +21,11 @@ vi.mock('@tauri-apps/api/event', async () => {
   }
 })
 
+// Updater: sin red ni reinicios en las pruebas; la app dice que está al día
+vi.mock('@tauri-apps/api/app', async () => ({ getVersion: vi.fn(async () => '0.0.0-test') }))
+vi.mock('@tauri-apps/plugin-updater', async () => ({ check: vi.fn(async () => null) }))
+vi.mock('@tauri-apps/plugin-process', async () => ({ relaunch: vi.fn(async () => {}) }))
+
 // Las pruebas corren en español (el idioma por defecto de la app)
 Object.defineProperty(navigator, 'language', { value: 'es-MX', configurable: true })
 

@@ -19,6 +19,15 @@ struct AppState {
     settings: Mutex<AppSettings>,
 }
 
+/// El updater busca en latest.json la entrada de esta plataforma. En Linux hay dos variantes
+/// (con GPU NVIDIA y solo CPU): la solo CPU usa su propia clave para no pasarse a la de GPU.
+fn updater_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R, tauri_plugin_updater::Config> {
+    let builder = tauri_plugin_updater::Builder::new();
+    #[cfg(all(target_os = "linux", not(feature = "cuda")))]
+    let builder = builder.target("linux-x86_64-cpu");
+    builder.build()
+}
+
 fn main() {
     applog::init();
 
@@ -32,6 +41,8 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(updater_plugin())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState {
             ai: Mutex::new(AIEngine::new()),
             models: Mutex::new(ModelManager::new()),

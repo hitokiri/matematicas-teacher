@@ -728,3 +728,14 @@ fue mejorando por objetivos, comprobando cada uno con Playwright a 390 px y en e
   confundirse con daltonismo (falta un patrón); barra de progreso del panel de temas a 2.05:1 (siempre con texto);
   teclado en pantalla en un móvil real tapando la hoja del chat; `docs/auto-update.md` sin versionar; `instaladores/`
   (2.2 GB de versiones antiguas, ignorada por git).
+
+## 2026-11-06 — Releases sin `.deb` y planeación de actualización desde la app
+
+- **Releases:** se retiró el `.deb` de los instaladores generados (`tauri.conf.json` `targets`
+  ahora solo `appimage`; `scripts/collect-bundles.mjs` solo copia AppImage; cuerpo del Release
+  actualizado). Linux queda con AppImage.
+- **Actualización desde la app (planeado, no implementado):** se consolidó la planeación en
+  `docs/auto-update.md` — `tauri-plugin-updater` + `tauri-plugin-process` (el flujo de Handy:
+  `check()` → `downloadAndInstall()` → `relaunch()`), firma minisign y `latest.json` en CI,
+  capabilities `updater:default`/`process:default` y sección en Ajustes.
+- README (es/en), INSTALACION y BITACORA actualizados para reflejar ambos cambios.

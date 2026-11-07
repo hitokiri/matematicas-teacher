@@ -27,7 +27,7 @@ A desktop app (Tauri v2 + React/TypeScript) that teaches kids to solve math prob
 - **Drawing canvas**: reads what the child writes/draws using vision models (mtmd) and lets them correct it.
 - **Local AI with llama.cpp** embedded in the app (like Handy with whisper): no server, no ports; CPU/CUDA/Vulkan backends are loaded at runtime depending on the hardware.
 - **Model manager** (Llama, Qwen, Phi, Gemma, Mistral): download from HuggingFace, select the active model, and delete.
-- **Installers**: `.deb` and AppImage (NVIDIA GPU and CPU-only builds) in `instaladores/`.
+- **Installers**: AppImage (NVIDIA GPU and CPU-only builds) and `.dmg` for macOS (Apple Silicon, Metal GPU) in `instaladores/`. The app updates from within (planned; see [docs/auto-update.md](docs/auto-update.md)).
 
 ## What it can explain
 
@@ -159,25 +159,29 @@ Without a GPU it works the same, just slower (~15 s per explanation with a 2–3
 
 ### From the installer (the quickest way)
 
-Download the installer (`.deb` or AppImage) from the *Releases* page or from [`instaladores/`](instaladores/):
+Download the installer (AppImage) from the *Releases* page or from [`instaladores/`](instaladores/):
 
-| Version | Works on | Uses GPU | Size (.deb / AppImage) |
+| Version | Works on | Uses GPU | Size (AppImage / .dmg) |
 |---|---|---|---|
 | **con-GPU-NVIDIA** | Any PC | Yes, if an NVIDIA card with driver is present | ~520 MB / ~590 MB |
 | **solo-CPU** | Any PC | Never | ~20 MB / ~100 MB |
 
 ```bash
-# Ubuntu / Debian
-sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
-
 # Any Linux (no install needed)
 chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ```
 
 - The GPU version also works on PCs without a GPU: if no NVIDIA card is detected, it falls back to CPU.
-- The `.deb` installs the program in `/usr/bin/matematicas-teacher` and shows up in the menu as **Matemáticas Teacher**.
+- The AppImage runs directly, with nothing to install.
 - Neither version ships models: they are downloaded from within the app.
+
+### In-app update (planned)
+
+The app does not auto-update yet. The plan is in [docs/auto-update.md](docs/auto-update.md): use
+`tauri-plugin-updater` (the same mechanism as Handy) to check for a new version, download it,
+install it and restart with the new version. It requires a minisign signature and a `latest.json`
+manifest generated in CI.
 
 ### Build from source
 
@@ -246,7 +250,7 @@ npm run dev           # frontend only (Vite, http://localhost:5173)
 | `npm run test:e2e` | E2E tests (Playwright) |
 | `npm run tauri:dev` | Tauri app in dev mode |
 | `npm run tauri:build` | Build the app |
-| `npm run package:gpu` | Generate installers (.deb/AppImage) with GPU backends |
+| `npm run package:gpu` | Generate installers (AppImage) with GPU backends |
 | `npm run package:cpu` | Generate CPU-only installers |
 
 ## Structure
@@ -268,6 +272,7 @@ src-tauri/            Rust backend (Tauri v2)
 scripts/              GPU/CPU library staging and bundling; capturas/ generates the screenshots
 e2e/                  Playwright tests
 docs/INSTALACION.md   Installation and build guide (Spanish)
+docs/auto-update.md   In-app update plan (Spanish)
 docs/capturas/        UI screenshots
 BITACORA.md           Project log (Spanish)
 ```

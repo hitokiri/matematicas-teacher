@@ -91,6 +91,8 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run package:${{ matrix.variant }}
 
       - uses: actions/upload-artifact@v7
@@ -137,6 +139,8 @@ jobs:
       - name: Compilar y empaquetar
         env:
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # Se usa el clang de Apple (Xcode 16 en macos-15), como hace Handy. El clang de Homebrew
           # (LLVM 23) compilaba pero daba .dylib vacios al enlazar y necesitaba varios parches.
@@ -204,6 +208,8 @@ jobs:
           # El runner trae OpenSSL y llama.cpp (cpp-httplib) lo enlazaba: la app pedia
           # libcrypto-3-x64.dll, que no va en el instalador. No usamos HTTPS desde llama.cpp.
           CMAKE_DISABLE_FIND_PACKAGE_OpenSSL: 'ON'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run package:win
 
       - name: Verificar que no dependa de OpenSSL
@@ -227,10 +233,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/download-artifact@v8
         with:
           path: instaladores
           merge-multiple: true
+
+      - name: Generar latest.json para el updater
+        run: node scripts/build-latest-json.mjs "${{ github.ref_name }}"
 
       - uses: softprops/action-gh-release@v3
         with:
@@ -245,8 +256,7 @@ jobs:
             | **macOS** | Macs con Apple Silicon (M1–M4). Usa la GPU integrada (Metal). | Mediana |
             | **Windows** | PCs con Windows 10/11 (x64). Solo CPU por ahora. | Pequeña |
 
-            - `.deb`: Ubuntu / Debian → `sudo apt install ./matematicas-teacher_*.deb`
-            - `.AppImage`: cualquier Linux → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
+            - `.AppImage`: cualquier Linux (Ubuntu / Debian) → `chmod +x *.AppImage && ./matematicas-teacher_*.AppImage`
             - `.dmg`: macOS → abre el `.dmg`, arrastra **Matemáticas Teacher** a *Aplicaciones*. Como no está firmada por Apple, macOS la bloquea la primera vez: en macOS 15 (Sequoia) ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*; en macOS 14, clic derecho → *Abrir*. También funciona en Terminal: `xattr -dr com.apple.quarantine "/Applications/Matematicas Teacher.app"`.
             - `.exe`: Windows → ejecuta el instalador. Como no está firmado, SmartScreen puede avisar: *Más información* → *Run anyway*.
 

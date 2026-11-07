@@ -100,7 +100,7 @@ describe('Settings Component', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: /Configuración/ })).toBeInTheDocument())
 
     const nav = screen.getByRole('navigation', { name: /secciones/i })
-    expect(within(nav).getAllByRole('button').map(b => b.textContent)).toEqual(['Modelos', 'Voz', 'Interfaz', 'Avanzado'])
+    expect(within(nav).getAllByRole('button').map(b => b.textContent)).toEqual(['Modelos', 'Voz', 'Interfaz', 'Avanzado', 'Actualización'])
 
     fireEvent.click(within(nav).getByRole('button', { name: 'Interfaz' }))
     expect(scrollIntoView).toHaveBeenCalledTimes(1)

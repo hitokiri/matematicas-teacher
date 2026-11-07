@@ -6,6 +6,7 @@ import UiPrefsSection from '../components/UiPrefsSection';
 import VoiceSection from '../components/VoiceSection';
 import MicSection from '../components/MicSection';
 import LogSection from '../components/LogSection';
+import UpdateSection from '../components/UpdateSection';
 import type { UiPrefs } from '../lib/uiPrefs';
 import { useI18n } from '../lib/i18n';
 import { Cpu, Settings as SettingsIcon, X } from 'lucide-react'
@@ -170,6 +171,7 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
     { id: 'set-voice', label: t('settings.navVoice') },
     { id: 'set-interface', label: t('settings.navInterface') },
     { id: 'set-advanced', label: t('settings.navAdvanced') },
+    { id: 'set-update', label: t('settings.navUpdate') },
   ];
 
   return (
@@ -235,6 +237,10 @@ export default function Settings({ onCancel, uiPrefs, onUiPrefsChange, theme, on
           <p className="compute-device">{computeDevice ?? t('settings.detecting')}</p>
         </div>
         <LogSection />
+      </div>
+
+      <div className="settings-group" id="set-update">
+        <UpdateSection />
       </div>
     </>
   );

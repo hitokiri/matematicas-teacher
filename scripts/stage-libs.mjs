@@ -35,6 +35,10 @@ fs.mkdirSync(path.join(stage, 'backends'), { recursive: true })
 
 const base = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
 const out = path.join(release, 'bundle-files.json')
+// Artefactos firmados para el updater (.sig, .app.tar.gz) solo si hay llave privada (CI).
+// Sin la llave, `tauri bundle` fallaria con createUpdaterArtifacts, asi que en local se omiten.
+const createUpdaterArtifacts = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
+if (!createUpdaterArtifacts) console.log('i Sin TAURI_SIGNING_PRIVATE_KEY: no se generan artefactos del updater')
 
 // ---- macOS: los .dylib se copian dentro del .app y se arreglan con install_name_tool ----
 if (darwin) {
@@ -113,7 +117,7 @@ if (darwin) {
     }
   }
   walk(stage)
-  fs.writeFileSync(out, JSON.stringify({ bundle: { resources } }, null, 2))
+  fs.writeFileSync(out, JSON.stringify({ bundle: { createUpdaterArtifacts, resources } }, null, 2))
   const mb = Object.values(resources).reduce((s, r) => s + fs.statSync(path.join(stage, r)).size, 0) / 1e6
   console.log(`✓ ${Object.keys(resources).length} archivos (${mb.toFixed(0)} MB) para macOS (Metal)`)
   console.log(`✓ ${path.relative(root, out)}`)
@@ -149,7 +153,7 @@ if (win) {
   }
   walk(stage)
   const windows = base.bundle?.windows ?? {}
-  fs.writeFileSync(out, JSON.stringify({ bundle: { resources, windows } }, null, 2))
+  fs.writeFileSync(out, JSON.stringify({ bundle: { createUpdaterArtifacts, resources, windows } }, null, 2))
 
   const mb = Object.values(resources).reduce((s, r) => s + fs.statSync(path.join(stage, r)).size, 0) / 1e6
   console.log(`✓ ${Object.keys(resources).length} archivos (${mb.toFixed(0)} MB) para Windows (solo CPU)`)
@@ -228,7 +232,7 @@ const walk = dir => {
 walk(stage)
 const linux = base.bundle?.linux ?? {}
 const config = {
-  bundle: { linux: { ...linux, deb: { ...linux.deb, files }, appimage: { ...linux.appimage, files } } },
+  bundle: { createUpdaterArtifacts, linux: { ...linux, deb: { ...linux.deb, files }, appimage: { ...linux.appimage, files } } },
 }
 fs.writeFileSync(out, JSON.stringify(config, null, 2))
 

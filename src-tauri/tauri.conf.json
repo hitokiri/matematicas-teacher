@@ -27,7 +27,6 @@
   "bundle": {
     "active": true,
     "targets": [
-      "deb",
       "appimage"
     ],
     "icon": [
@@ -58,6 +57,14 @@
         "languages": ["Spanish"],
         "installMode": "currentUser"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE_CON_LA_CLAVE_PUBLICA_DE_TAURI_SIGNER",
+      "endpoints": [
+        "https://github.com/hitokiri/matematicas-teacher/releases/latest/download/latest.json"
+      ]
     }
   }
 }

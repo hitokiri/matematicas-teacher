@@ -4,7 +4,7 @@ Aplicación de escritorio (Tauri + React) que enseña a niños a resolver proble
 paso a paso en una pizarra animada. La inteligencia artificial corre **dentro de la app**, sin
 internet y sin servidores: los modelos se descargan una vez y se usan en la propia computadora.
 
-> - **¿Solo quieres instalar la app?** Descarga el instalador (`.deb` o AppImage) de la página de
+> - **¿Solo quieres instalar la app?** Descarga el instalador (AppImage) de la página de
 >   *Releases* del repositorio; ver [Instaladores](#9-instaladores-de-escritorio).
 > - El resto de la guía explica cómo **compilarla desde el código**.
 
@@ -197,7 +197,7 @@ LOCAL_GGUF=$M/Qwen3VL-4B-Instruct-Q4_K_M.gguf LOCAL_MMPROJ=$M/mmproj-Qwen3VL-4B-
 driver. Si la hay, la usa; si no, el módulo de GPU no se carga y la app usa la CPU, sin hacer nada.
 Hay dos versiones solo por el **tamaño de la descarga**:
 
-| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage / .dmg) |
+| Versión | Funciona en | Usa la GPU | Tamaño (AppImage / .dmg) |
 |---|---|---|---|
 | **con-GPU-NVIDIA** | Cualquier PC | Sí, si hay NVIDIA con driver | ~520 MB / ~590 MB |
 | **solo-CPU** | Cualquier PC | Nunca | ~20 MB / ~100 MB |
@@ -211,9 +211,6 @@ Hay dos versiones solo por el **tamaño de la descarga**:
 ### Instalar
 
 ```bash
-# Ubuntu / Debian
-sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
-
 # Cualquier Linux (sin instalar)
 chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
@@ -222,11 +219,16 @@ chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 open matematicas-teacher_0.1.0_arm64_macOS.dmg
 ```
 
-- El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y sus librerías en
-  `/usr/lib/matematicas-teacher/`.
+- La AppImage se ejecuta directamente, sin instalar nada; las librerías van empaquetadas dentro.
 - En macOS las librerías van dentro del `.app` (`Contents/Resources`), así que el `.dmg` es
   autónomo: no hay que instalar nada aparte.
-- La app aparece en el menú como **Matemáticas Teacher**.
+
+### Actualización desde la app (planeado)
+
+La app todavía no se auto-actualiza. La planeación está en [auto-update.md](auto-update.md):
+`tauri-plugin-updater` (el mismo mecanismo de Handy) para consultar si hay versión nueva,
+descargarla, instalarla y reiniciar con la nueva versión. Requiere firma minisign y un
+`latest.json` generado en CI.
 
 ### Generar los instaladores en tu computadora
 
@@ -236,7 +238,7 @@ npm run package:cpu    # solo CPU
 npm run package:mac    # macOS (Apple Silicon, Metal); hay que ejecutarlo en una Mac
 ```
 
-Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-GPU-NVIDIA.deb`,
+Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-GPU-NVIDIA.AppImage`,
 `..._solo-CPU.AppImage`, `..._macOS.dmg`). Cada comando hace estos pasos:
 
 1. `scripts/clean-llama-libs.mjs`: borra copias viejas de las librerías de llama.cpp (evita un error
@@ -246,7 +248,7 @@ Los archivos quedan en `instaladores/`, con la versión en el nombre (`..._con-G
    con GPU, el de CUDA y sus librerías (en macOS, el de Metal). Les ajusta las rutas de búsqueda
    (`patchelf` en Linux, `install_name_tool` con `@rpath` en macOS) y genera la lista de archivos
    del paquete.
-4. `tauri bundle`: arma el `.deb` y la AppImage (en macOS, el `.app` y el `.dmg`).
+4. `tauri bundle`: arma la AppImage (en macOS, el `.app` y el `.dmg`).
 5. `scripts/collect-bundles.mjs`: los copia a `instaladores/` con el nombre de la versión.
 
 ### En GitHub (Actions)
@@ -268,7 +270,7 @@ varias generaciones de tarjetas), del orden de una a varias horas. La de CPU tar
 
 ### Probado
 
-- **Con GPU (`.deb` y AppImage) en una PC con RTX 5070 Ti:** el modelo se carga en la GPU y la app
+- **Con GPU (AppImage) en una PC con RTX 5070 Ti:** el modelo se carga en la GPU y la app
   usa las librerías de CUDA del paquete; del sistema solo toma el driver.
 - **Solo CPU:** funciona sin cargar nada de CUDA y elige sola la variante de CPU más rápida para el
   procesador (por ejemplo `zen4`).

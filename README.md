@@ -27,7 +27,7 @@ Aplicación de escritorio (Tauri v2 + React/TypeScript) que enseña a niños a r
 - **Lienzo de dibujo**: lee lo que el niño escribe/dibuja con modelos con visión (mtmd) y permite corregirlo.
 - **IA local con llama.cpp** integrado en la app (como Handy con whisper): sin servidor ni puertos; backends CPU/CUDA/Vulkan se cargan en tiempo de ejecución según el hardware.
 - **Gestor de modelos** (Llama, Qwen, Phi, Gemma, Mistral): descarga desde HuggingFace, selección del modelo activo y eliminación.
-- **Instaladores** `.deb` y AppImage (versiones con GPU NVIDIA y solo CPU) y `.dmg` para macOS (Apple Silicon, GPU Metal) en `instaladores/`.
+- **Instaladores** AppImage (versiones con GPU NVIDIA y solo CPU) y `.dmg` para macOS (Apple Silicon, GPU Metal) en `instaladores/`. La app se actualiza desde dentro (planeado; ver [docs/auto-update.md](docs/auto-update.md)).
 
 ## Qué sabe explicar
 
@@ -161,18 +161,15 @@ Sin GPU funciona igual, solo más lento (~15 s por explicación con un modelo de
 
 ### Desde el instalador (lo más rápido)
 
-Descarga el instalador (`.deb` o AppImage) de la página de *Releases* o de [`instaladores/`](instaladores/):
+Descarga el instalador (AppImage) de la página de *Releases* o de [`instaladores/`](instaladores/):
 
-| Versión | Funciona en | Usa la GPU | Tamaño (.deb / AppImage / .dmg) |
+| Versión | Funciona en | Usa la GPU | Tamaño (AppImage / .dmg) |
 |---|---|---|---|
 | **con-GPU-NVIDIA** | Cualquier PC | Sí, si hay NVIDIA con driver | ~520 MB / ~590 MB |
 | **solo-CPU** | Cualquier PC | Nunca | ~20 MB / ~100 MB |
 | **macOS** | Macs con Apple Silicon | Sí, con la GPU integrada (Metal) | ~150 MB |
 
 ```bash
-# Ubuntu / Debian
-sudo apt install ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.deb
-
 # Cualquier Linux (sin instalar)
 chmod +x matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
 ./matematicas-teacher_0.1.0_amd64_con-GPU-NVIDIA.AppImage
@@ -182,9 +179,16 @@ open matematicas-teacher_0.1.0_arm64_macOS.dmg
 ```
 
 - La versión con GPU también funciona en PCs sin GPU: si no detecta una NVIDIA, usa la CPU.
-- El `.deb` instala el programa en `/usr/bin/matematicas-teacher` y aparece en el menú como **Matemáticas Teacher**.
+- La AppImage se ejecuta directamente, sin instalar nada.
 - El `.dmg` de macOS no está firmado por Apple, así que macOS la bloquea la primera vez: en macOS 15 (Sequoia) ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*; en macOS 14, clic derecho → *Abrir*. También funciona `xattr -dr com.apple.quarantine "/Applications/Matematicas Teacher.app"` en Terminal.
 - Ninguna versión incluye modelos: se descargan desde la app.
+
+### Actualización desde la app (planeado)
+
+La app aún no se auto-actualiza. La planeación está en [docs/auto-update.md](docs/auto-update.md):
+usar `tauri-plugin-updater` (el mismo mecanismo de Handy) para consultar si hay una versión
+nueva, descargarla, instalarla y reiniciar con la nueva versión. Requiere firma minisign y un
+manifiesto `latest.json` generado en CI.
 
 ### Compilar desde el código
 
@@ -253,7 +257,7 @@ npm run dev           # solo el frontend (Vite, http://localhost:5173)
 | `npm run icono` | Genera todos los íconos (PNG, .ico, .icns y favicon) desde `src-tauri/icons/icon.svg` |
 | `npm run tauri:dev` | App Tauri en modo desarrollo |
 | `npm run tauri:build` | Compilar la app |
-| `npm run package:gpu` | Generar instaladores (.deb/AppImage) con backends GPU |
+| `npm run package:gpu` | Generar instaladores (AppImage) con backends GPU |
 | `npm run package:cpu` | Generar instaladores solo CPU |
 | `npm run package:mac` | Generar instalador de macOS (.dmg, Apple Silicon, Metal) |
 
@@ -276,6 +280,7 @@ src-tauri/            Backend Rust (Tauri v2)
 scripts/              Empaquetado de librerías GPU/CPU y bundles; capturas/ genera las capturas
 e2e/                  Tests Playwright
 docs/INSTALACION.md   Guía de instalación y compilación
+docs/auto-update.md   Planeación de la actualización desde la app
 docs/capturas/        Capturas de la interfaz
 BITACORA.md           Bitácora del proyecto
 ```
